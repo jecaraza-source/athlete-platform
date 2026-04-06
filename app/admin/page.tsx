@@ -1,11 +1,10 @@
 import Link from 'next/link';
+import BackButton from '@/components/back-button';
 
 export default function AdminPage() {
   return (
     <main className="p-8">
-      <Link href="/dashboard" className="text-blue-600 hover:underline">
-        ← Back to Dashboard
-      </Link>
+      <BackButton href="/dashboard" label="Back to Dashboard" />
       <h1 className="text-3xl font-bold mt-4">Admin</h1>
       <p className="mt-2 text-gray-600 mb-8">Platform administration and configuration.</p>
 

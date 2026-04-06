@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import MonthCalendar from './month-calendar';
 import EventStatusSelect from './event-status-select';
@@ -36,9 +37,7 @@ export default async function CalendarPage() {
 
   return (
     <main className="p-8">
-      <Link href="/dashboard" className="text-blue-600 hover:underline">
-        ← Back to Dashboard
-      </Link>
+      <BackButton href="/dashboard" label="Back to Dashboard" />
       <h1 className="text-3xl font-bold mt-4 mb-6">Calendar</h1>
 
       <MonthCalendar events={events} profiles={profiles} />

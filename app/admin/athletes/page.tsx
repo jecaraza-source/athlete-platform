@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import NewStaffForm from '../staff/new-staff-form';
 import StaffCard from '../staff/staff-card';
@@ -27,9 +28,7 @@ export default async function AdminAthletesPage() {
 
   return (
     <main className="p-8">
-      <Link href="/admin" className="text-blue-600 hover:underline">
-        ← Back to Admin
-      </Link>
+      <BackButton href="/admin" label="Back to Admin" />
 
       <h1 className="text-3xl font-bold mt-4 mb-2">Athletes</h1>
       <p className="text-gray-600 mb-8">Register new athletes and manage their profiles.</p>

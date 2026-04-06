@@ -3,11 +3,11 @@ import Link from 'next/link';
 import { ReactNode } from 'react';
 
 const links = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/athletes', label: 'Athletes' },
-  { href: '/calendar', label: 'Calendar' },
-  { href: '/follow-up', label: 'Follow-up' },
-  { href: '/admin', label: 'Admin' },
+  { href: '/dashboard', label: 'Dashboard',  color: 'bg-indigo-600 hover:bg-indigo-700' },
+  { href: '/athletes',  label: 'Athletes',   color: 'bg-emerald-600 hover:bg-emerald-700' },
+  { href: '/calendar',  label: 'Calendar',   color: 'bg-sky-600 hover:bg-sky-700' },
+  { href: '/follow-up', label: 'Follow-up',  color: 'bg-amber-500 hover:bg-amber-600' },
+  { href: '/admin',     label: 'Admin',      color: 'bg-rose-600 hover:bg-rose-700' },
 ];
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -23,16 +23,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
           priority
         />
 
-        <nav className="space-y-3">
+        <nav className="space-y-2">
           {links.map((link) => (
-            <div key={link.href}>
-              <Link
-                href={link.href}
-                className="text-blue-600 hover:text-blue-800 hover:underline"
-              >
-                {link.label}
-              </Link>
-            </div>
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`block w-full text-center text-sm font-medium text-white px-4 py-2 rounded-lg transition-colors ${link.color}`}
+            >
+              {link.label}
+            </Link>
           ))}
         </nav>
       </aside>

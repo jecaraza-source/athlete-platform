@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { GeneralInfoSection, GuardianSection, EmergencyContactSection } from './athlete-sections';
 
@@ -90,9 +91,7 @@ export default async function AthleteDetailPage({
   if (error || !data) {
     return (
       <main className="p-8">
-        <Link href="/athletes" className="text-blue-600 hover:underline">
-          ← Back to athletes
-        </Link>
+        <BackButton href="/athletes" label="Back to Athletes" />
         <h1 className="text-2xl font-bold mt-4">Athlete not found</h1>
       </main>
     );
@@ -108,9 +107,7 @@ export default async function AthleteDetailPage({
 
   return (
     <main className="p-8">
-      <Link href="/athletes" className="text-blue-600 hover:underline">
-        ← Back to athletes
-      </Link>
+      <BackButton href="/athletes" label="Back to Athletes" />
 
       {/* Header */}
       <div className="mt-4 flex flex-col md:flex-row md:items-start md:justify-between gap-3">

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import NewPlanForm from './new-plan-form';
 import UploadButton from './upload-button';
@@ -97,9 +98,7 @@ export default async function NutritionPage({
 
   return (
     <main className="p-8">
-      <Link href="/follow-up" className="text-blue-600 hover:underline">
-        ← Back to Follow-up
-      </Link>
+      <BackButton href="/follow-up" label="Back to Follow-up" />
 
       <h1 className="text-3xl font-bold mt-4 mb-2">Nutrition</h1>
       <p className="text-gray-600 mb-8">Monitor dietary plans and nutritional goals.</p>

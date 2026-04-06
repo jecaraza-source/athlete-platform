@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BackButton from '@/components/back-button';
 
 const categories = [
   {
@@ -26,9 +27,7 @@ const categories = [
 export default function FollowUpPage() {
   return (
     <main className="p-8">
-      <Link href="/dashboard" className="text-blue-600 hover:underline">
-        ← Back to Dashboard
-      </Link>
+      <BackButton href="/dashboard" label="Back to Dashboard" />
       <h1 className="text-3xl font-bold mt-4 mb-2">Follow-up</h1>
       <p className="text-gray-600 mb-8">
         Track training, nutrition, physio and psychology across your athletes.

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
@@ -20,9 +21,7 @@ export default async function AthletesPage() {
   if (error) {
     return (
       <main className="p-8">
-        <Link href="/dashboard" className="text-blue-600 hover:underline">
-          ← Back to Dashboard
-        </Link>
+        <BackButton href="/dashboard" label="Back to Dashboard" />
         <h1 className="text-2xl font-bold mt-4">Athletes</h1>
         <p className="text-red-600 mt-4">Failed to load athletes.</p>
       </main>
@@ -33,9 +32,7 @@ export default async function AthletesPage() {
 
   return (
     <main className="p-8">
-      <Link href="/dashboard" className="text-blue-600 hover:underline">
-        ← Back to Dashboard
-      </Link>
+      <BackButton href="/dashboard" label="Back to Dashboard" />
       <h1 className="text-2xl font-bold mt-4 mb-6">Athletes</h1>
 
       {athletes.length === 0 ? (
