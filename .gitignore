@@ -3,9 +3,14 @@
 # dependencies
 node_modules/
 
+# Next.js
+.next/
+out/
+build/
+dist/
+
 # Expo
 .expo/
-dist/
 web-build/
 expo-env.d.ts
 
