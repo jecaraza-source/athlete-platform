@@ -4,6 +4,8 @@ import NewStaffForm from '../staff/new-staff-form';
 import StaffCard from '../staff/staff-card';
 import type { Profile } from '../staff/staff-card';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminAthletesPage() {
   const fullResult = await supabaseAdmin
     .from('profiles')

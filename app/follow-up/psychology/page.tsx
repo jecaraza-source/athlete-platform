@@ -6,6 +6,8 @@ import NewSessionForm from './new-session-form';
 import EditSessionForm from './edit-session-form';
 import CaseStatusSelect from './case-status-select';
 
+export const dynamic = 'force-dynamic';
+
 type PsychologyCase = {
   id: string;
   status: string;

@@ -4,6 +4,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import NewSessionForm from './new-session-form';
 import AthleteFilter from '../nutrition/athlete-filter';
 
+export const dynamic = 'force-dynamic';
+
 type TrainingSession = {
   id: string;
   athlete_id: string;

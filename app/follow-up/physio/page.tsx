@@ -7,6 +7,8 @@ import AthleteFilter from '../nutrition/athlete-filter';
 import EditSessionForm from './edit-session-form';
 import CaseStatusSelect from './case-status-select';
 
+export const dynamic = 'force-dynamic';
+
 type PhysioCase = {
   id: string;
   athlete_id: string | null;

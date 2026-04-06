@@ -4,6 +4,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import MonthCalendar from './month-calendar';
 import EventStatusSelect from './event-status-select';
 
+export const dynamic = 'force-dynamic';
+
 type EventRow = {
   id: string;
   title: string;

@@ -4,6 +4,8 @@ import NewStaffForm from './new-staff-form';
 import StaffCard from './staff-card';
 import type { Profile } from './staff-card';
 
+export const dynamic = 'force-dynamic';
+
 const ADMIN_ROLES = ['super_admin', 'admin'];
 const STAFF_ROLES = ['psychologist', 'trainer', 'nutritionist', 'physio'];
 

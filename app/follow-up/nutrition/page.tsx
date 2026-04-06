@@ -9,6 +9,8 @@ import CheckinForm from './checkin-form';
 import CheckinChart from './checkin-chart';
 import PlanStatusSelect from './plan-status-select';
 
+export const dynamic = 'force-dynamic';
+
 type NutritionCheckin = {
   id: string;
   athlete_id: string;

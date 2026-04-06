@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { GeneralInfoSection, GuardianSection, EmergencyContactSection } from './athlete-sections';
 
+export const dynamic = 'force-dynamic';
+
 type AthleteDetail = {
   id: string;
   athlete_code: string | null;
