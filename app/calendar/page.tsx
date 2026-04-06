@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import MonthCalendar from './month-calendar';
 import EventStatusSelect from './event-status-select';
@@ -22,7 +21,7 @@ function formatDateTime(value: string) {
 
 export default async function CalendarPage() {
   const [{ data, error }, { data: profilesData }] = await Promise.all([
-    supabase
+    supabaseAdmin
       .from('events')
       .select('id, title, event_type, start_at, end_at, status, description')
       .order('start_at', { ascending: true }),

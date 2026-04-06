@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,7 @@ type Athlete = {
 };
 
 export default async function AthletesPage() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('athletes')
     .select('id, first_name, last_name, status, school_or_club')
     .order('last_name', { ascending: true });

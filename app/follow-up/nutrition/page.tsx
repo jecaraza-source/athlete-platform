@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import NewPlanForm from './new-plan-form';
 import UploadButton from './upload-button';
@@ -63,7 +62,7 @@ export default async function NutritionPage({
 
   const [plansResult, { data: athletesData }, { data: profilesData }, { data: checkinsData }] = await Promise.all([
     buildPlansQuery(true),
-    supabase.from('athletes').select('id, first_name, last_name').order('last_name', { ascending: true }),
+    supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name', { ascending: true }),
     supabaseAdmin.from('profiles').select('id, first_name, last_name').eq('role', 'nutritionist').order('last_name', { ascending: true }),
     checkinsQuery,
   ]);

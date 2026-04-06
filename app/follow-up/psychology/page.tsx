@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import NewCaseForm from './new-case-form';
 import NewSessionForm from './new-session-form';
@@ -39,7 +38,7 @@ export default async function PsychologyPage() {
         .from('psychology_cases')
         .select('id, status, opened_at, summary, athletes(first_name, last_name), profiles(first_name, last_name), psychology_sessions(id, session_date, mood_score, stress_score, topic_summary, recommendations, next_session_date)')
         .order('opened_at', { ascending: false }),
-      supabase.from('athletes').select('id, first_name, last_name').order('last_name'),
+      supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name'),
       supabaseAdmin.from('profiles').select('id, first_name, last_name').eq('role', 'psychologist').order('last_name'),
     ]);
 

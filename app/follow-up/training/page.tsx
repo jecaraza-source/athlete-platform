@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import NewSessionForm from './new-session-form';
 import AthleteFilter from '../nutrition/athlete-filter';
@@ -37,7 +36,7 @@ export default async function TrainingPage({
 
   const [{ data, error }, { data: athletesData }, { data: profilesData }] = await Promise.all([
     sessionsQuery,
-    supabase
+    supabaseAdmin
       .from('athletes')
       .select('id, first_name, last_name')
       .order('last_name', { ascending: true }),

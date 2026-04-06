@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import NewCaseForm from './new-case-form';
 import NewPhysioSessionForm from './new-session-form';
@@ -51,7 +50,7 @@ export default async function PhysioPage({
   const [{ data: casesData, error }, { data: athletesData }, { data: profilesData }, { data: injuriesData }] =
     await Promise.all([
       casesQuery,
-      supabase.from('athletes').select('id, first_name, last_name').order('last_name'),
+      supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name'),
       supabaseAdmin.from('profiles').select('id, first_name, last_name').eq('role', 'physio').order('last_name'),
       supabaseAdmin.from('injuries').select('id, injury_type, athlete_id'),
     ]);

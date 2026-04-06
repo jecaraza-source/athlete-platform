@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { GeneralInfoSection, GuardianSection, EmergencyContactSection } from './athlete-sections';
 
@@ -51,7 +50,7 @@ export default async function AthleteDetailPage({
     { data: psychologyCases },
     { data: eventParticipants },
   ] = await Promise.all([
-    supabase
+    supabaseAdmin
       .from('athletes')
       .select('id, athlete_code, first_name, last_name, date_of_birth, sex, height_cm, weight_kg, dominant_side, school_or_club, guardian_name, guardian_phone, guardian_email, emergency_contact_name, emergency_contact_phone, medical_notes_summary, status')
       .eq('id', id)
