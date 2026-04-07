@@ -70,7 +70,7 @@ export default function PermissionRow({
                   ROLE_BADGE_COLORS[role.name] ?? 'bg-gray-100 text-gray-600 ring-gray-200'
                 }`}
               >
-                {formatRoleName(role.name)}
+              {role.name}  {/* already human-readable from DB */}
               </Link>
             ))}
           </div>

@@ -23,17 +23,17 @@ export default async function UsersRolesPage() {
   const profiles = profilesResult.data ?? [];
   const userRoleRows = userRolesResult.data ?? [];
 
-  // Build a map: profileId → Set<roleId>
-  const rolesByProfile: Record<string, Set<string>> = {};
+  // Build a map: profileId → Set<role_id> where role_id is an INTEGER
+  const rolesByProfile: Record<string, Set<number>> = {};
   for (const ur of userRoleRows) {
     if (!rolesByProfile[ur.profile_id]) rolesByProfile[ur.profile_id] = new Set();
-    rolesByProfile[ur.profile_id].add(ur.role_id);
+    rolesByProfile[ur.profile_id].add(Number(ur.role_id));
   }
 
   // Enrich profiles with their role objects
   const profilesWithRoles: ProfileWithRoles[] = profiles.map((p) => ({
     ...p,
-    roles: allRoles.filter((r) => rolesByProfile[p.id]?.has(r.id)),
+    roles: allRoles.filter((r) => rolesByProfile[p.id]?.has(Number(r.id))),
   }));
 
   return (

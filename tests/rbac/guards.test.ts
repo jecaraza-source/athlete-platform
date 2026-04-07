@@ -150,7 +150,8 @@ describe('hasRole', () => {
   it('returns true when any of several requested roles matches', async () => {
     setupAuthMock(vi.mocked(createSupabaseServerClient), SCENARIOS.admin);
     setupSupabaseAdminMock(vi.mocked(supabaseAdmin) as { from: ReturnType<typeof vi.fn> }, SCENARIOS.admin);
-    expect(await hasRole('super_admin', 'admin')).toBe(true);
+    // admin scenario uses 'program_director' code in the existing DB schema
+    expect(await hasRole('super_admin', 'program_director')).toBe(true);
   });
 });
 
@@ -258,14 +259,15 @@ describe('requireAdminAccess', () => {
     setupSupabaseAdminMock(vi.mocked(supabaseAdmin) as { from: ReturnType<typeof vi.fn> }, SCENARIOS.admin);
     const user = await requireAdminAccess();
     expect(user.authUserId).toBe(SCENARIOS.admin!.authUserId);
-    expect(user.roles.some((r) => r.name === 'admin')).toBe(true);
+    // admin scenario maps to 'program_director' code in the existing DB schema
+    expect(user.roles.some((r) => r.code === 'program_director')).toBe(true);
   });
 
   it('returns the CurrentUser for a super_admin', async () => {
     setupAuthMock(vi.mocked(createSupabaseServerClient), SCENARIOS.super_admin);
     setupSupabaseAdminMock(vi.mocked(supabaseAdmin) as { from: ReturnType<typeof vi.fn> }, SCENARIOS.super_admin);
     const user = await requireAdminAccess();
-    expect(user.roles.some((r) => r.name === 'super_admin')).toBe(true);
+    expect(user.roles.some((r) => r.code === 'super_admin')).toBe(true);
   });
 });
 

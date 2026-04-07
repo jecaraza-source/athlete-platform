@@ -3,11 +3,20 @@
 // =============================================================================
 
 export type Role = {
-  id: string;
+  /**
+   * Integer PK from the existing `roles` table.
+   * Use `code` (not `id`) for permission/role name comparisons in code.
+   */
+  id: number;
+  /** Snake_case slug — the authoritative identifier used in permission checks. */
+  code: string;
+  /** Human-readable display label, e.g. "Super Admin". */
   name: string;
   description: string | null;
-  is_system: boolean;
-  created_at: string;
+  /** Added by migration 002. Undefined until migration runs. */
+  is_system?: boolean;
+  /** Added by migration 002. Undefined until migration runs. */
+  created_at?: string;
 };
 
 export type Permission = {
@@ -18,15 +27,17 @@ export type Permission = {
 };
 
 export type RolePermission = {
-  role_id: string;
+  /** INTEGER — references roles.id */
+  role_id: number;
   permission_id: string;
 };
 
 export type UserRole = {
+  id?: number;
   profile_id: string;
-  role_id: string;
-  assigned_at: string;
-  assigned_by_profile_id: string | null;
+  /** INTEGER — references roles.id */
+  role_id: number;
+  created_at?: string;
 };
 
 // ---------------------------------------------------------------------------

@@ -42,9 +42,12 @@ function jsonResponse(body: object, status: number): Response {
   });
 }
 
-/** True if the user is a super_admin (bypasses all permission checks). */
+/**
+ * True if the user holds the super_admin role (bypasses all permission checks).
+ * Compares against role.code, which is the snake_case slug in the DB.
+ */
 function isSuperAdmin(user: CurrentUser): boolean {
-  return user.roles.some((r) => r.name === 'super_admin');
+  return user.roles.some((r) => r.code === 'super_admin');
 }
 
 // ---------------------------------------------------------------------------
@@ -87,10 +90,12 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     return { authUserId: authUser.id, profile: null, roles: [], permissions: new Set() };
   }
 
-  // 2. Resolve roles
+  // 2. Resolve roles via the existing user_roles → roles join.
+  // NOTE: roles.code is the snake_case slug (e.g. 'super_admin');
+  //       roles.name is the human-readable label (e.g. 'Super Admin').
   const { data: userRoleRows } = await supabaseAdmin
     .from('user_roles')
-    .select('role_id, roles(id, name, description, is_system, created_at)')
+    .select('role_id, roles(id, code, name, description, is_system, created_at)')
     .eq('profile_id', profile.id);
 
   const roles: Role[] = (userRoleRows ?? [])
@@ -99,7 +104,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     )
     .filter((r): r is Role => r != null);
 
-  // 3. Resolve permissions for those roles
+  // 3. Resolve permissions for those roles (requires migration 002 to have run).
   let permissions = new Set<string>();
   if (roles.length > 0) {
     const { data: rpRows } = await supabaseAdmin
@@ -132,11 +137,11 @@ export async function hasPermission(permission: string): Promise<boolean> {
   return user.permissions.has(permission);
 }
 
-/** Returns true if the current user holds at least one of the given roles. */
-export async function hasRole(...roleNames: string[]): Promise<boolean> {
+/** Returns true if the current user holds at least one of the given roles (matched by code). */
+export async function hasRole(...roleCodes: string[]): Promise<boolean> {
   const user = await getCurrentUser();
   if (!user) return false;
-  return user.roles.some((r) => roleNames.includes(r.name));
+  return user.roles.some((r) => roleCodes.includes(r.code));
 }
 
 // ---------------------------------------------------------------------------
@@ -177,7 +182,10 @@ export async function requirePermission(permission: string): Promise<void> {
 export async function requireAdminAccess(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
-  const isAdmin = user.roles.some((r) => ['super_admin', 'admin'].includes(r.name));
+  // 'program_director' is the admin-equivalent role in the existing DB schema
+  const isAdmin = user.roles.some((r) =>
+    ['super_admin', 'admin', 'program_director'].includes(r.code)
+  );
   if (!isAdmin) redirect('/dashboard');
   return user;
 }
@@ -219,7 +227,9 @@ export async function assertPermission(
 export async function assertAdminAccess(): Promise<{ error: string } | null> {
   const user = await getCurrentUser();
   if (!user) return { error: 'You must be signed in to perform this action.' };
-  const isAdmin = user.roles.some((r) => ['super_admin', 'admin'].includes(r.name));
+  const isAdmin = user.roles.some((r) =>
+    ['super_admin', 'admin', 'program_director'].includes(r.code)
+  );
   if (!isAdmin) return { error: 'Admin access required.' };
   return null;
 }

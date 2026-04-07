@@ -13,12 +13,19 @@ function formatRoleName(name: string): string {
   return name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Keys are role.code (snake_case slugs), not role.name (display labels)
 const BADGE_COLORS: Record<string, string> = {
-  super_admin: 'bg-red-100 text-red-700 ring-red-200',
-  admin:       'bg-indigo-100 text-indigo-700 ring-indigo-200',
-  coach:       'bg-blue-100 text-blue-700 ring-blue-200',
-  staff:       'bg-amber-100 text-amber-700 ring-amber-200',
-  athlete:     'bg-teal-100 text-teal-700 ring-teal-200',
+  super_admin:      'bg-red-100 text-red-700 ring-red-200',
+  admin:            'bg-indigo-100 text-indigo-700 ring-indigo-200',
+  program_director: 'bg-indigo-100 text-indigo-700 ring-indigo-200',
+  coach:            'bg-blue-100 text-blue-700 ring-blue-200',
+  staff:            'bg-amber-100 text-amber-700 ring-amber-200',
+  physio:           'bg-orange-100 text-orange-700 ring-orange-200',
+  nutritionist:     'bg-green-100 text-green-700 ring-green-200',
+  psychologist:     'bg-purple-100 text-purple-700 ring-purple-200',
+  event_coordinator:'bg-sky-100 text-sky-700 ring-sky-200',
+  guardian:         'bg-gray-100 text-gray-600 ring-gray-200',
+  athlete:          'bg-teal-100 text-teal-700 ring-teal-200',
 };
 
 const AVATAR_PALETTES = [
@@ -51,16 +58,16 @@ function RoleBadge({
   disabled,
 }: {
   role: Role;
-  onRevoke: (id: string) => void;
+  onRevoke: (id: number) => void;
   disabled: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
-  const color = BADGE_COLORS[role.name] ?? 'bg-gray-100 text-gray-600 ring-gray-200';
+  const color = BADGE_COLORS[role.code] ?? 'bg-gray-100 text-gray-600 ring-gray-200';
 
   if (confirming) {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 ring-1 ring-red-200">
-        Remove {formatRoleName(role.name)}?
+        Remove {role.name}?
         <button
           onClick={() => { onRevoke(role.id); setConfirming(false); }}
           disabled={disabled}
@@ -82,13 +89,13 @@ function RoleBadge({
     <span
       className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ring-1 ${color}`}
     >
-      {formatRoleName(role.name)}
+      {role.name}  {/* already human-readable from DB */}
       <button
         onClick={() => setConfirming(true)}
         disabled={disabled}
         className="ml-0.5 opacity-50 hover:opacity-100 disabled:cursor-not-allowed transition-opacity"
-        title={`Remove ${formatRoleName(role.name)}`}
-        aria-label={`Remove ${formatRoleName(role.name)}`}
+        title={`Remove ${role.name}`}
+          aria-label={`Remove ${role.name}`}
       >
         ✕
       </button>
@@ -132,11 +139,11 @@ function AddRoleControl({
         className="rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
       >
         <option value="">Pick a role…</option>
-        {availableRoles.map((r) => (
-          <option key={r.id} value={r.id}>
-            {formatRoleName(r.name)}
-          </option>
-        ))}
+          {availableRoles.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}  {/* already human-readable from DB */}
+            </option>
+          ))}
       </select>
       <button
         onClick={() => {
@@ -175,8 +182,11 @@ export default function UserRoleRow({
   const assignedIds = new Set(assignedRoles.map((r) => r.id));
   const availableRoles = allRoles.filter((r) => !assignedIds.has(r.id));
 
+  // roleId comes as a string from the <select> DOM element; convert to number
+  // to match the integer PK used in the existing roles table.
   function handleAssign(roleId: string) {
-    const role = allRoles.find((r) => r.id === roleId);
+    const numId = Number(roleId);
+    const role = allRoles.find((r) => r.id === numId);
     if (!role) return;
     startTransition(async () => {
       const result = await assignRole(profile.id, roleId);
@@ -189,9 +199,9 @@ export default function UserRoleRow({
     });
   }
 
-  function handleRevoke(roleId: string) {
+  function handleRevoke(roleId: number) {
     startTransition(async () => {
-      const result = await revokeRole(profile.id, roleId);
+      const result = await revokeRole(profile.id, String(roleId));
       if (result.error) {
         setError(result.error);
       } else {

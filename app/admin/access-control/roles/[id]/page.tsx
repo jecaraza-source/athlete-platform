@@ -41,7 +41,7 @@ export default async function RoleDetailPage({
   if (!roleWithPerms) notFound();
 
   const assignedIds = new Set<string>(roleWithPerms.permissions.map((p: Permission) => p.id));
-  const colors = ROLE_COLORS[roleWithPerms.name] ?? DEFAULT_COLORS;
+  const colors = ROLE_COLORS[roleWithPerms.code] ?? DEFAULT_COLORS;
 
   return (
     <main className="p-8 max-w-3xl">
@@ -52,7 +52,7 @@ export default async function RoleDetailPage({
         <span className={`mt-1 shrink-0 w-3 h-3 rounded-full ${colors.dot}`} aria-hidden />
         <div className="min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold text-gray-900">{formatName(roleWithPerms.name)}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{roleWithPerms.name}</h1>
             <span
               className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ring-1 ${colors.badge} ${colors.text}`}
             >
@@ -60,7 +60,7 @@ export default async function RoleDetailPage({
             </span>
           </div>
           <div className="mt-1 flex items-center gap-3 text-xs text-gray-400">
-            <span className="font-mono">{roleWithPerms.name}</span>
+            <span className="font-mono">{roleWithPerms.code}</span>
             <span aria-hidden>·</span>
             <span>Created {formatDate(roleWithPerms.created_at)}</span>
             <span aria-hidden>·</span>

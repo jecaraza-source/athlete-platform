@@ -2,17 +2,16 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requirePermission, getCurrentUser } from '@/lib/rbac/server';
+import { requirePermission } from '@/lib/rbac/server';
 
 export async function assignRole(profileId: string, roleId: string) {
   await requirePermission('manage_users');
 
-  const actor = await getCurrentUser();
-
+  // role_id is an INTEGER in the existing schema; coerce from the string
+  // value passed by the select element.
   const { error } = await supabaseAdmin.from('user_roles').insert({
     profile_id: profileId,
-    role_id: roleId,
-    assigned_by_profile_id: actor?.profile?.id ?? null,
+    role_id: Number(roleId),
   });
 
   if (error) {
@@ -31,7 +30,7 @@ export async function revokeRole(profileId: string, roleId: string) {
     .from('user_roles')
     .delete()
     .eq('profile_id', profileId)
-    .eq('role_id', roleId);
+    .eq('role_id', Number(roleId));
 
   if (error) return { error: error.message };
 

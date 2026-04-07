@@ -49,7 +49,7 @@ export default function RoleRow({
     });
   }
 
-  const dotColor = ROLE_DOT[role.name] ?? 'bg-gray-400';
+  const dotColor = ROLE_DOT[role.code] ?? 'bg-gray-400';
 
   return (
     <tr className={`transition-colors ${
@@ -60,8 +60,8 @@ export default function RoleRow({
         <div className="flex items-center gap-3">
           <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${dotColor}`} aria-hidden />
           <div>
-            <p className="font-semibold text-sm text-gray-900">{formatName(role.name)}</p>
-            <p className="font-mono text-xs text-gray-400 mt-0.5">{role.name}</p>
+          <p className="font-semibold text-sm text-gray-900">{role.name}</p>
+            <p className="font-mono text-xs text-gray-400 mt-0.5">{role.code}</p>
           </div>
         </div>
       </td>

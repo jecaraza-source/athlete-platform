@@ -50,7 +50,7 @@ export default function PermissionsForm({
   allPermissions,
   assignedIds,
 }: {
-  roleId: string;
+  roleId: string | number;
   allPermissions: Permission[];
   assignedIds: Set<string>;
 }) {

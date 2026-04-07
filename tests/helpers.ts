@@ -50,15 +50,16 @@ export const IDS = {
 // ---------------------------------------------------------------------------
 
 type RoleRow = {
-  id: string;
-  name: string;
+  id: number;           // INTEGER PK in the existing DB
+  code: string;         // snake_case slug used for permission checks
+  name: string;         // human-readable display label
   description: string | null;
-  is_system: boolean;
-  created_at: string;
+  is_system?: boolean;
+  created_at?: string;
 };
 
 type UserRoleRow = {
-  role_id: string;
+  role_id: number;      // INTEGER FK
   roles: RoleRow;
 };
 
@@ -81,20 +82,20 @@ type ProfileRow = {
 
 export const ROLES: Record<string, RoleRow> = {
   athlete: {
-    id: IDS.roleAthlete, name: 'athlete',
-    description: null, is_system: true, created_at: '2024-01-01T00:00:00Z',
+    id: 8, code: 'athlete', name: 'Athlete',
+    description: 'Athlete self-access', is_system: true, created_at: '2024-01-01T00:00:00Z',
   },
   coach: {
-    id: IDS.roleCoach, name: 'coach',
-    description: null, is_system: true, created_at: '2024-01-01T00:00:00Z',
+    id: 3, code: 'coach', name: 'Coach',
+    description: 'Training and athlete follow-up', is_system: true, created_at: '2024-01-01T00:00:00Z',
   },
   admin: {
-    id: IDS.roleAdmin, name: 'admin',
-    description: null, is_system: true, created_at: '2024-01-01T00:00:00Z',
+    id: 2, code: 'program_director', name: 'Program Director',
+    description: 'Operational oversight', is_system: true, created_at: '2024-01-01T00:00:00Z',
   },
   super_admin: {
-    id: IDS.roleSuperAdmin, name: 'super_admin',
-    description: null, is_system: true, created_at: '2024-01-01T00:00:00Z',
+    id: 1, code: 'super_admin', name: 'Super Admin',
+    description: 'Full platform access', is_system: true, created_at: '2024-01-01T00:00:00Z',
   },
 };
 
@@ -155,9 +156,9 @@ function makeScenario(
     profile: {
       id: profileId,
       first_name: 'Test',
-      last_name: roleName.charAt(0).toUpperCase() + roleName.slice(1),
-      email: `${roleName}@test.com`,
-      role: roleName,
+      last_name: role.name,
+      email: `${role.code}@test.com`,
+      role: role.code,
     },
     userRoleRows: [{ role_id: role.id, roles: role }],
     rolePermRows: (ROLE_PERMISSIONS[roleName] ?? []).map((p) => ({
@@ -207,6 +208,7 @@ export function setupSupabaseAdminMock(
     if (table === 'user_roles') {
       return {
         select: vi.fn().mockReturnValue({
+          // The query includes roles(id, code, name, description, is_system, created_at)
           eq: vi.fn().mockResolvedValue({
             data: scenario?.userRoleRows ?? [],
           }),

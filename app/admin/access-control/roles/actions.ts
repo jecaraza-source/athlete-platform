@@ -28,7 +28,7 @@ export async function createRole(formData: FormData) {
   return { error: null };
 }
 
-export async function updateRole(id: string, formData: FormData) {
+export async function updateRole(id: string | number, formData: FormData) {
   await requirePermission('manage_roles');
 
   const description = (formData.get('description') as string)?.trim() || null;
@@ -45,7 +45,7 @@ export async function updateRole(id: string, formData: FormData) {
   return { error: null };
 }
 
-export async function deleteRole(id: string) {
+export async function deleteRole(id: string | number) {
   await requirePermission('manage_roles');
 
   // Prevent deletion of system roles
@@ -76,7 +76,7 @@ export async function deleteRole(id: string) {
  * Replaces the full permission set for a role.
  * Takes a FormData with checkbox values: permission_id[]=<uuid>, ...
  */
-export async function setRolePermissions(roleId: string, formData: FormData) {
+export async function setRolePermissions(roleId: string | number, formData: FormData) {
   await requirePermission('manage_permissions');
 
   const permissionIds = formData.getAll('permission_id') as string[];
@@ -91,7 +91,8 @@ export async function setRolePermissions(roleId: string, formData: FormData) {
 
   // Re-insert checked permissions
   if (permissionIds.length > 0) {
-    const rows = permissionIds.map((pid) => ({ role_id: roleId, permission_id: pid }));
+    // role_id is INTEGER in the existing schema
+    const rows = permissionIds.map((pid) => ({ role_id: Number(roleId), permission_id: pid }));
     const { error: insertError } = await supabaseAdmin.from('role_permissions').insert(rows);
     if (insertError) return { error: insertError.message };
   }

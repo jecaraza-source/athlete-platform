@@ -57,8 +57,9 @@ export default function UsersClient({
         !q ||
         `${p.first_name} ${p.last_name}`.toLowerCase().includes(q) ||
         (p.email ?? '').toLowerCase().includes(q);
+      // roleFilter is a string from <select> value; role.id is now a number
       const matchesRole =
-        !roleFilter || p.roles.some((r) => r.id === roleFilter);
+        !roleFilter || p.roles.some((r) => r.id === Number(roleFilter));
       return matchesSearch && matchesRole;
     });
   }, [profiles, search, roleFilter]);
@@ -97,7 +98,7 @@ export default function UsersClient({
           <option value="">All roles</option>
           {allRoles.map((r) => (
             <option key={r.id} value={r.id}>
-              {r.name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+              {r.name}  {/* already human-readable from DB */}
             </option>
           ))}
         </select>
