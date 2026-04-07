@@ -41,7 +41,7 @@ function isPublicPath(pathname: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Middleware
+// Proxy (Next.js 16+ renamed middleware → proxy)
 // ---------------------------------------------------------------------------
 
 /**
@@ -56,10 +56,10 @@ function isPublicPath(pathname: string): boolean {
  * 3. Redirect an already-authenticated user away from /login.
  *
  * Fine-grained permission checks happen inside pages (requireAdminAccess,
- * requirePermission) and server actions (assertPermission). Middleware only
+ * requirePermission) and server actions (assertPermission). This proxy only
  * enforces the coarse "must be signed in" rule.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

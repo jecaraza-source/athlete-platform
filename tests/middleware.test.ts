@@ -42,7 +42,7 @@ vi.mock('@supabase/ssr', () => ({
 }));
 
 // Import AFTER the mock is registered
-import { middleware } from '@/middleware';
+import { proxy as middleware } from '@/proxy';
 
 // ---------------------------------------------------------------------------
 // Helpers
