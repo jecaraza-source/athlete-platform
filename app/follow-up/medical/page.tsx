@@ -60,11 +60,24 @@ export default async function MedicalPage({
 
   if (selectedAthleteId) casesQuery = casesQuery.eq('athlete_id', selectedAthleteId);
 
-  const [{ data: casesData, error }, { data: athletesData }, { data: profilesData }] =
+  // Look up the medic role to query the RBAC user_roles table
+  const { data: medicRole } = await supabaseAdmin
+    .from('roles')
+    .select('id')
+    .eq('code', 'medic')
+    .maybeSingle();
+
+  const [{ data: casesData, error }, { data: athletesData }, medicProfilesResult] =
     await Promise.all([
       casesQuery,
       supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name'),
-      supabaseAdmin.from('profiles').select('id, first_name, last_name').order('last_name'),
+      // Fetch profiles assigned the medic role via the RBAC user_roles table
+      medicRole
+        ? supabaseAdmin
+            .from('user_roles')
+            .select('profile_id, profiles(id, first_name, last_name)')
+            .eq('role_id', medicRole.id)
+        : Promise.resolve({ data: [] }),
     ]);
 
   const rawCases = (casesData ?? []) as unknown as MedicalCase[];
@@ -74,8 +87,17 @@ export default async function MedicalPage({
     ...rawCases.filter((c) => c.status === 'closed'),
   ];
 
-  const athletes   = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
-  const doctors    = (profilesData ?? []) as { id: string; first_name: string; last_name: string }[];
+  const athletes = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
+
+  // Extract the profile rows from the user_roles join
+  type Person = { id: string; first_name: string; last_name: string };
+  const doctors: Person[] = ((medicProfilesResult.data ?? []) as Array<{
+    profile_id: string;
+    profiles: Person | Person[] | null;
+  }>)
+    .map((ur) => (Array.isArray(ur.profiles) ? ur.profiles[0] : ur.profiles))
+    .filter((p): p is Person => p != null)
+    .sort((a, b) => a.last_name.localeCompare(b.last_name));
 
   const caseOptions = cases
     .filter((c) => c.status !== 'closed')

@@ -15,11 +15,18 @@ function formatName(name: string) {
 }
 
 const ROLE_DOT: Record<string, string> = {
-  super_admin: 'bg-red-500',
-  admin:       'bg-indigo-500',
-  coach:       'bg-blue-500',
-  staff:       'bg-amber-500',
-  athlete:     'bg-teal-500',
+  super_admin:      'bg-red-500',
+  admin:            'bg-indigo-500',
+  program_director: 'bg-indigo-400',
+  coach:            'bg-blue-500',
+  staff:            'bg-amber-500',
+  physio:           'bg-orange-500',
+  nutritionist:     'bg-green-500',
+  psychologist:     'bg-purple-500',
+  medic:            'bg-rose-500',
+  event_coordinator:'bg-sky-500',
+  guardian:         'bg-gray-400',
+  athlete:          'bg-teal-500',
 };
 
 // ---------------------------------------------------------------------------

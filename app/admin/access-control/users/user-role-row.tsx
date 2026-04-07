@@ -24,6 +24,7 @@ const BADGE_COLORS: Record<string, string> = {
   physio:           'bg-orange-100 text-orange-700 ring-orange-200',
   nutritionist:     'bg-green-100 text-green-700 ring-green-200',
   psychologist:     'bg-purple-100 text-purple-700 ring-purple-200',
+  medic:            'bg-rose-100 text-rose-700 ring-rose-200',
   event_coordinator:'bg-sky-100 text-sky-700 ring-sky-200',
   guardian:         'bg-gray-100 text-gray-600 ring-gray-200',
   athlete:          'bg-teal-100 text-teal-700 ring-teal-200',
