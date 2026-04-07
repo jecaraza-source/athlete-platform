@@ -22,6 +22,11 @@ const categories = [
     description: 'Record mental performance and wellbeing check-ins.',
     href: '/follow-up/psychology',
   },
+  {
+    label: 'Medical Services',
+    description: 'Track medical cases, vitals, blood pressure, and treatment adherence.',
+    href: '/follow-up/medical',
+  },
 ];
 
 export default function FollowUpPage() {
@@ -30,7 +35,7 @@ export default function FollowUpPage() {
       <BackButton href="/dashboard" label="Back to Dashboard" />
       <h1 className="text-3xl font-bold mt-4 mb-2">Follow-up</h1>
       <p className="text-gray-600 mb-8">
-        Track training, nutrition, physio and psychology across your athletes.
+        Track training, nutrition, physio, psychology, and medical services across your athletes.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
