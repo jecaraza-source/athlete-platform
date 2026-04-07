@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/rbac/server';
 import MonthCalendar from './month-calendar';
 import EventStatusSelect from './event-status-select';
 
@@ -21,6 +22,8 @@ function formatDateTime(value: string) {
 }
 
 export default async function CalendarPage() {
+  await requirePermission('view_calendar');
+
   const [{ data, error }, { data: profilesData }] = await Promise.all([
     supabaseAdmin
       .from('events')

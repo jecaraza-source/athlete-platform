@@ -2,8 +2,11 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { assertPermission } from '@/lib/rbac/server';
 
 export async function updateAthlete(id: string, formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
   const raw = (key: string) => (formData.get(key) as string) || null;
   const num = (key: string) => {
     const v = formData.get(key) as string;

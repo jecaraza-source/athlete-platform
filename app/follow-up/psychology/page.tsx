@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/rbac/server';
 import NewCaseForm from './new-case-form';
 import NewSessionForm from './new-session-form';
 import EditSessionForm from './edit-session-form';
@@ -33,6 +34,8 @@ const statusColors: Record<string, string> = {
 };
 
 export default async function PsychologyPage() {
+  await requirePermission('view_athletes');
+
   const [{ data: casesData, error }, { data: athletesData }, { data: profilesData }] =
     await Promise.all([
       supabaseAdmin

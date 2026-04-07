@@ -2,8 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { assertPermission } from '@/lib/rbac/server';
 
 export async function createTrainingSession(formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
   const payload = {
     athlete_id: formData.get('athlete_id') as string,
     coach_profile_id: formData.get('coach_profile_id') as string,

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/rbac/server';
 import NewSessionForm from './new-session-form';
 import AthleteFilter from '../nutrition/athlete-filter';
 
@@ -26,6 +27,8 @@ export default async function TrainingPage({
 }: {
   searchParams: Promise<{ athlete?: string }>;
 }) {
+  await requirePermission('view_athletes');
+
   const { athlete: selectedAthleteId = '' } = await searchParams;
 
   let sessionsQuery = supabaseAdmin

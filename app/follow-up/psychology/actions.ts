@@ -2,8 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { assertPermission } from '@/lib/rbac/server';
 
 export async function createPsychologyCase(formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
   const payload = {
     athlete_id: formData.get('athlete_id') as string,
     psychologist_profile_id: formData.get('psychologist_profile_id') as string,
@@ -21,6 +25,9 @@ export async function createPsychologyCase(formData: FormData) {
 }
 
 export async function updatePsychologySession(id: string, formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
   const moodRaw = formData.get('mood_score') as string;
   const stressRaw = formData.get('stress_score') as string;
 
@@ -45,6 +52,9 @@ export async function updatePsychologySession(id: string, formData: FormData) {
 }
 
 export async function updatePsychologyCaseStatus(id: string, status: string) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
   const { error } = await supabaseAdmin
     .from('psychology_cases')
     .update({ status })
@@ -57,6 +67,9 @@ export async function updatePsychologyCaseStatus(id: string, status: string) {
 }
 
 export async function createPsychologySession(formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
   const moodRaw = formData.get('mood_score') as string;
   const stressRaw = formData.get('stress_score') as string;
 

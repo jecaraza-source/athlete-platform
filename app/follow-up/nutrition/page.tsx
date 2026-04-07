@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/rbac/server';
 import NewPlanForm from './new-plan-form';
 import UploadButton from './upload-button';
 import { getNutritionFileUrl } from './upload-action';
@@ -45,6 +46,8 @@ export default async function NutritionPage({
 }: {
   searchParams: Promise<{ athlete?: string }>;
 }) {
+  await requirePermission('view_athletes');
+
   const { athlete: selectedAthleteId = '' } = await searchParams;
 
   function buildPlansQuery(withFilePath: boolean) {

@@ -30,6 +30,17 @@ export default function AdminPage() {
             Register new athletes and manage their profiles.
           </p>
         </Link>
+
+        {/* Access Control */}
+        <Link
+          href="/admin/access-control"
+          className="rounded-lg border border-violet-200 bg-violet-50 p-6 hover:bg-violet-100 transition-colors"
+        >
+          <h2 className="text-lg font-semibold text-violet-800">Access Control</h2>
+          <p className="text-sm text-violet-600 mt-1">
+            Manage roles, permissions, and user access.
+          </p>
+        </Link>
       </div>
     </main>
   );

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/rbac/server';
 import { GeneralInfoSection, GuardianSection, EmergencyContactSection } from './athlete-sections';
 
 export const dynamic = 'force-dynamic';
@@ -41,6 +42,8 @@ export default async function AthleteDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePermission('view_athletes');
+
   const { id } = await params;
 
   const [

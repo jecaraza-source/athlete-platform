@@ -2,8 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { assertPermission } from '@/lib/rbac/server';
 
 export async function createPhysioCase(formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
   const payload = {
     athlete_id: formData.get('athlete_id') as string,
     physio_profile_id: formData.get('physio_profile_id') as string,
@@ -23,6 +27,9 @@ export async function createPhysioCase(formData: FormData) {
 }
 
 export async function createPhysioSession(formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
   const painRaw = formData.get('pain_score') as string;
   const mobilityRaw = formData.get('mobility_score') as string;
 
@@ -47,6 +54,9 @@ export async function createPhysioSession(formData: FormData) {
 }
 
 export async function updatePhysioCaseStatus(id: string, status: string) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
   const { error } = await supabaseAdmin
     .from('physio_cases')
     .update({ status })
@@ -61,6 +71,9 @@ export async function updatePhysioCaseStatus(id: string, status: string) {
 }
 
 export async function updatePhysioSession(id: string, formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
   const painRaw = formData.get('pain_score') as string;
   const mobilityRaw = formData.get('mobility_score') as string;
 

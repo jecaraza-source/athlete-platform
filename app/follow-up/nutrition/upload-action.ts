@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { assertPermission } from '@/lib/rbac/server';
 
 const BUCKET = 'nutrition-plans';
 
@@ -11,6 +12,9 @@ async function ensureBucket() {
 }
 
 export async function uploadNutritionFile(planId: string, formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
   const file = formData.get('file') as File | null;
   if (!file || file.size === 0) {
     return { error: 'No file selected.' };

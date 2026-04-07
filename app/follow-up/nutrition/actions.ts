@@ -2,8 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { assertPermission } from '@/lib/rbac/server';
 
 export async function createNutritionPlan(formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
   const payload = {
     athlete_id: formData.get('athlete_id') as string,
     nutritionist_profile_id: formData.get('nutritionist_profile_id') as string,
@@ -24,6 +28,9 @@ export async function createNutritionPlan(formData: FormData) {
 }
 
 export async function updateNutritionPlanStatus(id: string, status: string) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
   const { error } = await supabaseAdmin
     .from('nutrition_plans')
     .update({ status })
@@ -36,6 +43,9 @@ export async function updateNutritionPlanStatus(id: string, status: string) {
 }
 
 export async function createNutritionCheckin(formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
   const adherenceRaw = formData.get('adherence_score') as string;
   const weightRaw = formData.get('weight_kg') as string;
   const bodyFatRaw = formData.get('body_fat_percent') as string;

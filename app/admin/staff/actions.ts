@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/rbac/server';
 
 async function ensureAthleteRow(
   profileId: string,
@@ -26,6 +27,8 @@ async function ensureAthleteRow(
 }
 
 export async function createProfile(formData: FormData) {
+  await requirePermission('manage_users');
+
   const email = (formData.get('email') as string)?.trim();
   if (!email) return { error: 'Email is required to create a new profile.' };
 
@@ -121,6 +124,8 @@ export async function createProfile(formData: FormData) {
 }
 
 export async function updateProfile(id: string, formData: FormData) {
+  await requirePermission('manage_users');
+
   const base = {
     first_name: formData.get('first_name') as string,
     last_name: formData.get('last_name') as string,
@@ -154,6 +159,8 @@ export async function updateProfile(id: string, formData: FormData) {
 }
 
 export async function deleteProfile(id: string) {
+  await requirePermission('manage_users');
+
   // Remove linked athlete row first
   await supabaseAdmin.from('athletes').delete().eq('profile_id', id);
 

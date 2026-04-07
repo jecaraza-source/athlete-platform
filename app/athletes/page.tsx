@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/rbac/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,8 @@ type Athlete = {
 };
 
 export default async function AthletesPage() {
+  await requirePermission('view_athletes');
+
   const { data, error } = await supabaseAdmin
     .from('athletes')
     .select('id, first_name, last_name, status, school_or_club')
