@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { assignRole, revokeRole } from './actions';
 import type { ProfileWithRoles, Role } from '@/lib/rbac/types';
+import ChangePasswordForm from './change-password-form';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -232,6 +233,9 @@ export default function UserRoleRow({
             <p className="text-xs text-gray-400 truncate">
               {profile.email ?? <span className="italic">No email</span>}
             </p>
+            {profile.auth_user_id && (
+              <ChangePasswordForm authUserId={profile.auth_user_id} />
+            )}
           </div>
         </div>
       </td>

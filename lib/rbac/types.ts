@@ -79,7 +79,9 @@ export type ProfileSummary = {
   first_name: string;
   last_name: string;
   email: string | null;
-  role: string | null; // legacy column, kept for display
+  role: string | null;         // legacy column, kept for display
+  /** Supabase Auth user UUID — present when fetched for admin pages. */
+  auth_user_id?: string | null;
 };
 
 /** A profile enriched with its RBAC role assignments. */

@@ -13,7 +13,7 @@ export default async function UsersRolesPage() {
     getAllRoles(),
     supabaseAdmin
       .from('profiles')
-      .select('id, first_name, last_name, email, role')
+      .select('id, first_name, last_name, email, role, auth_user_id')
       .order('last_name'),
     supabaseAdmin
       .from('user_roles')

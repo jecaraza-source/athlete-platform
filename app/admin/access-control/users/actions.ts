@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requirePermission } from '@/lib/rbac/server';
+import { requirePermission, getCurrentUser } from '@/lib/rbac/server';
 
 export async function assignRole(profileId: string, roleId: string) {
   await requirePermission('manage_users');
@@ -35,5 +35,32 @@ export async function revokeRole(profileId: string, roleId: string) {
   if (error) return { error: error.message };
 
   revalidatePath('/admin/access-control/users');
+  return { error: null };
+}
+
+/**
+ * Change the Supabase Auth password for a user.
+ * Only users with the super_admin role can call this — it uses the
+ * service-role admin API which bypasses the existing password entirely.
+ */
+export async function changeUserPassword(
+  authUserId: string,
+  newPassword: string,
+): Promise<{ error: string | null }> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return { error: 'You must be signed in.' };
+
+  const isSuperAdmin = currentUser.roles.some((r) => r.code === 'super_admin');
+  if (!isSuperAdmin) return { error: 'Only super admins can change user passwords.' };
+
+  if (!newPassword || newPassword.length < 8) {
+    return { error: 'Password must be at least 8 characters.' };
+  }
+
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+    password: newPassword,
+  });
+
+  if (error) return { error: error.message };
   return { error: null };
 }
