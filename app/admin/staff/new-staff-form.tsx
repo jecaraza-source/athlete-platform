@@ -4,13 +4,14 @@ import { useRef, useState, useTransition } from 'react';
 import { createProfile } from './actions';
 
 const ROLES = [
-  { value: 'super_admin', label: 'Super Admin' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'athlete', label: 'Athlete' },
+  { value: 'super_admin',  label: 'Super Admin' },
+  { value: 'admin',        label: 'Admin' },
+  { value: 'athlete',      label: 'Athlete' },
   { value: 'psychologist', label: 'Psychologist' },
-  { value: 'trainer', label: 'Trainer' },
+  { value: 'trainer',      label: 'Trainer' },
   { value: 'nutritionist', label: 'Nutritionist' },
-  { value: 'physio', label: 'Physio' },
+  { value: 'physio',       label: 'Physio' },
+  { value: 'medic',        label: 'Medic' },
 ];
 
 export default function NewStaffForm({

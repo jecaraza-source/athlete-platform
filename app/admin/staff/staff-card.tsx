@@ -15,23 +15,25 @@ export type Profile = {
 };
 
 const ROLES = [
-  { value: 'super_admin', label: 'Super Admin' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'athlete', label: 'Athlete' },
+  { value: 'super_admin',  label: 'Super Admin' },
+  { value: 'admin',        label: 'Admin' },
+  { value: 'athlete',      label: 'Athlete' },
   { value: 'psychologist', label: 'Psychologist' },
-  { value: 'trainer', label: 'Trainer' },
+  { value: 'trainer',      label: 'Trainer' },
   { value: 'nutritionist', label: 'Nutritionist' },
-  { value: 'physio', label: 'Physio' },
+  { value: 'physio',       label: 'Physio' },
+  { value: 'medic',        label: 'Medic' },
 ];
 
 const roleBadgeColors: Record<string, string> = {
-  super_admin: 'bg-red-100 text-red-700',
-  admin: 'bg-indigo-100 text-indigo-700',
-  athlete: 'bg-teal-100 text-teal-700',
+  super_admin:  'bg-red-100 text-red-700',
+  admin:        'bg-indigo-100 text-indigo-700',
+  athlete:      'bg-teal-100 text-teal-700',
   psychologist: 'bg-purple-100 text-purple-700',
-  trainer: 'bg-blue-100 text-blue-700',
+  trainer:      'bg-blue-100 text-blue-700',
   nutritionist: 'bg-green-100 text-green-700',
-  physio: 'bg-orange-100 text-orange-700',
+  physio:       'bg-orange-100 text-orange-700',
+  medic:        'bg-rose-100 text-rose-700',
 };
 
 export default function StaffCard({
