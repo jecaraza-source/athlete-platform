@@ -80,7 +80,7 @@ export default async function PhysioPage({
     <main className="p-8">
       <BackButton href="/follow-up" label="Back to Follow-up" />
 
-      <h1 className="text-3xl font-bold mt-4 mb-2">Physio</h1>
+      <h1 className="text-3xl font-bold mt-4 mb-2 text-amber-700">Physio</h1>
       <p className="text-gray-600 mb-8">Log injuries, recovery progress, and treatments.</p>
 
       <AthleteFilter athletes={athletes} selectedId={selectedAthleteId} />

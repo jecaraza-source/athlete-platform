@@ -61,7 +61,7 @@ export default async function PsychologyPage() {
     <main className="p-8">
       <BackButton href="/follow-up" label="Back to Follow-up" />
 
-      <h1 className="text-3xl font-bold mt-4 mb-2">Psychology</h1>
+      <h1 className="text-3xl font-bold mt-4 mb-2 text-amber-700">Psychology</h1>
       <p className="text-gray-600 mb-8">Record mental performance and wellbeing check-ins.</p>
 
       <div className="flex flex-wrap items-start gap-3 mb-8">

@@ -41,7 +41,7 @@ export default async function CalendarPage() {
   return (
     <main className="p-8">
       <BackButton href="/dashboard" label="Back to Dashboard" />
-      <h1 className="text-3xl font-bold mt-4 mb-6">Calendar</h1>
+      <h1 className="text-3xl font-bold mt-4 mb-6 text-sky-700">Calendar</h1>
 
       <MonthCalendar events={events} profiles={profiles} />
 

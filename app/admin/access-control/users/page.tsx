@@ -41,7 +41,7 @@ export default async function UsersRolesPage() {
       <BackButton href="/admin/access-control" label="Back to Access Control" />
 
       <div className="mt-4 mb-8">
-        <h1 className="text-3xl font-bold">Users &amp; Roles</h1>
+        <h1 className="text-3xl font-bold text-rose-700">Users &amp; Roles</h1>
         <p className="text-gray-500 mt-1 text-sm">
           Assign or revoke roles for individual user profiles.
         </p>

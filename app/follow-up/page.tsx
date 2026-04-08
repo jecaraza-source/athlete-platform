@@ -33,7 +33,7 @@ export default function FollowUpPage() {
   return (
     <main className="p-8">
       <BackButton href="/dashboard" label="Back to Dashboard" />
-      <h1 className="text-3xl font-bold mt-4 mb-2">Follow-up</h1>
+      <h1 className="text-3xl font-bold mt-4 mb-2 text-amber-700">Follow-up</h1>
       <p className="text-gray-600 mb-8">
         Track training, nutrition, physio, psychology, and medical services across your athletes.
       </p>

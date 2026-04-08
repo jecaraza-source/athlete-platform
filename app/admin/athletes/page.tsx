@@ -30,7 +30,7 @@ export default async function AdminAthletesPage() {
     <main className="p-8">
       <BackButton href="/admin" label="Back to Admin" />
 
-      <h1 className="text-3xl font-bold mt-4 mb-2">Athletes</h1>
+      <h1 className="text-3xl font-bold mt-4 mb-2 text-rose-700">Athletes</h1>
       <p className="text-gray-600 mb-8">Register new athletes and manage their profiles.</p>
 
       {error && (

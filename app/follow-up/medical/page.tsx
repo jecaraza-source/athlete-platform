@@ -113,7 +113,7 @@ export default async function MedicalPage({
     <main className="p-8">
       <BackButton href="/follow-up" label="Back to Follow-up" />
 
-      <h1 className="text-3xl font-bold mt-4 mb-2">Medical Services</h1>
+      <h1 className="text-3xl font-bold mt-4 mb-2 text-amber-700">Medical Services</h1>
       <p className="text-gray-600 mb-8">
         Track medical cases, vitals, treatment progress, and treatment adherence.
       </p>

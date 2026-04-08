@@ -45,7 +45,7 @@ export default async function AccessControlPage() {
     <main className="p-8">
       <BackButton href="/admin" label="Back to Admin" />
 
-      <h1 className="text-3xl font-bold mt-4 mb-1">Access Control</h1>
+      <h1 className="text-3xl font-bold mt-4 mb-1 text-rose-700">Access Control</h1>
       <p className="text-gray-600 mb-8">
         Manage roles, permissions, and user access across the platform.
       </p>

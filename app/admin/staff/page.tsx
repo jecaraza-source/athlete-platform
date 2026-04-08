@@ -45,7 +45,7 @@ export default async function StaffPage() {
     <main className="p-8">
       <BackButton href="/admin" label="Back to Admin" />
 
-      <h1 className="text-3xl font-bold mt-4 mb-2">Admin Setup</h1>
+      <h1 className="text-3xl font-bold mt-4 mb-2 text-rose-700">Admin Setup</h1>
       <p className="text-gray-600 mb-8">
         Manage administrators and staff members.
       </p>

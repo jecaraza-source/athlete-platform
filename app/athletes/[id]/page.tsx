@@ -115,7 +115,7 @@ export default async function AthleteDetailPage({
       {/* Header */}
       <div className="mt-4 flex flex-col md:flex-row md:items-start md:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-3xl font-bold text-emerald-700">
             {athlete.first_name} {athlete.last_name}
           </h1>
           {athlete.athlete_code && (

@@ -37,7 +37,7 @@ export default async function RolesPage() {
 
       <div className="flex items-start justify-between mt-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Roles</h1>
+          <h1 className="text-3xl font-bold text-rose-700">Roles</h1>
           <p className="text-gray-600 mt-1">
             {roles.length} role{roles.length !== 1 ? 's' : ''} defined.
           </p>

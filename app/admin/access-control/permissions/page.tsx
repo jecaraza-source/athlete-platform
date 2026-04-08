@@ -31,7 +31,7 @@ export default async function PermissionsPage() {
 
       <div className="flex items-start justify-between mt-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Permissions</h1>
+          <h1 className="text-3xl font-bold text-rose-700">Permissions</h1>
           <p className="text-gray-500 mt-1 text-sm">
             {permissions.length} permission{permissions.length !== 1 ? 's' : ''} defined.
           </p>

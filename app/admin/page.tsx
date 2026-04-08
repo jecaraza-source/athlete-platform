@@ -5,7 +5,7 @@ export default function AdminPage() {
   return (
     <main className="p-8">
       <BackButton href="/dashboard" label="Back to Dashboard" />
-      <h1 className="text-3xl font-bold mt-4">Admin</h1>
+      <h1 className="text-3xl font-bold mt-4 text-rose-700">Admin</h1>
       <p className="mt-2 text-gray-600 mb-8">Platform administration and configuration.</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
