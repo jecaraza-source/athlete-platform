@@ -6,6 +6,7 @@ import NewCaseForm from './new-case-form';
 import NewMedicalSessionForm from './new-session-form';
 import EditSessionForm from './edit-session-form';
 import CaseStatusSelect from './case-status-select';
+import SessionChart from './session-chart';
 
 export const dynamic = 'force-dynamic';
 
@@ -175,6 +176,9 @@ export default async function MedicalPage({
                 {c.notes}
               </p>
             )}
+
+            {/* Progress chart — shown when there are ≥2 sessions with metric data */}
+            <SessionChart sessions={c.medical_sessions} />
 
             {/* Session history */}
             <div className="mt-4 border-t border-gray-100 pt-3">
