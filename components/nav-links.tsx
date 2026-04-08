@@ -34,6 +34,12 @@ const links = [
     inactive: 'bg-rose-50  text-rose-600  hover:bg-rose-100  hover:text-rose-800',
     active:   'bg-rose-100 text-rose-900',
   },
+  {
+    href: '/protocols',
+    label: 'Protocols',
+    inactive: 'bg-violet-50  text-violet-600  hover:bg-violet-100  hover:text-violet-800',
+    active:   'bg-violet-100 text-violet-900',
+  },
 ];
 
 export default function NavLinks() {
