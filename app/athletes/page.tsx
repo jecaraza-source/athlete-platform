@@ -25,7 +25,7 @@ export default async function AthletesPage() {
     return (
       <main className="p-8">
         <BackButton href="/dashboard" label="Back to Dashboard" />
-        <h1 className="text-2xl font-bold mt-4">Athletes</h1>
+        <h1 className="text-2xl font-bold mt-4 text-emerald-700">Athletes</h1>
         <p className="text-red-600 mt-4">Failed to load athletes.</p>
       </main>
     );
@@ -36,7 +36,7 @@ export default async function AthletesPage() {
   return (
     <main className="p-8">
       <BackButton href="/dashboard" label="Back to Dashboard" />
-      <h1 className="text-2xl font-bold mt-4 mb-6">Athletes</h1>
+      <h1 className="text-2xl font-bold mt-4 mb-6 text-emerald-700">Athletes</h1>
 
       {athletes.length === 0 ? (
         <p className="text-gray-500">No athletes found.</p>
