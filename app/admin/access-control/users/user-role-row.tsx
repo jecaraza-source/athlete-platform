@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { assignRole, revokeRole } from './actions';
+import { assignRole, revokeRole, deleteUser } from './actions';
 import type { ProfileWithRoles, Role } from '@/lib/rbac/types';
 import ChangePasswordForm from './change-password-form';
 
@@ -173,13 +173,38 @@ function AddRoleControl({
 export default function UserRoleRow({
   profile,
   allRoles,
+  canDelete = false,
+  isSelf = false,
 }: {
   profile: ProfileWithRoles;
   allRoles: Role[];
+  /** True when the logged-in user is a super_admin. */
+  canDelete?: boolean;
+  /** True when this row represents the currently logged-in user. */
+  isSelf?: boolean;
 }) {
-  const [assignedRoles, setAssignedRoles] = useState<Role[]>(profile.roles);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [assignedRoles, setAssignedRoles]   = useState<Role[]>(profile.roles);
+  const [error, setError]                   = useState<string | null>(null);
+  const [isPending, startTransition]        = useTransition();
+  const [deleted, setDeleted]               = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError]       = useState<string | null>(null);
+
+  // Row has been deleted — hide it without a full page refresh
+  if (deleted) return null;
+
+  function handleDelete() {
+    if (!profile.auth_user_id) return;
+    startTransition(async () => {
+      const result = await deleteUser(profile.id, profile.auth_user_id!);
+      if (result.error) {
+        setDeleteError(result.error);
+        setConfirmingDelete(false);
+      } else {
+        setDeleted(true);
+      }
+    });
+  }
 
   const assignedIds = new Set(assignedRoles.map((r) => r.id));
   const availableRoles = allRoles.filter((r) => !assignedIds.has(r.id));
@@ -278,6 +303,44 @@ export default function UserRoleRow({
           <span className="text-xs text-gray-400 italic">All roles assigned</span>
         )}
       </td>
+
+      {/* Delete — only visible to super_admin */}
+      {canDelete && (
+        <td className="px-5 py-3.5 text-right">
+          {deleteError && (
+            <p className="mb-1 text-xs text-red-600" title={deleteError}>{deleteError}</p>
+          )}
+          {isSelf ? (
+            <span className="text-xs text-gray-300 italic">You</span>
+          ) : !confirmingDelete ? (
+            <button
+              onClick={() => setConfirmingDelete(true)}
+              disabled={!profile.auth_user_id}
+              className="text-xs text-red-400 hover:text-red-600 hover:underline disabled:opacity-30 disabled:cursor-not-allowed"
+              title={!profile.auth_user_id ? 'No auth account linked' : 'Delete user permanently'}
+            >
+              Delete
+            </button>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-xs">
+              <span className="text-gray-500">Delete {profile.first_name}?</span>
+              <button
+                onClick={handleDelete}
+                disabled={isPending}
+                className="font-semibold text-red-600 hover:underline disabled:opacity-50"
+              >
+                {isPending ? 'Deleting…' : 'Yes'}
+              </button>
+              <button
+                onClick={() => { setConfirmingDelete(false); setDeleteError(null); }}
+                className="text-gray-400 hover:text-gray-600 hover:underline"
+              >
+                No
+              </button>
+            </span>
+          )}
+        </td>
+      )}
     </tr>
   );
 }

@@ -7,7 +7,7 @@ import type { ProfileWithRoles } from '@/lib/rbac/types';
 export const dynamic = 'force-dynamic';
 
 export default async function UsersRolesPage() {
-  await requireAdminAccess();
+  const currentUser = await requireAdminAccess();
 
   const [allRoles, profilesResult, userRolesResult] = await Promise.all([
     getAllRoles(),
@@ -47,7 +47,12 @@ export default async function UsersRolesPage() {
         </p>
       </div>
 
-      <UsersClient profiles={profilesWithRoles} allRoles={allRoles} />
+      <UsersClient
+        profiles={profilesWithRoles}
+        allRoles={allRoles}
+        canDelete={currentUser.roles.some((r) => r.code === 'super_admin')}
+        currentProfileId={currentUser.profile?.id ?? null}
+      />
     </main>
   );
 }

@@ -38,9 +38,15 @@ function StatCard({
 export default function UsersClient({
   profiles,
   allRoles,
+  canDelete = false,
+  currentProfileId = null,
 }: {
   profiles: ProfileWithRoles[];
   allRoles: Role[];
+  /** True when the logged-in user is a super_admin. */
+  canDelete?: boolean;
+  /** Profile ID of the logged-in user, used to mark the self-row. */
+  currentProfileId?: string | null;
 }) {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -122,6 +128,7 @@ export default function UsersClient({
               <th className="text-left px-5 py-3 font-semibold text-gray-700">User</th>
               <th className="text-left px-5 py-3 font-semibold text-gray-700">Assigned roles</th>
               <th className="text-left px-5 py-3 font-semibold text-gray-700">Add role</th>
+              {canDelete && <th className="px-5 py-3" />}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -130,12 +137,14 @@ export default function UsersClient({
                 key={profile.id}
                 profile={profile}
                 allRoles={allRoles}
+                canDelete={canDelete}
+                isSelf={profile.id === currentProfileId}
               />
             ))}
 
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-5 py-12 text-center">
+                <td colSpan={canDelete ? 4 : 3} className="px-5 py-12 text-center">
                   {profiles.length === 0 ? (
                     <p className="text-gray-400 text-sm">No users found in the database.</p>
                   ) : (
