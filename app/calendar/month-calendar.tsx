@@ -15,8 +15,10 @@ type CalendarEvent = {
   end_at: string;
 };
 
-type Profile = { id: string; first_name: string; last_name: string };
-type View    = 'day' | 'week' | 'month';
+type Profile     = { id: string; first_name: string; last_name: string };
+type Athlete     = { id: string; first_name: string; last_name: string };
+type Participant = { event_id: string; participant_id: string };
+type View        = 'day' | 'week' | 'month';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -202,15 +204,33 @@ function TimeGrid({ dates, events }: { dates: Date[]; events: CalendarEvent[] })
 export default function MonthCalendar({
   events,
   profiles,
+  athletes = [],
+  participants = [],
 }: {
   events: CalendarEvent[];
   profiles: Profile[];
+  athletes?: Athlete[];
+  participants?: Participant[];
 }) {
   const today = new Date();
-  const [view,  setView]  = useState<View>('month');
-  const [year,  setYear]  = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth());
-  const [day,   setDay]   = useState(today.getDate());
+  const [view,           setView]          = useState<View>('month');
+  const [year,           setYear]          = useState(today.getFullYear());
+  const [month,          setMonth]         = useState(today.getMonth());
+  const [day,            setDay]           = useState(today.getDate());
+  const [selectedUserId, setSelectedUserId] = useState('');
+
+  // Build the set of visible event IDs based on the selected athlete.
+  // When no athlete is selected every event is shown.
+  const visibleEvents = selectedUserId
+    ? (() => {
+        const allowed = new Set(
+          participants
+            .filter((p) => p.participant_id === selectedUserId)
+            .map((p) => p.event_id)
+        );
+        return events.filter((e) => allowed.has(e.id));
+      })()
+    : events;
 
   function prev() {
     const offsets: Record<View, number> = { day: -1, week: -7, month: 0 };
@@ -262,7 +282,23 @@ export default function MonthCalendar({
           <h2 className="font-semibold text-sm text-gray-800 ml-1">{periodLabel()}</h2>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Athlete filter */}
+          {athletes.length > 0 && (
+            <select
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            >
+              <option value="">Todos los atletas</option>
+              {athletes.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.first_name} {a.last_name}
+                </option>
+              ))}
+            </select>
+          )}
+
           {/* View switcher */}
           <div className="flex rounded-lg border border-gray-200 overflow-hidden">
             {(['day', 'week', 'month'] as View[]).map((v) => (
@@ -282,9 +318,9 @@ export default function MonthCalendar({
       </div>
 
       {/* Active view */}
-      {view === 'month' && <MonthView events={events} year={year} month={month} />}
-      {view === 'week'  && <TimeGrid  dates={getWeekDates(year, month, day)} events={events} />}
-      {view === 'day'   && <TimeGrid  dates={[new Date(year, month, day)]}    events={events} />}
+      {view === 'month' && <MonthView events={visibleEvents} year={year} month={month} />}
+      {view === 'week'  && <TimeGrid  dates={getWeekDates(year, month, day)} events={visibleEvents} />}
+      {view === 'day'   && <TimeGrid  dates={[new Date(year, month, day)]}    events={visibleEvents} />}
     </div>
   );
 }
