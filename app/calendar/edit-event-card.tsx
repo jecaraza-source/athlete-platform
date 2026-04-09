@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from 'react';
 import { updateEvent, deleteEvent } from './actions';
 
 const EVENT_TYPES = [
-  'training', 'match', 'competition',
+  'training', 'competition',
   'meeting', 'medical', 'evaluation', 'other',
 ];
 

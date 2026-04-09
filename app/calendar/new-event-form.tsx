@@ -5,7 +5,6 @@ import { createEvent } from './actions';
 
 const EVENT_TYPES = [
   'training',
-  'match',
   'competition',
   'meeting',
   'medical',
