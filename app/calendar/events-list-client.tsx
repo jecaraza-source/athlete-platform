@@ -78,10 +78,11 @@ export default function EventsListClient({
       ) : (
         <div className="space-y-3">
           {filtered.map((event) => (
-            <EditEventCard
+          <EditEventCard
               key={event.id}
               event={event}
               eventParticipants={participantsByEvent[event.id] ?? []}
+              athletes={athletes}
             />
           ))}
         </div>

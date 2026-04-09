@@ -61,6 +61,22 @@ export async function updateEvent(id: string, formData: FormData) {
   const { error } = await supabaseAdmin.from('events').update(payload).eq('id', id);
   if (error) return { error: error.message };
 
+  // Replace participants: delete all existing, then insert selected ones
+  await supabaseAdmin.from('event_participants').delete().eq('event_id', id);
+
+  const athleteIds = (formData.getAll('athlete_id') as string[]).filter(Boolean);
+  if (athleteIds.length > 0) {
+    const { error: partErr } = await supabaseAdmin
+      .from('event_participants')
+      .insert(athleteIds.map((aid) => ({
+        event_id:          id,
+        participant_id:    aid,
+        participant_type:  'athlete',
+        attendance_status: 'planned',
+      })));
+    if (partErr) return { error: `Event updated but participants failed: ${partErr.message}` };
+  }
+
   revalidatePath('/calendar');
   return { error: null };
 }
