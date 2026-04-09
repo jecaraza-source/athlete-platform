@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-const links = [
+const mainLinks = [
   {
     href: '/dashboard',
     label: 'Dashboard',
@@ -29,12 +29,6 @@ const links = [
     active:   'bg-amber-100 text-amber-900',
   },
   {
-    href: '/admin',
-    label: 'Admin',
-    inactive: 'bg-rose-50  text-rose-600  hover:bg-rose-100  hover:text-rose-800',
-    active:   'bg-rose-100 text-rose-900',
-  },
-  {
     href: '/protocols',
     label: 'Protocols',
     inactive: 'bg-violet-50  text-violet-600  hover:bg-violet-100  hover:text-violet-800',
@@ -42,32 +36,50 @@ const links = [
   },
 ];
 
+const adminLink = {
+  href: '/admin',
+  label: 'Admin',
+  inactive: 'bg-rose-50  text-rose-600  hover:bg-rose-100  hover:text-rose-800',
+  active:   'bg-rose-100 text-rose-900',
+};
+
 export default function NavLinks() {
   const pathname = usePathname();
 
-  return (
-    <nav className="flex-1 px-3 py-4 space-y-1">
-      {links.map((link) => {
-        // Dashboard matches exactly; all others match if the path starts with the href
-        const isActive =
-          link.href === '/dashboard'
-            ? pathname === '/dashboard' || pathname === '/'
-            : pathname.startsWith(link.href);
+  function linkClass(href: string, inactive: string, active: string) {
+    const isActive =
+      href === '/dashboard'
+        ? pathname === '/dashboard' || pathname === '/'
+        : pathname.startsWith(href);
+    return `flex items-center px-3 py-2.5 rounded-md text-base transition-colors ${
+      isActive ? `font-bold ${active}` : `font-semibold ${inactive}`
+    }`;
+  }
 
-        return (
+  return (
+    <nav className="flex-1 px-3 py-4 flex flex-col">
+      {/* Main navigation links */}
+      <div className="space-y-1">
+        {mainLinks.map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            className={`flex items-center px-3 py-2.5 rounded-md text-base transition-colors ${
-              isActive
-                ? `font-bold   ${link.active}`
-                : `font-semibold ${link.inactive}`
-            }`}
+            className={linkClass(link.href, link.inactive, link.active)}
           >
             {link.label}
           </Link>
-        );
-      })}
+        ))}
+      </div>
+
+      {/* Admin — pinned to the bottom of the nav column */}
+      <div className="mt-auto pt-3 border-t border-gray-200">
+        <Link
+          href={adminLink.href}
+          className={linkClass(adminLink.href, adminLink.inactive, adminLink.active)}
+        >
+          {adminLink.label}
+        </Link>
+      </div>
     </nav>
   );
 }
