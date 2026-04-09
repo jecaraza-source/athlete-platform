@@ -32,7 +32,12 @@ export async function createEvent(formData: FormData) {
   if (athleteIds.length > 0 && newEvent) {
     const { error: partErr } = await supabaseAdmin
       .from('event_participants')
-      .insert(athleteIds.map((id) => ({ event_id: newEvent.id, participant_id: id })));
+      .insert(athleteIds.map((id) => ({
+          event_id:          newEvent.id,
+          participant_id:    id,
+          participant_type:  'athlete',
+          attendance_status: 'planned',
+        })));
     if (partErr) return { error: `Event created but could not add participants: ${partErr.message}` };
   }
 
