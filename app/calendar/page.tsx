@@ -2,7 +2,7 @@ import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/rbac/server';
 import MonthCalendar from './month-calendar';
-import EditEventCard from './edit-event-card';
+import EventsListClient from './events-list-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,21 +75,13 @@ export default async function CalendarPage() {
         </div>
       )}
 
-      {!error && events.length === 0 && (
-        <div className="rounded border border-gray-200 p-4 text-gray-600">
-          No events found yet.
-        </div>
+      {!error && (
+        <EventsListClient
+          events={events}
+          athletes={athletes}
+          participantsByEvent={participantsByEvent}
+        />
       )}
-
-      <div className="space-y-3">
-        {events.map((event) => (
-          <EditEventCard
-            key={event.id}
-            event={event}
-            eventParticipants={participantsByEvent[event.id] ?? []}
-          />
-        ))}
-      </div>
     </main>
   );
 }
