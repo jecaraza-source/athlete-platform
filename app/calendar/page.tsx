@@ -6,10 +6,14 @@ import EventsListClient from './events-list-client';
 
 export const dynamic = 'force-dynamic';
 
+type Sport = { id: string; name: string; category_type: string };
+
 type EventRow = {
   id: string;
   title: string;
   event_type: string;
+  sport_id: string | null;
+  sport_name: string | null; // resolved from the sports join
   start_at: string;
   end_at: string;
   status: string;
@@ -24,10 +28,11 @@ export default async function CalendarPage() {
     { data: profilesData },
     { data: athletesData },
     { data: participantsData },
+    { data: sportsData },
   ] = await Promise.all([
     supabaseAdmin
       .from('events')
-      .select('id, title, event_type, start_at, end_at, status, description')
+      .select('id, title, event_type, sport_id, start_at, end_at, status, description, sports(id, name)')
       .order('start_at', { ascending: true }),
     supabaseAdmin
       .from('profiles')
@@ -40,12 +45,26 @@ export default async function CalendarPage() {
     supabaseAdmin
       .from('event_participants')
       .select('event_id, participant_id'),
+    supabaseAdmin
+      .from('sports')
+      .select('id, name, category_type')
+      .eq('status', 'active')
+      .order('name'),
   ]);
 
-  const events      = (data             ?? []) as EventRow[];
-  const profiles    = (profilesData     ?? []) as { id: string; first_name: string; last_name: string }[];
-  const athletes    = (athletesData     ?? []) as { id: string; first_name: string; last_name: string }[];
+  // Flatten the sports join on each event (Supabase returns sports as array from the join)
+  const rawEvents = (data ?? []) as unknown as (Omit<EventRow, 'sport_name'> & {
+    sports: { id: string; name: string }[] | { id: string; name: string } | null;
+  })[];
+  const events: EventRow[] = rawEvents.map((e) => ({
+    ...e,
+    sport_name: (Array.isArray(e.sports) ? e.sports[0] : e.sports)?.name ?? null,
+  }));
+
+  const profiles    = (profilesData ?? []) as { id: string; first_name: string; last_name: string }[];
+  const athletes    = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
   const participants = (participantsData ?? []) as { event_id: string; participant_id: string }[];
+  const sports      = (sportsData    ?? []) as Sport[];
 
   // Build a map: event_id → athletes who are participants
   const athleteById = Object.fromEntries(athletes.map((a) => [a.id, a]));
@@ -67,6 +86,7 @@ export default async function CalendarPage() {
         profiles={profiles}
         athletes={athletes}
         participants={participants}
+        sports={sports}
       />
 
       {error && (
@@ -80,6 +100,7 @@ export default async function CalendarPage() {
           events={events}
           athletes={athletes}
           participantsByEvent={participantsByEvent}
+          sports={sports}
         />
       )}
     </main>

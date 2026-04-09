@@ -11,6 +11,7 @@ export async function createEvent(formData: FormData) {
   const payload = {
     title:                 formData.get('title')                 as string,
     event_type:            formData.get('event_type')            as string,
+    sport_id:             (formData.get('sport_id') as string)  || null,
     start_at:              formData.get('start_at')              as string,
     end_at:                formData.get('end_at')                as string,
     status:               (formData.get('status') as string)    || 'scheduled',
@@ -52,6 +53,7 @@ export async function updateEvent(id: string, formData: FormData) {
   const payload = {
     title:       formData.get('title')       as string,
     event_type:  formData.get('event_type')  as string,
+    sport_id:   (formData.get('sport_id') as string) || null,
     start_at:    formData.get('start_at')    as string,
     end_at:      formData.get('end_at')      as string,
     status:      formData.get('status')      as string,

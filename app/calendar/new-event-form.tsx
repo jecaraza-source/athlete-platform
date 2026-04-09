@@ -16,14 +16,17 @@ const STATUSES = ['scheduled', 'completed', 'cancelled'];
 
 type Profile = { id: string; first_name: string; last_name: string };
 type Athlete = { id: string; first_name: string; last_name: string };
+type Sport  = { id: string; name: string; category_type: string };
 type ParticipationMode = 'none' | 'individual' | 'group';
 
 export default function NewEventForm({
   profiles,
   athletes = [],
+  sports = [],
 }: {
   profiles: Profile[];
   athletes?: Athlete[];
+  sports?: Sport[];
 }) {
   const [open,    setOpen]    = useState(false);
   const [error,   setError]   = useState<string | null>(null);
@@ -116,6 +119,26 @@ export default function NewEventForm({
               {profiles.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.first_name} {p.last_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sport */}
+          <div>
+            <label className="block text-xs font-medium mb-1" htmlFor="ev_sport">
+              Sport
+            </label>
+            <select
+              id="ev_sport"
+              name="sport_id"
+              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            >
+              <option value="">All sports / General</option>
+              {sports.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.category_type === 'team' ? ' (team)' : ' (individual)'}
                 </option>
               ))}
             </select>

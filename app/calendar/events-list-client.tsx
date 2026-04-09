@@ -4,11 +4,14 @@ import { useMemo, useState } from 'react';
 import EditEventCard from './edit-event-card';
 
 type Athlete = { id: string; first_name: string; last_name: string };
+type Sport   = { id: string; name: string; category_type: string };
 
 type EventRow = {
   id: string;
   title: string;
   event_type: string;
+  sport_id: string | null;
+  sport_name: string | null;
   start_at: string;
   end_at: string;
   status: string;
@@ -19,10 +22,12 @@ export default function EventsListClient({
   events,
   athletes,
   participantsByEvent,
+  sports = [],
 }: {
   events: EventRow[];
   athletes: Athlete[];
   participantsByEvent: Record<string, Athlete[]>;
+  sports?: Sport[];
 }) {
   const [selectedAthleteId, setSelectedAthleteId] = useState('');
 
@@ -83,6 +88,7 @@ export default function EventsListClient({
               event={event}
               eventParticipants={participantsByEvent[event.id] ?? []}
               athletes={athletes}
+              sports={sports}
             />
           ))}
         </div>

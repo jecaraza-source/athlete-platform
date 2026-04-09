@@ -27,12 +27,15 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 type Participant = { id: string; first_name: string; last_name: string };
+type Sport        = { id: string; name: string; category_type: string };
 type ParticipationMode = 'none' | 'individual' | 'group';
 
 type Event = {
   id: string;
   title: string;
   event_type: string;
+  sport_id: string | null;
+  sport_name: string | null;
   start_at: string;
   end_at: string;
   status: string;
@@ -57,10 +60,12 @@ export default function EditEventCard({
   event: initial,
   eventParticipants = [],
   athletes = [],
+  sports = [],
 }: {
   event: Event;
   eventParticipants?: Participant[];
   athletes?: Participant[];
+  sports?: Sport[];
 }) {
   const [event,      setEvent]      = useState<Event>(initial);
   const [participants, setParticipants] = useState<Participant[]>(eventParticipants);
@@ -135,10 +140,14 @@ export default function EditEventCard({
         setError(null);
         setEditing(false);
         // Optimistically update event fields
+        const newSportId = (formData.get('sport_id') as string) || null;
+        const newSportName = sports.find(s => s.id === newSportId)?.name ?? null;
         setEvent({
           ...event,
           title:       formData.get('title')       as string,
           event_type:  formData.get('event_type')  as string,
+          sport_id:    newSportId,
+          sport_name:  newSportName,
           start_at:    formData.get('start_at')    as string,
           end_at:      formData.get('end_at')      as string,
           status:      formData.get('status')      as string,
@@ -206,6 +215,9 @@ export default function EditEventCard({
         <div className="mt-3 text-sm text-gray-600 space-y-1.5">
           <p><span className="font-medium text-gray-700">Start:</span> {formatDateTime(event.start_at)}</p>
           <p><span className="font-medium text-gray-700">End:</span>   {formatDateTime(event.end_at)}</p>
+          {event.sport_name && (
+            <p><span className="font-medium text-gray-700">Sport:</span> {event.sport_name}</p>
+          )}
           {event.description && (
             <p><span className="font-medium text-gray-700">Notes:</span> {event.description}</p>
           )}
@@ -252,6 +264,28 @@ export default function EditEventCard({
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             />
           </div>
+
+          {/* Sport */}
+          {sports.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium mb-1" htmlFor={`ee-sport-${event.id}`}>
+                Sport
+              </label>
+              <select
+                id={`ee-sport-${event.id}`}
+                name="sport_id"
+                defaultValue={event.sport_id ?? ''}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              >
+                <option value="">All sports / General</option>
+                {sports.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}{s.category_type === 'team' ? ' (team)' : ' (individual)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Type */}
           <div>

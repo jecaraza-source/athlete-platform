@@ -206,11 +206,13 @@ export default function MonthCalendar({
   profiles,
   athletes = [],
   participants = [],
+  sports = [],
 }: {
   events: CalendarEvent[];
   profiles: Profile[];
   athletes?: Athlete[];
   participants?: Participant[];
+  sports?: { id: string; name: string; category_type: string }[];
 }) {
   const today = new Date();
   const [view,           setView]          = useState<View>('month');
@@ -313,7 +315,7 @@ export default function MonthCalendar({
               </button>
             ))}
           </div>
-          <NewEventForm profiles={profiles} athletes={athletes} />
+          <NewEventForm profiles={profiles} athletes={athletes} sports={sports} />
         </div>
       </div>
 
