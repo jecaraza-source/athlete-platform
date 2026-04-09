@@ -1,9 +1,8 @@
-import Link from 'next/link';
 import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/rbac/server';
 import MonthCalendar from './month-calendar';
-import EventStatusSelect from './event-status-select';
+import EditEventCard from './edit-event-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,10 +15,6 @@ type EventRow = {
   status: string;
   description: string | null;
 };
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString();
-}
 
 export default async function CalendarPage() {
   await requirePermission('view_calendar');
@@ -76,32 +71,9 @@ export default async function CalendarPage() {
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {events.map((event) => (
-          <div
-            key={event.id}
-            className="rounded-lg border border-gray-200 p-5"
-          >
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-              <div>
-                <h2 className="text-lg font-semibold">{event.title}</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Type: {event.event_type}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 capitalize">{event.status}</span>
-                <EventStatusSelect eventId={event.id} currentStatus={event.status} />
-              </div>
-            </div>
-
-            <div className="mt-3 text-sm text-gray-700 space-y-1">
-              <p><span className="font-medium">Start:</span> {formatDateTime(event.start_at)}</p>
-              <p><span className="font-medium">End:</span> {formatDateTime(event.end_at)}</p>
-              <p><span className="font-medium">Description:</span> {event.description ?? 'N/A'}</p>
-            </div>
-          </div>
+          <EditEventCard key={event.id} event={event} />
         ))}
       </div>
     </main>
