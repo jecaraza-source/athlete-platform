@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { updateEvent } from './actions';
+import { updateEvent, deleteEvent } from './actions';
 
 const EVENT_TYPES = [
   'training', 'match', 'competition',
@@ -51,11 +51,28 @@ function toDatetimeLocal(iso: string) {
 }
 
 export default function EditEventCard({ event: initial }: { event: Event }) {
-  const [event,   setEvent]   = useState<Event>(initial);
-  const [editing, setEditing] = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [event,      setEvent]      = useState<Event>(initial);
+  const [editing,    setEditing]    = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+  const [isPending,  startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Row has been deleted — remove from DOM
+  const [deleted, setDeleted] = useState(false);
+  if (deleted) return null;
+
+  function handleDelete() {
+    startTransition(async () => {
+      const result = await deleteEvent(event.id);
+      if (result.error) {
+        setError(result.error);
+        setConfirming(false);
+      } else {
+        setDeleted(true);
+      }
+    });
+  }
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -95,12 +112,40 @@ export default function EditEventCard({ event: initial }: { event: Event }) {
               </span>
             </div>
           </div>
-          <button
-            onClick={() => setEditing(true)}
-            className="shrink-0 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-          >
-            Edit
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setEditing(true)}
+              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+            >
+              Edit
+            </button>
+
+            {!confirming ? (
+              <button
+                onClick={() => setConfirming(true)}
+                className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            ) : (
+              <span className="flex items-center gap-1.5 text-xs">
+                <span className="text-gray-500">Delete?</span>
+                <button
+                  onClick={handleDelete}
+                  disabled={isPending}
+                  className="font-semibold text-red-600 hover:underline disabled:opacity-50"
+                >
+                  {isPending ? 'Deleting…' : 'Yes'}
+                </button>
+                <button
+                  onClick={() => { setConfirming(false); setError(null); }}
+                  className="text-gray-400 hover:text-gray-600 hover:underline"
+                >
+                  No
+                </button>
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="mt-3 text-sm text-gray-600 space-y-1">

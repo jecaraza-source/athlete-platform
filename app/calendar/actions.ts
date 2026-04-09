@@ -47,6 +47,17 @@ export async function updateEvent(id: string, formData: FormData) {
   return { error: null };
 }
 
+export async function deleteEvent(id: string) {
+  const denied = await assertPermission('manage_calendar');
+  if (denied) return denied;
+
+  const { error } = await supabaseAdmin.from('events').delete().eq('id', id);
+  if (error) return { error: error.message };
+
+  revalidatePath('/calendar');
+  return { error: null };
+}
+
 export async function updateEventStatus(id: string, status: string) {
   const denied = await assertPermission('manage_calendar');
   if (denied) return denied;
