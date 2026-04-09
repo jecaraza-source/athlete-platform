@@ -11,6 +11,7 @@ type CalendarEvent = {
   id: string;
   title: string;
   event_type: string;
+  sport_id: string | null;
   start_at: string;
   end_at: string;
 };
@@ -219,11 +220,11 @@ export default function MonthCalendar({
   const [year,           setYear]          = useState(today.getFullYear());
   const [month,          setMonth]         = useState(today.getMonth());
   const [day,            setDay]           = useState(today.getDate());
-  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedUserId,  setSelectedUserId]  = useState('');
+  const [selectedSportId, setSelectedSportId] = useState('');
 
-  // Build the set of visible event IDs based on the selected athlete.
-  // When no athlete is selected every event is shown.
-  const visibleEvents = selectedUserId
+  // Apply athlete filter
+  const athleteFiltered = selectedUserId
     ? (() => {
         const allowed = new Set(
           participants
@@ -233,6 +234,11 @@ export default function MonthCalendar({
         return events.filter((e) => allowed.has(e.id));
       })()
     : events;
+
+  // Apply sport filter on top of athlete filter
+  const visibleEvents = selectedSportId
+    ? athleteFiltered.filter((e) => e.sport_id === selectedSportId)
+    : athleteFiltered;
 
   function prev() {
     const offsets: Record<View, number> = { day: -1, week: -7, month: 0 };
@@ -285,6 +291,20 @@ export default function MonthCalendar({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {/* Sport filter */}
+          {sports.length > 0 && (
+            <select
+              value={selectedSportId}
+              onChange={(e) => setSelectedSportId(e.target.value)}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            >
+              <option value="">All sports</option>
+              {sports.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          )}
+
           {/* Athlete filter */}
           {athletes.length > 0 && (
             <select

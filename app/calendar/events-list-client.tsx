@@ -30,47 +30,63 @@ export default function EventsListClient({
   sports?: Sport[];
 }) {
   const [selectedAthleteId, setSelectedAthleteId] = useState('');
+  const [selectedSportId,   setSelectedSportId]   = useState('');
 
   const filtered = useMemo(() => {
-    if (!selectedAthleteId) return events;
-    return events.filter((e) =>
-      (participantsByEvent[e.id] ?? []).some((a) => a.id === selectedAthleteId)
-    );
-  }, [events, participantsByEvent, selectedAthleteId]);
+    return events.filter((e) => {
+      const matchesAthlete = !selectedAthleteId ||
+        (participantsByEvent[e.id] ?? []).some((a) => a.id === selectedAthleteId);
+      const matchesSport = !selectedSportId || e.sport_id === selectedSportId;
+      return matchesAthlete && matchesSport;
+    });
+  }, [events, participantsByEvent, selectedAthleteId, selectedSportId]);
 
   return (
     <div>
       {/* Filter bar */}
-      {athletes.length > 0 && (
-        <div className="flex items-center gap-3 mb-4">
-          <label className="text-sm font-medium text-gray-700 shrink-0">
-            Filter by athlete
-          </label>
-          <select
-            value={selectedAthleteId}
-            onChange={(e) => setSelectedAthleteId(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-          >
-            <option value="">All events</option>
-            {athletes.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.first_name} {a.last_name}
-              </option>
-            ))}
-          </select>
+      {(athletes.length > 0 || sports.length > 0) && (
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          {/* Sport filter */}
+          {sports.length > 0 && (
+            <select
+              value={selectedSportId}
+              onChange={(e) => setSelectedSportId(e.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            >
+              <option value="">All sports</option>
+              {sports.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          )}
 
-          {selectedAthleteId && (
+          {/* Athlete filter */}
+          {athletes.length > 0 && (
+            <select
+              value={selectedAthleteId}
+              onChange={(e) => setSelectedAthleteId(e.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            >
+              <option value="">All athletes</option>
+              {athletes.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.first_name} {a.last_name}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {(selectedAthleteId || selectedSportId) && (
             <button
-              onClick={() => setSelectedAthleteId('')}
+              onClick={() => { setSelectedAthleteId(''); setSelectedSportId(''); }}
               className="text-xs text-gray-400 hover:text-gray-600"
             >
-              Clear
+              Clear filters
             </button>
           )}
 
           <span className="text-xs text-gray-400">
             {filtered.length} event{filtered.length !== 1 ? 's' : ''}
-            {selectedAthleteId ? ` for ${athletes.find(a => a.id === selectedAthleteId)?.first_name}` : ''}
           </span>
         </div>
       )}
