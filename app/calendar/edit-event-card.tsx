@@ -26,6 +26,8 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled:  'bg-gray-100 text-gray-500 line-through',
 };
 
+type Participant = { id: string; first_name: string; last_name: string };
+
 type Event = {
   id: string;
   title: string;
@@ -50,7 +52,13 @@ function toDatetimeLocal(iso: string) {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export default function EditEventCard({ event: initial }: { event: Event }) {
+export default function EditEventCard({
+  event: initial,
+  eventParticipants = [],
+}: {
+  event: Event;
+  eventParticipants?: Participant[];
+}) {
   const [event,      setEvent]      = useState<Event>(initial);
   const [editing,    setEditing]    = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -148,11 +156,24 @@ export default function EditEventCard({ event: initial }: { event: Event }) {
           </div>
         </div>
 
-        <div className="mt-3 text-sm text-gray-600 space-y-1">
+        <div className="mt-3 text-sm text-gray-600 space-y-1.5">
           <p><span className="font-medium text-gray-700">Start:</span> {formatDateTime(event.start_at)}</p>
           <p><span className="font-medium text-gray-700">End:</span>   {formatDateTime(event.end_at)}</p>
           {event.description && (
             <p><span className="font-medium text-gray-700">Notes:</span> {event.description}</p>
+          )}
+          {eventParticipants.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              <span className="font-medium text-gray-700 shrink-0">Participants:</span>
+              {eventParticipants.map((a) => (
+                <span
+                  key={a.id}
+                  className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                >
+                  {a.first_name} {a.last_name}
+                </span>
+              ))}
+            </div>
           )}
         </div>
       </div>

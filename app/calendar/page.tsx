@@ -42,10 +42,20 @@ export default async function CalendarPage() {
       .select('event_id, participant_id'),
   ]);
 
-  const events   = (data          ?? []) as EventRow[];
-  const profiles = (profilesData  ?? []) as { id: string; first_name: string; last_name: string }[];
-  const athletes = (athletesData  ?? []) as { id: string; first_name: string; last_name: string }[];
+  const events      = (data             ?? []) as EventRow[];
+  const profiles    = (profilesData     ?? []) as { id: string; first_name: string; last_name: string }[];
+  const athletes    = (athletesData     ?? []) as { id: string; first_name: string; last_name: string }[];
   const participants = (participantsData ?? []) as { event_id: string; participant_id: string }[];
+
+  // Build a map: event_id → athletes who are participants
+  const athleteById = Object.fromEntries(athletes.map((a) => [a.id, a]));
+  const participantsByEvent: Record<string, { id: string; first_name: string; last_name: string }[]> = {};
+  for (const p of participants) {
+    const athlete = athleteById[p.participant_id];
+    if (athlete) {
+      (participantsByEvent[p.event_id] ??= []).push(athlete);
+    }
+  }
 
   return (
     <main className="p-8">
@@ -73,7 +83,11 @@ export default async function CalendarPage() {
 
       <div className="space-y-3">
         {events.map((event) => (
-          <EditEventCard key={event.id} event={event} />
+          <EditEventCard
+            key={event.id}
+            event={event}
+            eventParticipants={participantsByEvent[event.id] ?? []}
+          />
         ))}
       </div>
     </main>
