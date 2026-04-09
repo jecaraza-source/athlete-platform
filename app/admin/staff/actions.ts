@@ -9,21 +9,23 @@ async function ensureAthleteRow(
   firstName: string,
   lastName: string,
   schoolOrClub: string | null,
-) {
+): Promise<string | null> {
   const { data: existing } = await supabaseAdmin
     .from('athletes')
     .select('id')
     .eq('profile_id', profileId)
     .maybeSingle();
   if (!existing) {
-    await supabaseAdmin.from('athletes').insert({
+    const { error } = await supabaseAdmin.from('athletes').insert({
       profile_id: profileId,
       first_name: firstName,
       last_name: lastName,
       school_or_club: schoolOrClub,
       status: 'active',
     });
+    if (error) return error.message;
   }
+  return null;
 }
 
 export async function createProfile(formData: FormData) {
@@ -100,20 +102,26 @@ export async function createProfile(formData: FormData) {
     return { error: error.message };
   }
 
-  // Fetch the newly inserted profile ID
+  // Create the athletes table row when the role is 'athlete'
   if (payload.role === 'athlete') {
     const { data: newProfile } = await supabaseAdmin
       .from('profiles')
       .select('id')
       .eq('auth_user_id', authUserId)
       .maybeSingle();
-    if (newProfile) {
-      await ensureAthleteRow(
-        newProfile.id,
-        payload.first_name,
-        payload.last_name,
-        (formData.get('school_or_club') as string) || null,
-      );
+
+    if (!newProfile) {
+      return { error: 'Profile was created but could not be retrieved. Refresh and try again.' };
+    }
+
+    const athleteError = await ensureAthleteRow(
+      newProfile.id,
+      payload.first_name,
+      payload.last_name,
+      (formData.get('school_or_club') as string) || null,
+    );
+    if (athleteError) {
+      return { error: `Profile created but athlete record failed: ${athleteError}` };
     }
   }
 
