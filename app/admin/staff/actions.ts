@@ -28,101 +28,159 @@ async function ensureAthleteRow(
   return null;
 }
 
+/** Assigns a role (by code) in the RBAC user_roles table.
+ *  Silently ignores duplicate-key errors (role already assigned). */
+async function assignRbacRole(profileId: string, roleCode: string): Promise<void> {
+  const { data: role } = await supabaseAdmin
+    .from('roles')
+    .select('id')
+    .eq('code', roleCode)
+    .maybeSingle();
+  if (role) {
+    // ON CONFLICT DO NOTHING — duplicate key just means already assigned
+    await supabaseAdmin
+      .from('user_roles')
+      .insert({ profile_id: profileId, role_id: role.id });
+    // Ignore the returned error; a duplicate key here is expected and harmless
+  }
+}
+
 export async function createProfile(formData: FormData) {
   await requirePermission('manage_users');
 
   const email = (formData.get('email') as string)?.trim();
   if (!email) return { error: 'Email is required to create a new profile.' };
 
-  // Create the Supabase Auth user first so we have an auth_user_id
-  let authUserId: string;
-
-  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+  const profileFields = {
+    first_name: formData.get('first_name') as string,
+    last_name:  formData.get('last_name')  as string,
     email,
-    email_confirm: true,
-  });
+    role:      (formData.get('role')      as string) || null,
+    phone:     (formData.get('phone')     as string) || null,
+    specialty: (formData.get('specialty') as string) || null,
+  };
+
+  // ── 1. Create (or locate) the Supabase Auth user ─────────────────────────
+  let authUserId: string;
+  let authUserWasNew = false;
+
+  const { data: authData, error: authError } =
+    await supabaseAdmin.auth.admin.createUser({ email, email_confirm: true });
 
   if (authError) {
     const alreadyExists =
       authError.message.toLowerCase().includes('already been registered') ||
       authError.message.toLowerCase().includes('already registered');
-
     if (!alreadyExists) return { error: authError.message };
 
-    // Auth user exists — find their ID
     const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
-    const existing = users.find((u) => u.email === email);
-    if (!existing) return { error: authError.message };
+    const found = users.find((u) => u.email === email);
+    if (!found) return { error: authError.message };
+    authUserId = found.id;
+    authUserWasNew = false;
+  } else {
+    authUserId = authData.user.id;
+    authUserWasNew = true;
+  }
 
-    // Check if a profile already exists for this auth user
-    const { data: existingProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('id, first_name, last_name')
-      .eq('auth_user_id', existing.id)
-      .maybeSingle();
+  // ── 2. Handle the profile row ─────────────────────────────────────────────
+  //
+  // Some Supabase projects have a DB trigger that auto-creates a stub profile
+  // (e.g. first_name='New', last_name='User') the moment an auth user is made.
+  // We detect that here and UPDATE it instead of failing on a duplicate-key error.
 
-    if (existingProfile) {
+  const { data: existingProfile } = await supabaseAdmin
+    .from('profiles')
+    .select('id, first_name, last_name')
+    .eq('auth_user_id', authUserId)
+    .maybeSingle();
+
+  let profileId: string;
+
+  if (existingProfile) {
+    if (!authUserWasNew) {
+      // Auth user pre-existed with a real profile — do not overwrite.
       return {
         error: `This email is already registered to ${existingProfile.first_name} ${existingProfile.last_name}. Use a different email or edit the existing profile.`,
       };
     }
 
-    authUserId = existing.id;
+    // Auth user was just created but a stub profile was auto-created by a DB trigger.
+    // Update it with the real data submitted by the admin.
+    const { error: updateError } = await supabaseAdmin
+      .from('profiles')
+      .update(profileFields)
+      .eq('id', existingProfile.id);
+
+    if (updateError) {
+      await supabaseAdmin.auth.admin.deleteUser(authUserId);
+      return { error: updateError.message };
+    }
+    profileId = existingProfile.id;
   } else {
-    authUserId = authData.user.id;
-  }
+    // No existing profile — insert a fresh one.
+    const { error: insertError } = await supabaseAdmin
+      .from('profiles')
+      .insert({ auth_user_id: authUserId, ...profileFields });
 
-  const payload = {
-    auth_user_id: authUserId,
-    first_name: formData.get('first_name') as string,
-    last_name: formData.get('last_name') as string,
-    email,
-    role: (formData.get('role') as string) || null,
-    phone: (formData.get('phone') as string) || null,
-    specialty: (formData.get('specialty') as string) || null,
-  };
+    if (insertError) {
+      if (
+        insertError.message.includes('profiles_auth_user_id_key') ||
+        insertError.message.includes('duplicate key')
+      ) {
+        // Race condition: trigger fired between our check and our insert.
+        // Try to update the auto-created stub.
+        const { data: raceProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('auth_user_id', authUserId)
+          .maybeSingle();
 
-  const { error } = await supabaseAdmin.from('profiles').insert(payload);
-
-  if (error) {
-    if (error.message.includes('profiles_auth_user_id_key') || error.message.includes('duplicate key')) {
-      const { data: existing } = await supabaseAdmin
+        if (raceProfile && authUserWasNew) {
+          const { error: updateError } = await supabaseAdmin
+            .from('profiles')
+            .update(profileFields)
+            .eq('id', raceProfile.id);
+          if (updateError) {
+            await supabaseAdmin.auth.admin.deleteUser(authUserId);
+            return { error: updateError.message };
+          }
+          profileId = raceProfile.id;
+        } else {
+          await supabaseAdmin.auth.admin.deleteUser(authUserId);
+          return { error: insertError.message };
+        }
+      } else {
+        await supabaseAdmin.auth.admin.deleteUser(authUserId);
+        return { error: insertError.message };
+      }
+    } else {
+      // Fetch the inserted row's ID
+      const { data: inserted } = await supabaseAdmin
         .from('profiles')
-        .select('id, first_name, last_name')
+        .select('id')
         .eq('auth_user_id', authUserId)
         .maybeSingle();
-      if (existing) {
-        return {
-          error: `This email is already registered to ${existing.first_name} ${existing.last_name}. Use a different email or edit the existing profile.`,
-        };
-      }
+      if (!inserted) return { error: 'Profile saved but ID not found. Please refresh.' };
+      profileId = inserted.id;
     }
-    // Roll back the auth user only if it was newly created
-    await supabaseAdmin.auth.admin.deleteUser(authUserId);
-    return { error: error.message };
   }
 
-  // Create the athletes table row when the role is 'athlete'
-  if (payload.role === 'athlete') {
-    const { data: newProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .eq('auth_user_id', authUserId)
-      .maybeSingle();
-
-    if (!newProfile) {
-      return { error: 'Profile was created but could not be retrieved. Refresh and try again.' };
-    }
-
+  // ── 3. Athlete-specific setup ─────────────────────────────────────────────
+  if (profileFields.role === 'athlete') {
+    // Create the athletes table row
     const athleteError = await ensureAthleteRow(
-      newProfile.id,
-      payload.first_name,
-      payload.last_name,
+      profileId,
+      profileFields.first_name,
+      profileFields.last_name,
       (formData.get('school_or_club') as string) || null,
     );
     if (athleteError) {
       return { error: `Profile created but athlete record failed: ${athleteError}` };
     }
+
+    // Also assign the RBAC athlete role so the user appears correctly in Access Control
+    await assignRbacRole(profileId, 'athlete');
   }
 
   revalidatePath('/admin/staff');
