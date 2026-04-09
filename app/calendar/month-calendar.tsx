@@ -313,7 +313,7 @@ export default function MonthCalendar({
               </button>
             ))}
           </div>
-          <NewEventForm profiles={profiles} />
+          <NewEventForm profiles={profiles} athletes={athletes} />
         </div>
       </div>
 

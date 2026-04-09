@@ -7,20 +7,33 @@ import { assertPermission } from '@/lib/rbac/server';
 export async function createEvent(formData: FormData) {
   const denied = await assertPermission('manage_calendar');
   if (denied) return denied;
+
   const payload = {
-    title: formData.get('title') as string,
-    event_type: formData.get('event_type') as string,
-    start_at: formData.get('start_at') as string,
-    end_at: formData.get('end_at') as string,
-    status: (formData.get('status') as string) || 'scheduled',
-    description: (formData.get('description') as string) || null,
+    title:                 formData.get('title')                 as string,
+    event_type:            formData.get('event_type')            as string,
+    start_at:              formData.get('start_at')              as string,
+    end_at:                formData.get('end_at')                as string,
+    status:               (formData.get('status') as string)    || 'scheduled',
+    description:          (formData.get('description') as string) || null,
     created_by_profile_id: formData.get('created_by_profile_id') as string,
   };
 
-  const { error } = await supabaseAdmin.from('events').insert(payload);
+  // Insert event and get back the new row's id
+  const { data: newEvent, error } = await supabaseAdmin
+    .from('events')
+    .insert(payload)
+    .select('id')
+    .single();
 
-  if (error) {
-    return { error: error.message };
+  if (error) return { error: error.message };
+
+  // Link selected athletes as participants
+  const athleteIds = (formData.getAll('athlete_id') as string[]).filter(Boolean);
+  if (athleteIds.length > 0 && newEvent) {
+    const { error: partErr } = await supabaseAdmin
+      .from('event_participants')
+      .insert(athleteIds.map((id) => ({ event_id: newEvent.id, participant_id: id })));
+    if (partErr) return { error: `Event created but could not add participants: ${partErr.message}` };
   }
 
   revalidatePath('/calendar');

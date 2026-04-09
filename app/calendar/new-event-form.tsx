@@ -16,12 +16,38 @@ const EVENT_TYPES = [
 const STATUSES = ['scheduled', 'completed', 'cancelled'];
 
 type Profile = { id: string; first_name: string; last_name: string };
+type Athlete = { id: string; first_name: string; last_name: string };
+type ParticipationMode = 'none' | 'individual' | 'group';
 
-export default function NewEventForm({ profiles }: { profiles: Profile[] }) {
-  const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export default function NewEventForm({
+  profiles,
+  athletes = [],
+}: {
+  profiles: Profile[];
+  athletes?: Athlete[];
+}) {
+  const [open,    setOpen]    = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+
+  const [mode,       setMode]       = useState<ParticipationMode>('none');
+  const [allChecked, setAllChecked] = useState(false);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+
+  function toggleAll(checked: boolean) {
+    setAllChecked(checked);
+    setCheckedIds(checked ? new Set(athletes.map((a) => a.id)) : new Set());
+  }
+
+  function toggleAthlete(id: string, checked: boolean) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      checked ? next.add(id) : next.delete(id);
+      return next;
+    });
+    setAllChecked(false);
+  }
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -31,6 +57,9 @@ export default function NewEventForm({ profiles }: { profiles: Profile[] }) {
       } else {
         setError(null);
         setOpen(false);
+        setMode('none');
+        setAllChecked(false);
+        setCheckedIds(new Set());
         formRef.current?.reset();
       }
     });
@@ -167,6 +196,83 @@ export default function NewEventForm({ profiles }: { profiles: Profile[] }) {
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm resize-none"
             />
           </div>
+
+          {/* ── Participants ───────────────────────────────────────── */}
+          {athletes.length > 0 && (
+            <div className="sm:col-span-2">
+              <p className="block text-xs font-medium mb-2">Participants</p>
+
+              {/* Mode selector */}
+              <div className="flex flex-wrap gap-4 mb-3">
+                {([
+                  { value: 'none',       label: 'No specific athletes' },
+                  { value: 'individual', label: 'Individual athlete' },
+                  { value: 'group',      label: 'Group of athletes' },
+                ] as { value: ParticipationMode; label: string }[]).map((opt) => (
+                  <label key={opt.value} className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-gray-700">
+                    <input
+                      type="radio"
+                      name="_participation_mode"
+                      value={opt.value}
+                      checked={mode === opt.value}
+                      onChange={() => { setMode(opt.value); setCheckedIds(new Set()); setAllChecked(false); }}
+                      className="accent-sky-600"
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+
+              {/* Individual — single dropdown */}
+              {mode === 'individual' && (
+                <select
+                  name="athlete_id"
+                  required
+                  className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+                >
+                  <option value="">Select athlete…</option>
+                  {athletes.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.first_name} {a.last_name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* Group — checkbox list */}
+              {mode === 'group' && (
+                <div className="rounded-lg border border-gray-200 divide-y divide-gray-100 max-h-44 overflow-y-auto">
+                  {/* Select-all row */}
+                  <label className="flex items-center gap-2.5 px-3 py-2 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={allChecked}
+                      onChange={(e) => toggleAll(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded accent-sky-600"
+                    />
+                    <span className="text-xs font-semibold text-gray-700">Select all athletes</span>
+                  </label>
+
+                  {/* Individual athletes */}
+                  {athletes.map((a) => (
+                    <label key={a.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-gray-50 transition-colors">
+                      <input
+                        type="checkbox"
+                        name="athlete_id"
+                        value={a.id}
+                        checked={checkedIds.has(a.id)}
+                        onChange={(e) => toggleAthlete(a.id, e.target.checked)}
+                        className="h-3.5 w-3.5 rounded accent-sky-600"
+                      />
+                      <span className="text-xs text-gray-700">
+                        {a.first_name} {a.last_name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3">
