@@ -52,15 +52,25 @@ export type SystemRoleName = (typeof SYSTEM_ROLES)[number];
 // ---------------------------------------------------------------------------
 
 export const PERMISSION_NAMES = [
+  // Athletes
   'view_athletes',
   'create_athletes',
   'edit_athletes',
   'delete_athletes',
+  // Calendar
   'view_calendar',
   'manage_calendar',
+  // Administration
   'manage_users',
   'manage_roles',
   'manage_permissions',
+  // Tickets
+  'view_tickets',
+  'create_tickets',
+  'edit_tickets',
+  'assign_tickets',
+  'comment_tickets',
+  'close_tickets',
 ] as const;
 export type PermissionName = (typeof PERMISSION_NAMES)[number];
 

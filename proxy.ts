@@ -2,41 +2,67 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 // ---------------------------------------------------------------------------
+// Locale configuration
+// ---------------------------------------------------------------------------
+
+const LOCALES = ['en', 'es'] as const;
+type Locale = (typeof LOCALES)[number];
+const DEFAULT_LOCALE: Locale = 'en';
+
+function getLocaleFromPath(pathname: string): Locale | null {
+  for (const locale of LOCALES) {
+    if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) {
+      return locale;
+    }
+  }
+  return null;
+}
+
+function stripLocale(pathname: string): string {
+  for (const locale of LOCALES) {
+    if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) {
+      return pathname.slice(locale.length + 1) || '/';
+    }
+  }
+  return pathname;
+}
+
+function detectLocale(request: NextRequest): Locale {
+  // 1. Check NEXT_LOCALE cookie (set when user manually switches language)
+  const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value;
+  if (cookieLocale && LOCALES.includes(cookieLocale as Locale)) {
+    return cookieLocale as Locale;
+  }
+  // 2. Check Accept-Language header
+  const acceptLang = request.headers.get('Accept-Language') ?? '';
+  for (const part of acceptLang.split(',')) {
+    const lang = part.split(';')[0].trim().toLowerCase().slice(0, 2) as Locale;
+    if (LOCALES.includes(lang)) return lang;
+  }
+  return DEFAULT_LOCALE;
+}
+
+// ---------------------------------------------------------------------------
 // Public paths — no authentication required
 // ---------------------------------------------------------------------------
 
 /**
- * Routes that are accessible without a session.
- * Exact-match strings or prefix strings (checked with startsWith).
+ * Routes that are accessible without a session (locale-stripped paths).
  */
 const PUBLIC_PATHS: string[] = [
   '/login',
-  // Add '/register', '/forgot-password', etc. here as needed
 ];
 
 /**
- * Path prefixes that are always public regardless of auth state
- * (e.g. OAuth callbacks, webhook receivers).
+ * Path prefixes that are always public regardless of auth state.
  */
 const PUBLIC_PREFIXES: string[] = [
-  '/api/auth', // Supabase OAuth callbacks — add if you use social login
+  '/api/auth',
 ];
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Returns true only for root-relative paths that cannot be used as
- * open-redirect targets (i.e. not protocol-relative "//evil.com").
- */
-function isSafeRedirectPath(path: string): boolean {
-  return typeof path === 'string' && path.startsWith('/') && !path.startsWith('//');
-}
-
-function isPublicPath(pathname: string): boolean {
-  if (PUBLIC_PATHS.includes(pathname)) return true;
-  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) return true;
+function isPublicPath(strippedPathname: string): boolean {
+  if (PUBLIC_PATHS.includes(strippedPathname)) return true;
+  if (PUBLIC_PREFIXES.some((p) => strippedPathname.startsWith(p))) return true;
   return false;
 }
 
@@ -49,18 +75,68 @@ function isPublicPath(pathname: string): boolean {
  *
  * Responsibilities
  * ────────────────
- * 1. Refresh the Supabase session token (required by @supabase/ssr).
- * 2. Gate all non-public routes behind authentication:
- *    - API routes  → 401 JSON  (not an HTML redirect)
- *    - All others  → redirect to /login?redirectTo=<current-path>
- * 3. Redirect an already-authenticated user away from /login.
- *
- * Fine-grained permission checks happen inside pages (requireAdminAccess,
- * requirePermission) and server actions (assertPermission). This proxy only
- * enforces the coarse "must be signed in" rule.
+ * 1. Locale routing: redirect un-prefixed paths to the correct locale prefix
+ *    (e.g. / → /en/, /dashboard → /en/dashboard).
+ * 2. Refresh the Supabase session token (required by @supabase/ssr).
+ * 3. Gate all non-public routes behind authentication:
+ *    - API routes  → 401 JSON
+ *    - All others  → redirect to /{locale}/login?redirectTo=<current-path>
+ * 4. Redirect an already-authenticated user away from the login page.
  */
 export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  const { pathname } = request.nextUrl;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // API routes: auth check only, no locale redirect
+  // ─────────────────────────────────────────────────────────────────────
+  if (pathname.startsWith('/api/')) {
+    if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
+      return NextResponse.next({ request });
+    }
+    // For protected API routes, validate session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-anon-key',
+      { cookies: { getAll: () => request.cookies.getAll(), setAll: () => {} } }
+    );
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Unauthenticated' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    return NextResponse.next({ request });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Step 1: Locale redirect — add locale prefix if missing
+  // ─────────────────────────────────────────────────────────────────────
+  const localeInPath = getLocaleFromPath(pathname);
+  if (!localeInPath) {
+    const locale = detectLocale(request);
+    const redirectUrl = new URL(
+      `/${locale}${pathname === '/' ? '' : pathname}`,
+      request.url
+    );
+    redirectUrl.search = request.nextUrl.search;
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    redirectResponse.cookies.set('NEXT_LOCALE', locale, { path: '/', sameSite: 'lax' });
+    return redirectResponse;
+  }
+
+  const locale = localeInPath;
+  const strippedPath = stripLocale(pathname);
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Step 2: Supabase session refresh + auth gate
+  // ─────────────────────────────────────────────────────────────────────
+
+  // Pass locale to Server Components via request header
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-next-intl-locale', locale);
+
+  let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co',
@@ -71,10 +147,8 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // Must mutate both the request AND the response so the refreshed
-          // token is available to the route handler.
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -83,44 +157,27 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // IMPORTANT: use getUser(), not getSession() — getUser() re-validates the
-  // JWT with the Supabase auth server, making it safe to trust in middleware.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-
-  // 1. Always allow public paths through.
-  if (isPublicPath(pathname)) {
-    // Redirect an already-authenticated user away from /login so they don't
-    // see a login form they don't need.
-    if (pathname === '/login' && user) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+  // 1. Allow public paths through
+  if (isPublicPath(strippedPath)) {
+    // Redirect authenticated user away from /login
+    if (strippedPath === '/login' && user) {
+      return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
     }
     return supabaseResponse;
   }
 
-  // 2. Everything else requires authentication.
+  // 2. Gate protected routes
   if (!user) {
-    // API routes must receive a machine-readable error, not an HTML redirect.
-    if (pathname.startsWith('/api/')) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Unauthenticated' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // For page routes, redirect to /login and preserve the intended destination
-    // so the login form can redirect back after a successful sign-in.
-    const loginUrl = new URL('/login', request.url);
-    // pathname always starts with '/' so it is safe — no open-redirect risk
+    const loginUrl = new URL(`/${locale}/login`, request.url);
     loginUrl.searchParams.set('redirectTo', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // 3. Authenticated — pass through. Role/permission checks are the
-  // responsibility of the individual page or action.
+  // 3. Authenticated — pass through
   return supabaseResponse;
 }
 

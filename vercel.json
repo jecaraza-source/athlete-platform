@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/process-email-jobs",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/process-push-jobs",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/process-ticket-automation",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

@@ -1,22 +1,16 @@
 import './globals.css';
-import type { Metadata } from 'next';
-import AppShell from '@/components/AppShell';
+import { headers } from 'next/headers';
 
-export const metadata: Metadata = {
-  title: 'Athlete Platform',
-  description: 'Athlete development platform',
-};
-
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = await headers();
+  const locale = headersList.get('x-next-intl-locale') ?? 'en';
   return (
-    <html lang="en">
-      <body>
-        <AppShell>{children}</AppShell>
-      </body>
+    <html lang={locale}>
+      <body>{children}</body>
     </html>
   );
 }

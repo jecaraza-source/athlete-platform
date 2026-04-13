@@ -1,0 +1,75 @@
+import Link from 'next/link';
+import BackButton from '@/components/back-button';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requirePermission } from '@/lib/rbac/server';
+import { getTranslations } from 'next-intl/server';
+
+export const dynamic = 'force-dynamic';
+
+type Athlete = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  status: string;
+  school_or_club: string | null;
+};
+
+export default async function AthletesPage() {
+  await requirePermission('view_athletes');
+  const t = await getTranslations('athletes');
+  const tc = await getTranslations('common');
+
+  const { data, error } = await supabaseAdmin
+    .from('athletes')
+    .select('id, first_name, last_name, status, school_or_club')
+    .order('last_name', { ascending: true });
+
+  if (error) {
+    return (
+      <main className="p-8">
+        <BackButton href="/dashboard" label={tc('backToDashboard')} />
+        <h1 className="text-2xl font-bold mt-4 text-emerald-700">{t('title')}</h1>
+        <p className="text-red-600 mt-4">{t('failedToLoad')}</p>
+      </main>
+    );
+  }
+
+  const athletes = (data ?? []) as Athlete[];
+
+  return (
+    <main className="p-8">
+      <BackButton href="/dashboard" label={tc('backToDashboard')} />
+      <h1 className="text-2xl font-bold mt-4 mb-6 text-emerald-700">{t('title')}</h1>
+
+      {athletes.length === 0 ? (
+        <p className="text-gray-500">{t('noAthletes')}</p>
+      ) : (
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="border-b text-left text-gray-500">
+              <th className="pb-2 pr-4 font-medium">{t('name')}</th>
+              <th className="pb-2 pr-4 font-medium">{t('schoolOrClub')}</th>
+              <th className="pb-2 font-medium">{t('status')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {athletes.map((athlete) => (
+              <tr key={athlete.id} className="border-b hover:bg-gray-50">
+                <td className="py-3 pr-4">
+                  <Link
+                    href={`/athletes/${athlete.id}`}
+                    className="text-blue-600 hover:underline font-medium"
+                  >
+                    {athlete.first_name} {athlete.last_name}
+                  </Link>
+                </td>
+                <td className="py-3 pr-4 text-gray-600">{athlete.school_or_club ?? '—'}</td>
+                <td className="py-3 text-gray-600 capitalize">{athlete.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </main>
+  );
+}

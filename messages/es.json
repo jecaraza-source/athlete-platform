@@ -1,0 +1,185 @@
+{
+  "common": {
+    "backToDashboard": "Volver al Dashboard",
+    "backToFollowUp": "Volver a Seguimiento",
+    "backToAdmin": "Volver a Admin",
+    "backToProtocols": "Volver a Protocolos",
+    "errorLoading": "Error al cargar",
+    "notFound": "No encontrado",
+    "na": "N/A",
+    "unknownAthlete": "Atleta desconocido",
+    "noSessionsYet": "Aún no hay sesiones registradas.",
+    "sessionHistory": "Historial de Sesiones"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "athletes": "Atletas",
+    "calendar": "Calendario",
+    "followUp": "Seguimiento",
+    "protocols": "Protocolos",
+    "communications": "Comunicaciones",
+    "tickets": "Tickets",
+    "notifications": "Notificaciones",
+    "preferences": "Preferencias",
+    "admin": "Admin"
+  },
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signingIn": "Iniciando sesión…",
+    "signOut": "Cerrar sesión",
+    "signingOut": "Cerrando sesión…",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "passwordPlaceholder": "••••••••"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Bienvenido a tu plataforma de desarrollo de atletas.",
+    "athletes": "Atletas",
+    "calendar": "Calendario",
+    "followUp": "Seguimiento",
+    "protocols": "Protocolos",
+    "athletesDescription": "Gestiona registros y perfiles de atletas.",
+    "calendarDescription": "Revisa y gestiona próximos eventos.",
+    "followUpDescription": "Seguimiento de entrenamiento, nutrición, fisio, psicología y servicios médicos.",
+    "protocolsDescription": "Directrices operativas estándar para cada disciplina."
+  },
+  "athletes": {
+    "title": "Atletas",
+    "noAthletes": "No se encontraron atletas.",
+    "failedToLoad": "Error al cargar atletas.",
+    "name": "Nombre",
+    "schoolOrClub": "Escuela / Club",
+    "status": "Estado"
+  },
+  "calendar": {
+    "title": "Calendario",
+    "errorLoadingEvents": "Error al cargar eventos:"
+  },
+  "followUp": {
+    "title": "Seguimiento",
+    "description": "Seguimiento de entrenamiento, nutrición, fisio, psicología y servicios médicos de tus atletas.",
+    "training": {
+      "title": "Entrenamiento",
+      "description": "Registra carga de trabajo, intensidad y notas de sesión.",
+      "noSessions": "Aún no hay sesiones de entrenamiento.",
+      "errorLoading": "Error al cargar sesiones de entrenamiento:",
+      "time": "Hora",
+      "location": "Lugar",
+      "notes": "Notas"
+    },
+    "nutrition": {
+      "title": "Nutrición",
+      "description": "Monitorea planes dietéticos y objetivos nutricionales.",
+      "noPlans": "Aún no hay planes de nutrición.",
+      "errorLoading": "Error al cargar planes de nutrición:",
+      "nutritionist": "Nutricionista",
+      "period": "Período",
+      "ongoing": "(en curso)",
+      "download": "⤓ Descargar"
+    },
+    "physio": {
+      "title": "Fisioterapia",
+      "description": "Registra lesiones, progreso de recuperación y tratamientos.",
+      "noCases": "Aún no hay casos de fisioterapia.",
+      "errorLoading": "Error al cargar casos de fisioterapia:"
+    },
+    "psychology": {
+      "title": "Psicología",
+      "description": "Registra rendimiento mental y check-ins de bienestar.",
+      "noCases": "Aún no hay casos de psicología.",
+      "errorLoading": "Error al cargar casos de psicología:",
+      "psychologist": "Psicólogo",
+      "notes": "Notas"
+    },
+    "medical": {
+      "title": "Servicios Médicos",
+      "description": "Seguimiento de casos médicos, signos vitales, progreso de tratamiento y adherencia.",
+      "noCases": "Aún no hay casos médicos.",
+      "errorLoading": "Error al cargar casos médicos:",
+      "noAssigned": "Sin profesional asignado"
+    }
+  },
+  "protocols": {
+    "title": "Protocolos",
+    "description": "Procedimientos operativos estándar y directrices para cada disciplina.",
+    "coach": {
+      "label": "Entrenador",
+      "description": "Metodologías de entrenamiento, planificación de sesiones y protocolos de rendimiento."
+    },
+    "physio": {
+      "label": "Fisio",
+      "description": "Prevención de lesiones, rehabilitación y directrices de fisioterapia."
+    },
+    "medic": {
+      "label": "Médico",
+      "description": "Estándares de examen médico, monitoreo de salud y procedimientos de emergencia."
+    },
+    "nutrition": {
+      "label": "Nutrición",
+      "description": "Directrices dietéticas, estándares de suplementación y protocolos de hidratación."
+    },
+    "psychology": {
+      "label": "Psicología",
+      "description": "Marcos de rendimiento mental, gestión del estrés y protocolos de bienestar."
+    }
+  },
+  "admin": {
+    "title": "Admin",
+    "description": "Administración y configuración de la plataforma.",
+    "adminSetup": {
+      "title": "Configuración Admin",
+      "description": "Gestiona superadmins, admins y miembros del staff."
+    },
+    "athletesSetup": {
+      "title": "Configuración de Atletas",
+      "description": "Registra nuevos atletas y gestiona sus perfiles."
+    },
+    "accessControl": {
+      "title": "Control de Acceso",
+      "description": "Gestiona roles, permisos y acceso de usuarios.",
+      "fullDescription": "Gestiona roles, permisos y acceso de usuarios en toda la plataforma.",
+      "roles": {
+        "title": "Roles",
+        "description": "Crea y gestiona roles. Asigna permisos a cada rol."
+      },
+      "permissions": {
+        "title": "Permisos",
+        "description": "Consulta y gestiona definiciones de permisos individuales."
+      },
+      "usersAndRoles": {
+        "title": "Usuarios y Roles",
+        "description": "Asigna o revoca roles para usuarios individuales."
+      }
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "description": "Email, push y correos de seguimiento de tickets."
+    },
+    "tickets": {
+      "title": "Tickets",
+      "description": "Gestión interna de casos — rastrea, asigna y resuelve incidencias."
+    },
+    "staff": {
+      "title": "Configuración Admin",
+      "description": "Gestiona administradores y miembros del staff.",
+      "administrators": "Administradores",
+      "staff": "Staff",
+      "other": "Otros",
+      "noAdmins": "Aún no hay perfiles de admin.",
+      "noStaff": "Aún no hay miembros del staff.",
+      "newAdmin": "+ Nuevo admin",
+      "addStaff": "+ Agregar miembro del staff",
+      "errorLoading": "Error al cargar perfiles:"
+    }
+  },
+  "preferences": {
+    "title": "Preferencias",
+    "description": "Configura tu cuenta y cómo quieres recibir notificaciones.",
+    "notifications": {
+      "title": "Notificaciones",
+      "description": "Controla qué canales recibes: email y push."
+    }
+  }
+}

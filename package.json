@@ -14,10 +14,13 @@
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.101.1",
     "next": "16.2.2",
+    "next-intl": "^4.9.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-native-url-polyfill": "^3.0.0",
-    "recharts": "^3.8.1"
+    "recharts": "^3.8.1",
+    "resend": "^6.10.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
