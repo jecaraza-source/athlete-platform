@@ -14,14 +14,15 @@ export default async function AppShell({ children }: { children: ReactNode }) {
       <aside className="w-56 shrink-0 bg-gray-50 border-r border-gray-200 flex flex-col">
         {/* Logo */}
         <div className="px-5 py-5 border-b border-gray-200">
-          <Image
-            src="/logo.png"
-            alt="Athlete Platform"
-            width={140}
-            height={36}
-            priority
-          />
-        </div>
+        <Image
+          src="/logo.png"
+          alt="Athlete Platform"
+          width={160}
+          height={40}
+          className="mb-6"
+          style={{ height: 'auto' }}
+          priority
+        />
 
         {/* Navigation */}
         <NavLinks />
