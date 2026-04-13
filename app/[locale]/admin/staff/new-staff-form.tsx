@@ -1,7 +1,9 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { createProfile } from './actions';
+import { DISCIPLINES } from '@/lib/types/diagnostic';
 
 const ROLES = [
   { value: 'super_admin',  label: 'Super Admin' },
@@ -17,7 +19,7 @@ const ROLES = [
 export default function NewStaffForm({
   hasExtendedColumns = true,
   presetRole,
-  buttonLabel = '+ Add staff member',
+  buttonLabel = '+ Agregar',
 }: {
   hasExtendedColumns?: boolean;
   presetRole?: string;
@@ -27,12 +29,16 @@ export default function NewStaffForm({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
       const result = await createProfile(formData);
       if (result.error) {
         setError(result.error);
+      } else if ('athleteId' in result && result.athleteId) {
+        // Redirigir al flujo de diagnóstico inicial del atleta recién creado
+        router.push(`/athletes/${result.athleteId}/diagnostic`);
       } else {
         setError(null);
         setOpen(false);
@@ -133,18 +139,41 @@ export default function NewStaffForm({
               )}
 
               {presetRole === 'athlete' && (
-                <div>
-                  <label className="block text-sm font-medium mb-1" htmlFor="school_or_club">
-                    School / Club
-                  </label>
-                  <input
-                    id="school_or_club"
-                    name="school_or_club"
-                    type="text"
-                    placeholder="e.g. Athlete Academy"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-1" htmlFor="discipline">
+                      Disciplina <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="discipline"
+                      name="discipline"
+                      required
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    >
+                      <option value="">Seleccionar disciplina…</option>
+                      {DISCIPLINES.map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.block} — {d.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1" htmlFor="disability_status">
+                      Persona con o sin Discapacidad <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="disability_status"
+                      name="disability_status"
+                      required
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    >
+                      <option value="">Seleccionar…</option>
+                      <option value="sin_discapacidad">Sin discapacidad</option>
+                      <option value="con_discapacidad">Con discapacidad</option>
+                    </select>
+                  </div>
+                </>
               )}
 
               <div>

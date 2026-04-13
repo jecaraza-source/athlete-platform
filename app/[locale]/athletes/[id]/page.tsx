@@ -3,6 +3,16 @@ import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/rbac/server';
 import { GeneralInfoSection, GuardianSection, EmergencyContactSection } from './athlete-sections';
+import {
+  getDisciplineLabel,
+  getDisabilityLabel,
+  STATUS_LABELS,
+  STATUS_COLORS,
+  STATUS_DOT,
+  SECTION_KEYS,
+  SECTION_LABELS,
+  type DiagnosticStatus,
+} from '@/lib/types/diagnostic';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +27,8 @@ type AthleteDetail = {
   weight_kg: number | null;
   dominant_side: string | null;
   school_or_club: string | null;
+  discipline: string | null;
+  disability_status: string | null;
   guardian_name: string | null;
   guardian_phone: string | null;
   guardian_email: string | null;
@@ -46,6 +58,9 @@ export default async function AthleteDetailPage({
 
   const { id } = await params;
 
+  // ──────────────────────────────────────────────────────────────────────
+  // 1. Query base (columnas originales — siempre presentes en la BD)
+  // ──────────────────────────────────────────────────────────────────────
   const [
     { data, error },
     { data: trainingSessions },
@@ -94,23 +109,80 @@ export default async function AthleteDetailPage({
   if (error || !data) {
     return (
       <main className="p-8">
-        <BackButton href="/athletes" label="Back to Athletes" />
-        <h1 className="text-2xl font-bold mt-4">Athlete not found</h1>
+        <BackButton href="/athletes" label="Volver a Atletas" />
+        <h1 className="text-2xl font-bold mt-4">Atleta no encontrado</h1>
       </main>
     );
   }
 
-  const athlete = data as AthleteDetail;
+  // ──────────────────────────────────────────────────────────────────────
+  // 2. Queries post-migración (silenciosas — si fallan, retornan null/[])
+  // ──────────────────────────────────────────────────────────────────────
+  const [{ data: extData }, { data: diagRaw }, { data: sectionsRaw }] =
+    await Promise.all([
+      // discipline + disability_status (añadidos en migración 011)
+      supabaseAdmin
+        .from('athletes')
+        .select('id, discipline, disability_status')
+        .eq('id', id)
+        .maybeSingle(),
+      // diagnóstico inicial
+      supabaseAdmin
+        .from('athlete_initial_diagnostic')
+        .select('overall_status, completion_pct')
+        .eq('athlete_id', id)
+        .maybeSingle(),
+      // secciones por rubro
+      supabaseAdmin
+        .from('athlete_diagnostic_sections')
+        .select('section, status')
+        .eq('athlete_id', id),
+    ]);
 
-  const sessions = (trainingSessions ?? []) as { id: string; title: string; session_date: string; location: string | null }[];
-  const plans = (nutritionPlans ?? []) as { id: string; title: string; start_date: string; end_date: string | null; status: string }[];
-  const cases = (physioCases ?? []) as unknown as { id: string; status: string; opened_at: string; injuries: { injury_type: string } | null }[];
+  const athlete: AthleteDetail = {
+    ...(data as Omit<AthleteDetail, 'discipline' | 'disability_status'>),
+    discipline:        (extData as Record<string, string> | null)?.discipline        ?? null,
+    disability_status: (extData as Record<string, string> | null)?.disability_status ?? null,
+  };
+  const diagnostic = diagRaw as { overall_status: string; completion_pct: number } | null;
+  const sections   = sectionsRaw as { section: string; status: string }[] | null;
+
+  const sessions   = (trainingSessions ?? []) as { id: string; title: string; session_date: string; location: string | null }[];
+  const plans      = (nutritionPlans ?? []) as { id: string; title: string; start_date: string; end_date: string | null; status: string }[];
+  const cases      = (physioCases ?? []) as unknown as { id: string; status: string; opened_at: string; injuries: { injury_type: string } | null }[];
   const psychCases = (psychologyCases ?? []) as unknown as { id: string; status: string; opened_at: string; summary: string | null }[];
-  const events = (eventParticipants ?? []) as unknown as { id: string; notes: string | null; events: { id: string; title: string; event_type: string; start_at: string; status: string } | null }[];
+  const events     = (eventParticipants ?? []) as unknown as { id: string; notes: string | null; events: { id: string; title: string; event_type: string; start_at: string; status: string } | null }[];
+
+  const diagStatus   = (diagnostic?.overall_status as DiagnosticStatus) ?? 'pendiente';
+  const diagPct      = diagnostic?.completion_pct ?? 0;
+  const diagComplete = diagStatus === 'completo';
+  const sectionMap = Object.fromEntries(
+    (sections ?? []).map((s) => [s.section, s.status as DiagnosticStatus])
+  ) as Partial<Record<string, DiagnosticStatus>>;
 
   return (
     <main className="p-8">
-      <BackButton href="/athletes" label="Back to Athletes" />
+      <BackButton href="/athletes" label="Volver a Atletas" />
+
+      {/* Banner de diagnóstico inicial pendiente */}
+      {!diagComplete && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT[diagStatus]}`} />
+            <p className="text-sm text-amber-800">
+              <strong>Diagnóstico inicial:</strong>{' '}
+              {STATUS_LABELS[diagStatus]}{diagPct > 0 ? ` (${diagPct}%)` : ''}
+              {diagStatus === 'pendiente' && ' — El expediente diagnóstico no ha sido iniciado.'}
+            </p>
+          </div>
+          <Link
+            href={`/athletes/${id}/diagnostic`}
+            className="text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap"
+          >
+            Ir al diagnóstico inicial →
+          </Link>
+        </div>
+      )}
 
       {/* Header */}
       <div className="mt-4 flex flex-col md:flex-row md:items-start md:justify-between gap-3">
@@ -119,8 +191,14 @@ export default async function AthleteDetailPage({
             {athlete.first_name} {athlete.last_name}
           </h1>
           {athlete.athlete_code && (
-            <p className="text-sm text-gray-500 mt-0.5">Code: {athlete.athlete_code}</p>
+            <p className="text-sm text-gray-500 mt-0.5">Código: {athlete.athlete_code}</p>
           )}
+          <div className="flex flex-wrap gap-3 mt-1 text-sm text-gray-500">
+            <span>Disciplina: <strong className="text-gray-700">{getDisciplineLabel(athlete.discipline)}</strong></span>
+            {athlete.disability_status && (
+              <span>· {getDisabilityLabel(athlete.disability_status)}</span>
+            )}
+          </div>
         </div>
         <span className={`self-start text-xs font-medium px-3 py-1 rounded-full capitalize ${
           athlete.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
@@ -158,8 +236,44 @@ export default async function AthleteDetailPage({
         )}
       </div>
 
+      {/* Diagnóstico Inicial — resumen semáforo */}
+      <div className="mt-8 rounded-lg border border-gray-200 p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold text-base">Diagnóstico Inicial Integral</h2>
+          <Link href={`/athletes/${id}/diagnostic`} className="text-xs text-blue-600 hover:underline">
+            Ver completo →
+          </Link>
+        </div>
+        <div className="mb-3">
+          <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+            <span>Avance total</span>
+            <span className="font-semibold text-emerald-700">{diagPct}%</span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-2">
+            <div
+              className={`h-2 rounded-full transition-all ${
+                diagComplete ? 'bg-green-500' : diagPct > 0 ? 'bg-emerald-500' : 'bg-gray-300'
+              }`}
+              style={{ width: `${diagPct}%` }}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          {SECTION_KEYS.map((section) => {
+            const st: DiagnosticStatus = (sectionMap[section] ?? 'pendiente') as DiagnosticStatus;
+            return (
+              <div key={section} className={`flex flex-col items-center gap-1 p-2 rounded-md border text-center ${STATUS_COLORS[st]}`}>
+                <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[st]}`} />
+                <span className="text-xs font-medium">{SECTION_LABELS[section]}</span>
+                <span className="text-xs">{STATUS_LABELS[st]}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Follow-up */}
-      <h2 className="text-xl font-bold mt-8 mb-4">Follow-up</h2>
+      <h2 className="text-xl font-bold mt-8 mb-4">Seguimiento</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
         {/* Training */}

@@ -3,6 +3,8 @@
 import { useRef, useState, useTransition } from 'react';
 import { updateAthlete } from './actions';
 
+import { DISCIPLINES, getDisciplineLabel, getDisabilityLabel } from '@/lib/types/diagnostic';
+
 type AthleteDetail = {
   id: string;
   date_of_birth: string | null;
@@ -11,6 +13,8 @@ type AthleteDetail = {
   height_cm: number | null;
   weight_kg: number | null;
   school_or_club: string | null;
+  discipline: string | null;
+  disability_status: string | null;
   guardian_name: string | null;
   guardian_phone: string | null;
   guardian_email: string | null;
@@ -146,27 +150,42 @@ function FormField({
 export function GeneralInfoSection({ athlete }: { athlete: AthleteDetail }) {
   return (
     <EditSection
-      title="General Information"
+      title="Información General"
       section="general"
       athleteId={athlete.id}
       children={
         <>
-          <Field label="Date of birth" value={athlete.date_of_birth ? new Date(athlete.date_of_birth).toLocaleDateString() : null} />
-          <Field label="Sex" value={athlete.sex} />
-          <Field label="Dominant side" value={athlete.dominant_side} />
-          <Field label="Height" value={athlete.height_cm != null ? `${athlete.height_cm} cm` : null} />
-          <Field label="Weight" value={athlete.weight_kg != null ? `${athlete.weight_kg} kg` : null} />
-          <Field label="School / Club" value={athlete.school_or_club} />
+          <Field label="Fecha de nacimiento" value={athlete.date_of_birth ? new Date(athlete.date_of_birth).toLocaleDateString('es-MX') : null} />
+          <Field label="Sexo" value={athlete.sex} />
+          <Field label="Lado dominante" value={athlete.dominant_side} />
+          <Field label="Estatura" value={athlete.height_cm != null ? `${athlete.height_cm} cm` : null} />
+          <Field label="Peso" value={athlete.weight_kg != null ? `${athlete.weight_kg} kg` : null} />
+          <Field label="Disciplina" value={getDisciplineLabel(athlete.discipline)} />
+          <Field label="Discapacidad" value={getDisabilityLabel(athlete.disability_status)} />
         </>
       }
       form={
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Date of birth" name="date_of_birth" type="date" defaultValue={athlete.date_of_birth} />
-          <FormField label="Sex" name="sex" options={[{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }, { value: 'other', label: 'Other' }]} defaultValue={athlete.sex} />
-          <FormField label="Dominant side" name="dominant_side" options={[{ value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }, { value: 'both', label: 'Both' }]} defaultValue={athlete.dominant_side} />
-          <FormField label="Height (cm)" name="height_cm" type="number" defaultValue={athlete.height_cm} placeholder="e.g. 170" />
-          <FormField label="Weight (kg)" name="weight_kg" type="number" defaultValue={athlete.weight_kg} placeholder="e.g. 65" />
-          <FormField label="School / Club" name="school_or_club" defaultValue={athlete.school_or_club} placeholder="e.g. Athlete Academy" />
+          <FormField label="Fecha de nacimiento" name="date_of_birth" type="date" defaultValue={athlete.date_of_birth} />
+          <FormField label="Sexo" name="sex" options={[{ value: 'male', label: 'Masculino' }, { value: 'female', label: 'Femenino' }, { value: 'other', label: 'Otro' }]} defaultValue={athlete.sex} />
+          <FormField label="Lado dominante" name="dominant_side" options={[{ value: 'left', label: 'Izquierdo' }, { value: 'right', label: 'Derecho' }, { value: 'both', label: 'Ambos' }]} defaultValue={athlete.dominant_side} />
+          <FormField label="Estatura (cm)" name="height_cm" type="number" defaultValue={athlete.height_cm} placeholder="ej. 170" />
+          <FormField label="Peso (kg)" name="weight_kg" type="number" defaultValue={athlete.weight_kg} placeholder="ej. 65" />
+          <FormField
+            label="Disciplina"
+            name="discipline"
+            defaultValue={athlete.discipline}
+            options={DISCIPLINES.map((d) => ({ value: d.value, label: `${d.block} — ${d.label}` }))}
+          />
+          <FormField
+            label="Persona con o sin Discapacidad"
+            name="disability_status"
+            defaultValue={athlete.disability_status}
+            options={[
+              { value: 'sin_discapacidad', label: 'Sin discapacidad' },
+              { value: 'con_discapacidad', label: 'Con discapacidad' },
+            ]}
+          />
         </div>
       }
     />

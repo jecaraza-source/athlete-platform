@@ -19,12 +19,14 @@ export async function updateAthlete(id: string, formData: FormData) {
 
   if (section === 'general') {
     payload = {
-      date_of_birth: raw('date_of_birth'),
-      sex: raw('sex'),
-      dominant_side: raw('dominant_side'),
-      height_cm: num('height_cm'),
-      weight_kg: num('weight_kg'),
-      school_or_club: raw('school_or_club'),
+      date_of_birth:     raw('date_of_birth'),
+      sex:               raw('sex'),
+      dominant_side:     raw('dominant_side'),
+      height_cm:         num('height_cm'),
+      weight_kg:         num('weight_kg'),
+      school_or_club:    raw('school_or_club'),
+      discipline:        raw('discipline'),
+      disability_status: raw('disability_status'),
     };
   } else if (section === 'guardian') {
     payload = {

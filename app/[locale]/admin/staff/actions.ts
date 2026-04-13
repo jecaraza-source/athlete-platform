@@ -3,29 +3,71 @@
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/rbac/server';
+import { SECTION_KEYS } from '@/lib/types/diagnostic';
 
+/** Crea o recupera la fila de athletes y devuelve su ID. */
 async function ensureAthleteRow(
   profileId: string,
   firstName: string,
   lastName: string,
-  schoolOrClub: string | null,
-): Promise<string | null> {
+  discipline: string | null,
+  disabilityStatus: string | null,
+): Promise<{ athleteId: string } | { error: string }> {
   const { data: existing } = await supabaseAdmin
     .from('athletes')
     .select('id')
     .eq('profile_id', profileId)
     .maybeSingle();
-  if (!existing) {
-    const { error } = await supabaseAdmin.from('athletes').insert({
-      profile_id: profileId,
-      first_name: firstName,
-      last_name: lastName,
-      school_or_club: schoolOrClub,
-      status: 'active',
-    });
-    if (error) return error.message;
-  }
-  return null;
+
+  if (existing) return { athleteId: existing.id };
+
+  const { data, error } = await supabaseAdmin
+    .from('athletes')
+    .insert({
+      profile_id:       profileId,
+      first_name:       firstName,
+      last_name:        lastName,
+      discipline:       discipline,
+      disability_status: disabilityStatus,
+      status:           'active',
+    })
+    .select('id')
+    .single();
+
+  if (error) return { error: error.message };
+  return { athleteId: data.id };
+}
+
+/**
+ * Crea el expediente de diagnóstico inicial para un atleta recién dado de alta.
+ * Genera el registro principal + 5 secciones en estado 'pendiente'.
+ */
+async function createInitialDiagnostic(athleteId: string): Promise<void> {
+  // Evitar duplicados
+  const { data: existing } = await supabaseAdmin
+    .from('athlete_initial_diagnostic')
+    .select('id')
+    .eq('athlete_id', athleteId)
+    .maybeSingle();
+
+  if (existing) return;
+
+  const { data: diagnostic, error: diagError } = await supabaseAdmin
+    .from('athlete_initial_diagnostic')
+    .insert({ athlete_id: athleteId })
+    .select('id')
+    .single();
+
+  if (diagError || !diagnostic) return;
+
+  // Crear las 5 secciones en paralelo
+  await supabaseAdmin.from('athlete_diagnostic_sections').insert(
+    SECTION_KEYS.map((section) => ({
+      diagnostic_id: diagnostic.id,
+      athlete_id:    athleteId,
+      section,
+    }))
+  );
 }
 
 /** Assigns a role (by code) in the RBAC user_roles table.
@@ -168,19 +210,31 @@ export async function createProfile(formData: FormData) {
 
   // ── 3. Athlete-specific setup ─────────────────────────────────────────────
   if (profileFields.role === 'athlete') {
-    // Create the athletes table row
-    const athleteError = await ensureAthleteRow(
+    const discipline       = (formData.get('discipline')        as string) || null;
+    const disabilityStatus = (formData.get('disability_status') as string) || null;
+
+    const athleteResult = await ensureAthleteRow(
       profileId,
       profileFields.first_name,
       profileFields.last_name,
-      (formData.get('school_or_club') as string) || null,
+      discipline,
+      disabilityStatus,
     );
-    if (athleteError) {
-      return { error: `Profile created but athlete record failed: ${athleteError}` };
+
+    if ('error' in athleteResult) {
+      return { error: `Perfil creado pero registro de atleta falló: ${athleteResult.error}` };
     }
 
-    // Also assign the RBAC athlete role so the user appears correctly in Access Control
+    // Crear el diagnóstico inicial automáticamente
+    await createInitialDiagnostic(athleteResult.athleteId);
+
+    // Asignar rol RBAC
     await assignRbacRole(profileId, 'athlete');
+
+    revalidatePath('/admin/staff');
+    revalidatePath('/admin/athletes');
+    revalidatePath('/athletes');
+    return { error: null, athleteId: athleteResult.athleteId };
   }
 
   revalidatePath('/admin/staff');

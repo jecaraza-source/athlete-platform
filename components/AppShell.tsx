@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 import { getAuthUser } from '@/lib/rbac/server';
 import SignOutButton from './sign-out-button';
 import NavLinks from './nav-links';
+import LanguageSwitcher from './language-switcher';
 
 export default async function AppShell({ children }: { children: ReactNode }) {
   const authUser = await getAuthUser();
@@ -26,10 +27,13 @@ export default async function AppShell({ children }: { children: ReactNode }) {
         <NavLinks />
 
         {/* Footer */}
+        <div className="border-t border-gray-200">
+          <LanguageSwitcher />
+        </div>
         {authUser && (
-          <div className="px-3 py-3 border-t border-gray-200">
+          <div className="px-3 pb-3 border-t border-gray-200">
             <p
-              className="truncate text-xs text-gray-400 px-3 mb-1"
+              className="truncate text-xs text-gray-400 px-3 mb-1 mt-2"
               title={authUser.email ?? ''}
             >
               {authUser.email}
