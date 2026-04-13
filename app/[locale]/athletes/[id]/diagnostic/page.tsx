@@ -2,6 +2,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/rbac/server';
 import BackButton from '@/components/back-button';
 import DiagnosticTabs from './diagnostic-tabs';
+import AttachmentsLoader from '@/components/attachments/attachments-loader';
+import { SECTION_KEYS, type DiagnosticSectionKey } from '@/lib/types/diagnostic';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +77,22 @@ export default async function DiagnosticPage({
         : Promise.resolve(null),
     ]);
 
+  // Construir los paneles de adjuntos por sección (Server Components pasados como ReactNode)
+  const attachmentPanels = Object.fromEntries(
+    SECTION_KEYS.map((key) => [
+      key,
+      <AttachmentsLoader
+        key={key}
+        athleteId={id}
+        module="diagnostic"
+        sectionName={key}
+        relatedRecordId={sectionMap[key]?.id}
+        title="Documentos anexos de esta sección"
+        defaultCollapsed
+      />,
+    ])
+  ) as Partial<Record<DiagnosticSectionKey, React.ReactNode>>;
+
   return (
     <main className="p-6 max-w-7xl mx-auto">
       <BackButton href={`/athletes/${id}`} label="Volver al Expediente" />
@@ -90,6 +108,7 @@ export default async function DiagnosticPage({
           fisioterapia: physioEval,
         }}
         integratedResults={integratedResults}
+        attachmentPanels={attachmentPanels}
       />
     </main>
   );

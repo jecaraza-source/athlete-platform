@@ -1,6 +1,7 @@
 import BackButton from '@/components/back-button';
 import { requireAdminAccess, getAllRoles } from '@/lib/rbac/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getTranslations } from 'next-intl/server';
 import UsersClient from './users-client';
 import type { ProfileWithRoles } from '@/lib/rbac/types';
 
@@ -36,14 +37,16 @@ export default async function UsersRolesPage() {
     roles: allRoles.filter((r) => rolesByProfile[p.id]?.has(Number(r.id))),
   }));
 
+  const t = await getTranslations('admin.accessControl');
+
   return (
     <main className="p-8 max-w-5xl">
-      <BackButton href="/admin/access-control" label="Back to Access Control" />
+      <BackButton href="/admin/access-control" label={t('backTo')} />
 
       <div className="mt-4 mb-8">
-        <h1 className="text-3xl font-bold text-rose-700">Users &amp; Roles</h1>
+        <h1 className="text-3xl font-bold text-rose-700">{t('usersAndRoles.title')}</h1>
         <p className="text-gray-500 mt-1 text-sm">
-          Assign or revoke roles for individual user profiles.
+          {t('usersAndRoles.subtitle')}
         </p>
       </div>
 

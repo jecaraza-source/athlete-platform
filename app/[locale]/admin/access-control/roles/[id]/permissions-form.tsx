@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { setRolePermissions } from '../actions';
 import type { Permission } from '@/lib/rbac/types';
 
@@ -14,14 +15,11 @@ const GROUPS: Record<string, string[]> = {
   Administration: ['manage_users', 'manage_roles', 'manage_permissions'],
 };
 
-const GROUP_DESCRIPTIONS: Record<string, string> = {
-  Athletes:       'Control who can view, create, update, and remove athlete records.',
-  Calendar:       'Control access to calendar events.',
-  Administration: 'Control access to user management and RBAC configuration.',
-};
-
 function buildGroups(
-  permissions: Permission[]
+  permissions: Permission[],
+  groupDescriptions: Record<string, string>,
+  otherLabel: string,
+  otherDesc: string,
 ): Array<{ name: string; description: string; perms: Permission[] }> {
   const knownNames = new Set(Object.values(GROUPS).flat());
   const result: Array<{ name: string; description: string; perms: Permission[] }> = [];
@@ -29,13 +27,13 @@ function buildGroups(
   for (const [groupName, names] of Object.entries(GROUPS)) {
     const perms = permissions.filter((p) => names.includes(p.name));
     if (perms.length > 0) {
-      result.push({ name: groupName, description: GROUP_DESCRIPTIONS[groupName] ?? '', perms });
+      result.push({ name: groupName, description: groupDescriptions[groupName] ?? '', perms });
     }
   }
 
   const other = permissions.filter((p) => !knownNames.has(p.name));
   if (other.length > 0) {
-    result.push({ name: 'Other', description: 'Additional custom permissions.', perms: other });
+    result.push({ name: otherLabel, description: otherDesc, perms: other });
   }
 
   return result;
@@ -54,13 +52,25 @@ export default function PermissionsForm({
   allPermissions: Permission[];
   assignedIds: Set<string>;
 }) {
+  const t = useTranslations('admin.accessControl.roles');
+  const tc = useTranslations('common');
   const [checked, setChecked]   = useState<Set<string>>(() => new Set(assignedIds));
   const [lastSaved, setLastSaved] = useState<Set<string>>(() => new Set(assignedIds));
   const [error, setError]       = useState<string | null>(null);
   const [success, setSuccess]   = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const groups = useMemo(() => buildGroups(allPermissions), [allPermissions]);
+  const groupDescriptions: Record<string, string> = {
+    Athletes:       t('groupAthletesDesc'),
+    Calendar:       t('groupCalendarDesc'),
+    Administration: t('groupAdministrationDesc'),
+  };
+
+  const groups = useMemo(
+    () => buildGroups(allPermissions, groupDescriptions, t('groupOther'), t('groupOtherDesc')),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allPermissions]
+  );
 
   // Track whether the form has unsaved changes
   const isDirty = useMemo(() => {
@@ -114,20 +124,22 @@ export default function PermissionsForm({
       )}
       {success && (
         <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700 flex items-center gap-2">
-          <span>&#10003;</span> Permissions saved.
+          <span>&#10003;</span> {t('permissionsSaved')}
         </div>
       )}
 
       {/* Permission groups */}
       {allPermissions.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-200 px-6 py-10 text-center">
-          <p className="text-sm font-medium text-gray-500">No permissions defined yet.</p>
+          <p className="text-sm font-medium text-gray-500">{t('noPermissionsYet')}</p>
           <p className="text-xs text-gray-400 mt-1">
-            Go to{' '}
-            <a href="/admin/access-control/permissions" className="text-violet-600 hover:underline">
-              Permissions
-            </a>{' '}
-            to create some first.
+            {t.rich('noPermissionsHint', {
+              link: (chunks) => (
+                <a href="/admin/access-control/permissions" className="text-violet-600 hover:underline">
+                  {chunks}
+                </a>
+              ),
+            })}
           </p>
         </div>
       ) : (
@@ -157,7 +169,7 @@ export default function PermissionsForm({
                       disabled={allSelected || isPending}
                       className="text-xs font-medium text-violet-600 hover:text-violet-800 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                      All
+                      {t('allToggle')}
                     </button>
                     <button
                       type="button"
@@ -165,7 +177,7 @@ export default function PermissionsForm({
                       disabled={noneSelected || isPending}
                       className="text-xs font-medium text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                      None
+                      {t('noneToggle')}
                     </button>
                   </div>
                 </div>
@@ -215,19 +227,19 @@ export default function PermissionsForm({
             disabled={isPending || !isDirty}
             className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-40 transition-colors"
           >
-            {isPending ? 'Saving…' : 'Save permissions'}
+            {isPending ? tc('saving') : t('savePermissions')}
           </button>
 
           {isDirty && !isPending && (
             <span className="inline-flex items-center gap-1.5 text-xs text-amber-600">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500" aria-hidden />
-              Unsaved changes
+              {t('unsavedChanges')}
             </span>
           )}
 
           {!isDirty && !isPending && (
             <span className="text-xs text-gray-400">
-              {checked.size} of {allPermissions.length} permissions selected
+              {t('permissionsSelectedCount', { selected: checked.size, total: allPermissions.length })}
             </span>
           )}
         </div>

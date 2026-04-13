@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { deleteProfile } from './actions';
 
 export default function DeleteStaffButton({ id }: { id: string }) {
+  const tc = useTranslations('common');
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -32,26 +34,26 @@ export default function DeleteStaffButton({ id }: { id: string }) {
         onClick={() => setConfirming(true)}
         className="text-xs text-red-500 hover:text-red-700 hover:underline"
       >
-        Delete
+        {tc('delete')}
       </button>
     );
   }
 
   return (
     <span className="flex items-center gap-2 text-xs">
-      <span className="text-gray-600">Are you sure?</span>
+      <span className="text-gray-600">{tc('areYouSure')}</span>
       <button
         onClick={handleDelete}
         disabled={isPending}
         className="text-red-600 font-medium hover:underline disabled:opacity-50"
       >
-        {isPending ? 'Deleting…' : 'Yes, delete'}
+        {isPending ? tc('deleting') : tc('yesDelete')}
       </button>
       <button
         onClick={() => setConfirming(false)}
         className="text-gray-500 hover:underline"
       >
-        Cancel
+        {tc('cancel')}
       </button>
     </span>
   );

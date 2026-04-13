@@ -7,6 +7,7 @@ import NewPhysioSessionForm from './new-session-form';
 import AthleteFilter from '../nutrition/athlete-filter';
 import EditSessionForm from './edit-session-form';
 import CaseStatusSelect from './case-status-select';
+import AttachmentsLoader from '@/components/attachments/attachments-loader';
 
 export const dynamic = 'force-dynamic';
 
@@ -148,6 +149,19 @@ export default async function PhysioPage({
                 </div>
               )}
             </div>
+
+            {/* Documentos anexos */}
+            {c.athlete_id && (
+              <div className="mt-4">
+                <AttachmentsLoader
+                  athleteId={c.athlete_id}
+                  module="physio"
+                  relatedRecordId={c.id}
+                  title="Documentos del caso"
+                  defaultCollapsed
+                />
+              </div>
+            )}
           </div>
         ))}
       </div>

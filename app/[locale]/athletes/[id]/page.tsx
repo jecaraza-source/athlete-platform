@@ -3,6 +3,7 @@ import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/rbac/server';
 import { GeneralInfoSection, GuardianSection, EmergencyContactSection } from './athlete-sections';
+import AthleteDocuments from './athlete-documents';
 import {
   getDisciplineLabel,
   getDisabilityLabel,
@@ -51,12 +52,15 @@ function SectionHeader({ title, href }: { title: string; href: string }) {
 
 export default async function AthleteDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ docmodule?: string; docsearch?: string }>;
 }) {
   await requirePermission('view_athletes');
 
   const { id } = await params;
+  const { docmodule, docsearch } = await searchParams;
 
   // ──────────────────────────────────────────────────────────────────────
   // 1. Query base (columnas originales — siempre presentes en la BD)
@@ -346,6 +350,13 @@ export default async function AthleteDetailPage({
         </div>
 
       </div>
+
+      {/* Documentos del expediente — vista consolidada */}
+      <AthleteDocuments
+        athleteId={id}
+        moduleFilter={docmodule}
+        search={docsearch}
+      />
     </main>
   );
 }

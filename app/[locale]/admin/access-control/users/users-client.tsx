@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import UserRoleRow from './user-role-row';
 import type { ProfileWithRoles, Role } from '@/lib/rbac/types';
 
@@ -48,6 +49,8 @@ export default function UsersClient({
   /** Profile ID of the logged-in user, used to mark the self-row. */
   currentProfileId?: string | null;
 }) {
+  const t = useTranslations('admin.accessControl.usersAndRoles');
+  const tc = useTranslations('common');
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
 
@@ -74,9 +77,9 @@ export default function UsersClient({
     <div className="space-y-6">
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <StatCard value={profiles.length} label="Total users"          color="gray"   />
-        <StatCard value={withRoles}        label="With roles assigned"  color="violet" />
-        <StatCard value={withoutRoles}     label="No roles assigned"    color="amber"  />
+        <StatCard value={profiles.length} label={t('totalUsers')}   color="gray"   />
+        <StatCard value={withRoles}        label={t('withRoles')}    color="violet" />
+        <StatCard value={withoutRoles}     label={t('withoutRoles')} color="amber"  />
       </div>
 
       {/* Toolbar */}
@@ -90,8 +93,8 @@ export default function UsersClient({
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email…"
-            className="w-full rounded-lg border border-gray-300 pl-8 pr-3 py-2 text-sm placeholder:text-gray-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+          placeholder={t('searchPlaceholder')}
+          className="w-full rounded-lg border border-gray-300 pl-8 pr-3 py-2 text-sm placeholder:text-gray-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
           />
         </div>
 
@@ -101,7 +104,7 @@ export default function UsersClient({
           onChange={(e) => setRoleFilter(e.target.value)}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white"
         >
-          <option value="">All roles</option>
+          <option value="">{t('allRoles')}</option>
           {allRoles.map((r) => (
             <option key={r.id} value={r.id}>
               {r.name}  {/* already human-readable from DB */}
@@ -115,7 +118,7 @@ export default function UsersClient({
             onClick={() => { setSearch(''); setRoleFilter(''); }}
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 transition-colors whitespace-nowrap"
           >
-            Clear filters
+            {tc('clearFilters')}
           </button>
         )}
       </div>
@@ -125,9 +128,9 @@ export default function UsersClient({
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-5 py-3 font-semibold text-gray-700">User</th>
-              <th className="text-left px-5 py-3 font-semibold text-gray-700">Assigned roles</th>
-              <th className="text-left px-5 py-3 font-semibold text-gray-700">Add role</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-700">{t('columnUser')}</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-700">{t('columnAssignedRoles')}</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-700">{t('columnAddRole')}</th>
               {canDelete && <th className="px-5 py-3" />}
             </tr>
           </thead>
@@ -146,12 +149,12 @@ export default function UsersClient({
               <tr>
                 <td colSpan={canDelete ? 4 : 3} className="px-5 py-12 text-center">
                   {profiles.length === 0 ? (
-                    <p className="text-gray-400 text-sm">No users found in the database.</p>
+                    <p className="text-gray-400 text-sm">{t('noUsersDB')}</p>
                   ) : (
                     <div className="space-y-1">
-                      <p className="text-gray-500 font-medium text-sm">No users match your filters.</p>
+                      <p className="text-gray-500 font-medium text-sm">{t('noUsersFiltered')}</p>
                       <p className="text-gray-400 text-xs">
-                        Try adjusting the search term or role filter.
+                        {t('tryAdjusting')}
                       </p>
                     </div>
                   )}
@@ -164,7 +167,7 @@ export default function UsersClient({
         {/* Table footer — result count */}
         {filtered.length > 0 && filtered.length < profiles.length && (
           <div className="border-t border-gray-100 bg-gray-50 px-5 py-2.5 text-xs text-gray-500">
-            Showing {filtered.length} of {profiles.length} users
+            {t('showing', { shown: filtered.length, total: profiles.length })}
           </div>
         )}
       </div>

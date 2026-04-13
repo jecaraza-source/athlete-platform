@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { assignRole, revokeRole, deleteUser } from './actions';
 import type { ProfileWithRoles, Role } from '@/lib/rbac/types';
 import ChangePasswordForm from './change-password-form';
@@ -63,19 +64,21 @@ function RoleBadge({
   onRevoke: (id: number) => void;
   disabled: boolean;
 }) {
+  const t = useTranslations('admin.accessControl.usersAndRoles');
+  const tc = useTranslations('common');
   const [confirming, setConfirming] = useState(false);
   const color = BADGE_COLORS[role.code] ?? 'bg-gray-100 text-gray-600 ring-gray-200';
 
   if (confirming) {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 ring-1 ring-red-200">
-        Remove {role.name}?
+        {t('removeConfirm', { name: role.name })}
         <button
           onClick={() => { onRevoke(role.id); setConfirming(false); }}
           disabled={disabled}
           className="font-semibold underline hover:no-underline disabled:opacity-50"
         >
-          Yes
+          {tc('yes')}
         </button>
         <button
           onClick={() => setConfirming(false)}
@@ -118,6 +121,8 @@ function AddRoleControl({
   onAssign: (roleId: string) => void;
   disabled: boolean;
 }) {
+  const t = useTranslations('admin.accessControl.usersAndRoles');
+  const tc = useTranslations('common');
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState('');
 
@@ -127,7 +132,7 @@ function AddRoleControl({
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-800 border border-dashed border-violet-300 hover:border-violet-500 px-2 py-0.5 rounded-full transition-colors"
       >
-        + Add role
+        {t('addRole')}
       </button>
     );
   }
@@ -140,7 +145,7 @@ function AddRoleControl({
         onChange={(e) => setSelectedId(e.target.value)}
         className="rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
       >
-        <option value="">Pick a role…</option>
+        <option value="">{t('pickRole')}</option>
           {availableRoles.map((r) => (
             <option key={r.id} value={r.id}>
               {r.name}  {/* already human-readable from DB */}
@@ -154,13 +159,13 @@ function AddRoleControl({
         disabled={!selectedId || disabled}
         className="rounded-md bg-violet-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-40 transition-colors"
       >
-        Assign
+        {t('assign')}
       </button>
       <button
         onClick={() => { setOpen(false); setSelectedId(''); }}
         className="text-xs text-gray-400 hover:text-gray-600 px-1"
       >
-        Cancel
+        {tc('cancel')}
       </button>
     </div>
   );
@@ -183,6 +188,8 @@ export default function UserRoleRow({
   /** True when this row represents the currently logged-in user. */
   isSelf?: boolean;
 }) {
+  const t = useTranslations('admin.accessControl.usersAndRoles');
+  const tc = useTranslations('common');
   const [assignedRoles, setAssignedRoles]   = useState<Role[]>(profile.roles);
   const [error, setError]                   = useState<string | null>(null);
   const [isPending, startTransition]        = useTransition();
@@ -257,7 +264,7 @@ export default function UserRoleRow({
           <div className="min-w-0">
             <p className="font-medium text-gray-900 truncate">{fullName}</p>
             <p className="text-xs text-gray-400 truncate">
-              {profile.email ?? <span className="italic">No email</span>}
+            {profile.email ?? <span className="italic">{t('noEmail')}</span>}
             </p>
             {profile.auth_user_id && (
               <ChangePasswordForm authUserId={profile.auth_user_id} />
@@ -270,7 +277,7 @@ export default function UserRoleRow({
       <td className="px-5 py-3.5">
         <div className="flex flex-wrap items-center gap-1.5">
           {assignedRoles.length === 0 ? (
-            <span className="text-xs text-gray-400 italic">No roles assigned</span>
+            <span className="text-xs text-gray-400 italic">{t('noRolesAssigned')}</span>
           ) : (
             assignedRoles.map((role) => (
               <RoleBadge
@@ -292,7 +299,7 @@ export default function UserRoleRow({
       {/* Add role */}
       <td className="px-5 py-3.5">
         {isPending ? (
-          <span className="text-xs text-gray-400">Saving…</span>
+          <span className="text-xs text-gray-400">{tc('saving')}</span>
         ) : availableRoles.length > 0 ? (
           <AddRoleControl
             availableRoles={availableRoles}
@@ -300,7 +307,7 @@ export default function UserRoleRow({
             disabled={isPending}
           />
         ) : (
-          <span className="text-xs text-gray-400 italic">All roles assigned</span>
+          <span className="text-xs text-gray-400 italic">{t('allRolesAssigned')}</span>
         )}
       </td>
 
@@ -311,31 +318,31 @@ export default function UserRoleRow({
             <p className="mb-1 text-xs text-red-600" title={deleteError}>{deleteError}</p>
           )}
           {isSelf ? (
-            <span className="text-xs text-gray-300 italic">You</span>
+            <span className="text-xs text-gray-300 italic">{t('you')}</span>
           ) : !confirmingDelete ? (
             <button
               onClick={() => setConfirmingDelete(true)}
               disabled={!profile.auth_user_id}
               className="text-xs text-red-400 hover:text-red-600 hover:underline disabled:opacity-30 disabled:cursor-not-allowed"
-              title={!profile.auth_user_id ? 'No auth account linked' : 'Delete user permanently'}
+              title={!profile.auth_user_id ? t('noAuthLinked') : t('deleteUserPermanently')}
             >
-              Delete
+              {tc('delete')}
             </button>
           ) : (
             <span className="inline-flex items-center gap-1.5 text-xs">
-              <span className="text-gray-500">Delete {profile.first_name}?</span>
+              <span className="text-gray-500">{tc('deleteConfirm')}</span>
               <button
                 onClick={handleDelete}
                 disabled={isPending}
                 className="font-semibold text-red-600 hover:underline disabled:opacity-50"
               >
-                {isPending ? 'Deleting…' : 'Yes'}
+                {isPending ? tc('deleting') : tc('yes')}
               </button>
               <button
                 onClick={() => { setConfirmingDelete(false); setDeleteError(null); }}
                 className="text-gray-400 hover:text-gray-600 hover:underline"
               >
-                No
+                {tc('no')}
               </button>
             </span>
           )}

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { deleteRole } from './actions';
 import type { Role } from '@/lib/rbac/types';
 
@@ -42,6 +43,8 @@ export default function RoleRow({
   permissionCount: number;
   userCount: number;
 }) {
+  const t = useTranslations('admin.accessControl.roles');
+  const tc = useTranslations('common');
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -75,18 +78,18 @@ export default function RoleRow({
 
       {/* Description */}
       <td className="px-5 py-4 text-gray-500 text-sm max-w-xs">
-        {role.description ?? <span className="italic text-gray-300">No description</span>}
+        {role.description ?? <span className="italic text-gray-300">{tc('noDescription')}</span>}
       </td>
 
       {/* Type badge */}
       <td className="px-5 py-4 text-center">
         {role.is_system ? (
           <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 ring-1 ring-gray-200">
-            System
+            {t('systemBadge')}
           </span>
         ) : (
           <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-white text-gray-400 ring-1 ring-gray-200">
-            Custom
+            {t('customBadge')}
           </span>
         )}
       </td>
@@ -118,7 +121,7 @@ export default function RoleRow({
             href={`/admin/access-control/roles/${role.id}`}
             className="text-xs font-medium text-violet-600 hover:text-violet-800 hover:underline"
           >
-            Manage
+            {t('manage')}
           </Link>
 
           {!confirming ? (
@@ -126,25 +129,25 @@ export default function RoleRow({
               onClick={() => setConfirming(true)}
               disabled={role.is_system}
               className="text-xs text-red-400 hover:text-red-600 hover:underline disabled:opacity-25 disabled:cursor-not-allowed"
-              title={role.is_system ? 'System roles cannot be deleted' : 'Delete role'}
+              title={role.is_system ? t('systemRoleCannotDelete') : t('deleteRole')}
             >
-              Delete
+              {tc('delete')}
             </button>
           ) : (
             <span className="flex items-center gap-1.5 text-xs">
-              <span className="text-gray-500">Delete?</span>
+              <span className="text-gray-500">{tc('deleteConfirm')}</span>
               <button
                 onClick={handleDelete}
                 disabled={isPending}
                 className="text-red-600 font-semibold hover:underline disabled:opacity-50"
               >
-                {isPending ? 'Deleting…' : 'Yes'}
+                {isPending ? tc('deleting') : tc('yes')}
               </button>
               <button
                 onClick={() => setConfirming(false)}
                 className="text-gray-400 hover:text-gray-600 hover:underline"
               >
-                No
+                {tc('no')}
               </button>
             </span>
           )}

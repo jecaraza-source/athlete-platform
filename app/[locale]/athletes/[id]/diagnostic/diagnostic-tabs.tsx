@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   SECTION_KEYS,
   SECTION_LABELS,
@@ -49,11 +49,13 @@ type Evaluations = {
 };
 
 type Props = {
-  athlete:          Athlete;
-  diagnostic:       AthleteInitialDiagnostic | null;
-  sections:         AthleteSection[];
-  evaluations:      Evaluations;
+  athlete:           Athlete;
+  diagnostic:        AthleteInitialDiagnostic | null;
+  sections:          AthleteSection[];
+  evaluations:       Evaluations;
   integratedResults: IntegratedResults | null;
+  /** Panel de documentos pre-renderizado por el Server Component padre para cada rubro */
+  attachmentPanels?: Partial<Record<DiagnosticSectionKey, ReactNode>>;
 };
 
 // ---------------------------------------------------------------------------
@@ -111,6 +113,7 @@ export default function DiagnosticTabs({
   sections,
   evaluations,
   integratedResults,
+  attachmentPanels = {},
 }: Props) {
   type TabKey = DiagnosticSectionKey | 'resultado_integrado';
   const [activeTab, setActiveTab] = useState<TabKey>('medico');
@@ -212,41 +215,56 @@ export default function DiagnosticTabs({
       </div>
 
       {/* ── Formulario activo ─────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
         {activeTab === 'medico' && (
-          <MedicalForm
-            athleteId={athlete.id}
-            sectionStatus={(sectionMap['medico']?.status as DiagnosticStatus) ?? 'pendiente'}
-            existingData={evaluations.medico}
-          />
+          <>
+            <MedicalForm
+              athleteId={athlete.id}
+              sectionStatus={(sectionMap['medico']?.status as DiagnosticStatus) ?? 'pendiente'}
+              existingData={evaluations.medico}
+            />
+            {attachmentPanels['medico']}
+          </>
         )}
         {activeTab === 'nutricion' && (
-          <NutritionForm
-            athleteId={athlete.id}
-            sectionStatus={(sectionMap['nutricion']?.status as DiagnosticStatus) ?? 'pendiente'}
-            existingData={evaluations.nutricion}
-          />
+          <>
+            <NutritionForm
+              athleteId={athlete.id}
+              sectionStatus={(sectionMap['nutricion']?.status as DiagnosticStatus) ?? 'pendiente'}
+              existingData={evaluations.nutricion}
+            />
+            {attachmentPanels['nutricion']}
+          </>
         )}
         {activeTab === 'psicologia' && (
-          <PsychologyForm
-            athleteId={athlete.id}
-            sectionStatus={(sectionMap['psicologia']?.status as DiagnosticStatus) ?? 'pendiente'}
-            existingData={evaluations.psicologia}
-          />
+          <>
+            <PsychologyForm
+              athleteId={athlete.id}
+              sectionStatus={(sectionMap['psicologia']?.status as DiagnosticStatus) ?? 'pendiente'}
+              existingData={evaluations.psicologia}
+            />
+            {attachmentPanels['psicologia']}
+          </>
         )}
         {activeTab === 'entrenador' && (
-          <CoachForm
-            athleteId={athlete.id}
-            sectionStatus={(sectionMap['entrenador']?.status as DiagnosticStatus) ?? 'pendiente'}
-            existingData={evaluations.entrenador}
-          />
+          <>
+            <CoachForm
+              athleteId={athlete.id}
+              sectionStatus={(sectionMap['entrenador']?.status as DiagnosticStatus) ?? 'pendiente'}
+              existingData={evaluations.entrenador}
+            />
+            {attachmentPanels['entrenador']}
+          </>
         )}
         {activeTab === 'fisioterapia' && (
-          <PhysioForm
-            athleteId={athlete.id}
-            sectionStatus={(sectionMap['fisioterapia']?.status as DiagnosticStatus) ?? 'pendiente'}
-            existingData={evaluations.fisioterapia}
-          />
+          <>
+            <PhysioForm
+              athleteId={athlete.id}
+              sectionStatus={(sectionMap['fisioterapia']?.status as DiagnosticStatus) ?? 'pendiente'}
+              existingData={evaluations.fisioterapia}
+            />
+            {attachmentPanels['fisioterapia']}
+          </>
         )}
         {activeTab === 'resultado_integrado' && (
           <IntegratedResultForm

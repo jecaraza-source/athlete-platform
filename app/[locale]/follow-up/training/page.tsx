@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/rbac/server';
 import { getTranslations } from 'next-intl/server';
 import NewSessionForm from './new-session-form';
 import AthleteFilter from '../nutrition/athlete-filter';
+import AttachmentsLoader from '@/components/attachments/attachments-loader';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,6 +114,17 @@ export default async function TrainingPage({
                 <span className="font-medium">{t('notes')}:</span>{' '}
                 {session.notes ?? tc('na')}
               </p>
+            </div>
+
+            {/* Documentos anexos */}
+            <div className="mt-4">
+              <AttachmentsLoader
+                athleteId={session.athlete_id}
+                module="training"
+                relatedRecordId={session.id}
+                title="Documentos de la sesión"
+                defaultCollapsed
+              />
             </div>
           </div>
         ))}

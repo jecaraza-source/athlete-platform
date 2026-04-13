@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { createPermission } from './actions';
 
 export default function CreatePermissionForm() {
+  const t = useTranslations('admin.accessControl.permissions');
+  const tc = useTranslations('common');
   const [open, setOpen]   = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -45,7 +48,7 @@ export default function CreatePermissionForm() {
         onClick={() => setOpen(true)}
         className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 transition-colors"
       >
-        + New permission
+        {t('newTrigger')}
       </button>
 
       {/* Backdrop */}
@@ -68,7 +71,7 @@ export default function CreatePermissionForm() {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-base font-semibold text-gray-900">New Permission</h2>
+          <h2 className="text-base font-semibold text-gray-900">{t('newTitle')}</h2>
           <button
             onClick={close}
             className="text-gray-400 hover:text-gray-600 text-xl leading-none"
@@ -89,7 +92,7 @@ export default function CreatePermissionForm() {
           <form ref={formRef} action={handleSubmit} id="create-perm-form" className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="perm-name">
-                Name <span className="text-red-500">*</span>
+                {tc('name')} <span className="text-red-500">*</span>
               </label>
               <input
                 ref={firstInputRef}
@@ -97,23 +100,23 @@ export default function CreatePermissionForm() {
                 name="name"
                 type="text"
                 required
-                placeholder="e.g. view_reports"
+                placeholder={t('namePlaceholder')}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
               />
               <p className="mt-1.5 text-xs text-gray-400">
-                Lowercase. Spaces are converted to underscores automatically.
+                {tc('lowercaseHint')}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="perm-desc">
-                Description
+                {tc('description')}
               </label>
               <textarea
                 id="perm-desc"
                 name="description"
                 rows={3}
-                placeholder="What does this permission grant access to?"
+                placeholder={t('descriptionPlaceholder')}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
               />
             </div>
@@ -128,14 +131,14 @@ export default function CreatePermissionForm() {
             disabled={isPending}
             className="flex-1 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50 transition-colors"
           >
-            {isPending ? 'Creating…' : 'Create permission'}
+            {isPending ? tc('creating') : t('createPermission')}
           </button>
           <button
             type="button"
             onClick={close}
             className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
           >
-            Cancel
+            {tc('cancel')}
           </button>
         </div>
       </div>

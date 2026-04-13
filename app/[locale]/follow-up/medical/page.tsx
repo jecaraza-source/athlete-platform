@@ -8,6 +8,7 @@ import NewMedicalSessionForm from './new-session-form';
 import EditSessionForm from './edit-session-form';
 import CaseStatusSelect from './case-status-select';
 import SessionChart from './session-chart';
+import AttachmentsLoader from '@/components/attachments/attachments-loader';
 
 export const dynamic = 'force-dynamic';
 
@@ -203,6 +204,19 @@ export default async function MedicalPage({
                 </div>
               )}
             </div>
+
+            {/* Documentos anexos */}
+            {c.athlete_id && (
+              <div className="mt-4">
+                <AttachmentsLoader
+                  athleteId={c.athlete_id}
+                  module="medical"
+                  relatedRecordId={c.id}
+                  title="Documentos del caso"
+                  defaultCollapsed
+                />
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import BackButton from '@/components/back-button';
 import { requireAdminAccess, getAllPermissions, getRoleWithPermissions } from '@/lib/rbac/server';
+import { getTranslations } from 'next-intl/server';
 import type { Permission } from '@/lib/rbac/types';
 import EditRoleForm from './edit-role-form';
 import PermissionsForm from './permissions-form';
@@ -28,18 +29,18 @@ function formatName(name: string) {
   return name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+function formatDate(iso: string, locale: string) {
+  return new Date(iso).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 export default async function RoleDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; locale: string }>;
 }) {
   await requireAdminAccess();
 
-  const { id } = await params;
+  const { id, locale } = await params;
   const [roleWithPerms, allPermissions] = await Promise.all([
     getRoleWithPermissions(id),
     getAllPermissions(),
@@ -49,10 +50,11 @@ export default async function RoleDetailPage({
 
   const assignedIds = new Set<string>(roleWithPerms.permissions.map((p: Permission) => p.id));
   const colors = ROLE_COLORS[roleWithPerms.code] ?? DEFAULT_COLORS;
+  const t = await getTranslations('admin.accessControl.roles');
 
   return (
     <main className="p-8 max-w-3xl">
-      <BackButton href="/admin/access-control/roles" label="Back to Roles" />
+      <BackButton href="/admin/access-control/roles" label={t('backTo')} />
 
       {/* Header */}
       <div className="mt-5 mb-8 flex items-start gap-4">
@@ -63,15 +65,15 @@ export default async function RoleDetailPage({
             <span
               className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ring-1 ${colors.badge} ${colors.text}`}
             >
-              {roleWithPerms.is_system ? 'System role' : 'Custom role'}
+              {roleWithPerms.is_system ? t('systemRoleBadge') : t('customRoleBadge')}
             </span>
           </div>
           <div className="mt-1 flex items-center gap-3 text-xs text-gray-400">
             <span className="font-mono">{roleWithPerms.code}</span>
             <span aria-hidden>·</span>
-            <span>Created {formatDate(roleWithPerms.created_at)}</span>
+            <span>{t('createdOn')} {formatDate(roleWithPerms.created_at, locale ?? 'en')}</span>
             <span aria-hidden>·</span>
-            <span>{assignedIds.size} permission{assignedIds.size !== 1 ? 's' : ''} assigned</span>
+            <span>{t('permissionsAssigned', { count: assignedIds.size })}</span>
           </div>
         </div>
       </div>
@@ -80,8 +82,8 @@ export default async function RoleDetailPage({
         {/* Details */}
         <section>
           <div className="mb-4">
-            <h2 className="text-base font-semibold text-gray-900">Details</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Update the description for this role.</p>
+            <h2 className="text-base font-semibold text-gray-900">{t('detailsSection')}</h2>
+            <p className="text-sm text-gray-500 mt-0.5">{t('detailsDesc')}</p>
           </div>
           <EditRoleForm role={roleWithPerms} />
         </section>
@@ -89,9 +91,9 @@ export default async function RoleDetailPage({
         {/* Permissions */}
         <section>
           <div className="mb-4">
-            <h2 className="text-base font-semibold text-gray-900">Permissions</h2>
+            <h2 className="text-base font-semibold text-gray-900">{t('permissionsSection')}</h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              Select which permissions this role grants. Permissions are grouped by area.
+              {t('permissionsSectionDesc')}
             </p>
           </div>
           <PermissionsForm

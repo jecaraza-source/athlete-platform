@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { deletePermission } from './actions';
 import type { Permission } from '@/lib/rbac/types';
 
@@ -26,6 +27,8 @@ export default function PermissionRow({
   permission: Permission;
   roles: RoleRef[];
 }) {
+  const t = useTranslations('admin.accessControl.permissions');
+  const tc = useTranslations('common');
   const [confirming, setConfirming] = useState(false);
   const [error, setError]           = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -51,15 +54,15 @@ export default function PermissionRow({
 
       {/* Description */}
       <td className="px-5 py-4 text-gray-500 text-sm max-w-xs">
-        {permission.description ?? (
-          <span className="italic text-gray-300">No description</span>
+      {permission.description ?? (
+          <span className="italic text-gray-300">{tc('noDescription')}</span>
         )}
       </td>
 
       {/* Role badges */}
       <td className="px-5 py-4">
         {roles.length === 0 ? (
-          <span className="text-xs italic text-gray-300">Unused</span>
+          <span className="text-xs italic text-gray-300">{t('unused')}</span>
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {roles.map((role) => (
@@ -91,23 +94,23 @@ export default function PermissionRow({
               onClick={() => setConfirming(true)}
               className="text-xs text-red-400 hover:text-red-600 hover:underline"
             >
-              Delete
+              {tc('delete')}
             </button>
           ) : (
             <span className="flex items-center gap-1.5 text-xs">
-              <span className="text-gray-500">Delete?</span>
+              <span className="text-gray-500">{tc('deleteConfirm')}</span>
               <button
                 onClick={handleDelete}
                 disabled={isPending}
                 className="text-red-600 font-semibold hover:underline disabled:opacity-50"
               >
-                {isPending ? 'Deleting…' : 'Yes'}
+                {isPending ? tc('deleting') : tc('yes')}
               </button>
               <button
                 onClick={() => setConfirming(false)}
                 className="text-gray-400 hover:text-gray-600 hover:underline"
               >
-                No
+                {tc('no')}
               </button>
             </span>
           )}
