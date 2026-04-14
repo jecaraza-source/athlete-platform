@@ -23,6 +23,7 @@ export default async function AppShell({ children }: { children: ReactNode }) {
           style={{ height: 'auto' }}
           priority
         />
+        </div>
 
         {/* Navigation */}
         <NavLinks />
