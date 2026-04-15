@@ -82,9 +82,6 @@ export default async function NutritionPage({
   const t = await getTranslations('followUp.nutrition');
   const tc = await getTranslations('common');
 
-  const t = await getTranslations('followUp.nutrition');
-  const tc = await getTranslations('common');
-
   return (
     <main className="p-8">
       <BackButton href="/follow-up" label={tc('backToFollowUp')} />
