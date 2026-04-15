@@ -13,6 +13,10 @@ import { Loading } from '@/components/ui/loading';
 import { getAthlete } from '@/services/athletes';
 import { getDiagnostic, getDiagnosticSections } from '@/services/diagnostic';
 import { listTrainingSessions, type TrainingSession } from '@/services/training';
+import {
+  listNutritionPlans, listPhysioCases, listPsychologyCases,
+  type NutritionPlan, type PhysioCase, type PsychologyCase,
+} from '@/services/follow-up';
 import type { Athlete, AthleteInitialDiagnostic, AthleteSection } from '@/types';
 import { SECTION_LABELS, DIAGNOSTIC_STATUS_LABELS, SECTION_KEYS, ATHLETE_STATUS_LABELS } from '@/types';
 
@@ -36,6 +40,9 @@ export default function AthleteDetailScreen() {
   const [diagnostic, setDiagnostic] = useState<AthleteInitialDiagnostic | null>(null);
   const [sections, setSections] = useState<AthleteSection[]>([]);
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([]);
+  const [nutritionPlans, setNutritionPlans] = useState<NutritionPlan[]>([]);
+  const [physioCases, setPhysioCases] = useState<PhysioCase[]>([]);
+  const [psychCases, setPsychCases] = useState<PsychologyCase[]>([]);
   const [activeTab, setActiveTab] = useState<'info' | 'diagnostic' | 'seguimiento'>('info');
 
   useEffect(() => {
@@ -44,12 +51,18 @@ export default function AthleteDetailScreen() {
         const a = await getAthlete(id);
         setAthlete(a);
         if (a) {
-          const [diag, sessions] = await Promise.all([
+          const [diag, sessions, plans, physio, psych] = await Promise.all([
             getDiagnostic(a.id),
             listTrainingSessions(a.id),
+            listNutritionPlans(a.id),
+            listPhysioCases(a.id),
+            listPsychologyCases(a.id),
           ]);
           setDiagnostic(diag);
           setTrainingSessions(sessions);
+          setNutritionPlans(plans);
+          setPhysioCases(physio);
+          setPsychCases(psych);
           if (diag) {
             const secs = await getDiagnosticSections(diag.id);
             setSections(secs);
@@ -129,13 +142,12 @@ export default function AthleteDetailScreen() {
         {/* Seguimiento tab */}
         {activeTab === 'seguimiento' && (
           <>
+            {/* Entrenamiento */}
             <Text style={[styles.sectionsTitle, { color: colors.text }]}>
-              Sesiones de entrenamiento ({trainingSessions.length})
+              Entrenamiento ({trainingSessions.length})
             </Text>
             {trainingSessions.length === 0 ? (
-              <Card>
-                <Text style={{ color: colors.icon, fontSize: 14 }}>Sin sesiones registradas.</Text>
-              </Card>
+              <Card><Text style={{ color: colors.icon, fontSize: 14 }}>Sin sesiones registradas.</Text></Card>
             ) : (
               trainingSessions.slice(0, 10).map((s) => (
                 <Card key={s.id} style={styles.sessionCard}>
@@ -160,6 +172,94 @@ export default function AthleteDetailScreen() {
                       {s.notes}
                     </Text>
                   )}
+                </Card>
+              ))
+            )}
+
+            {/* Nutrición */}
+            <Text style={[styles.sectionsTitle, { color: colors.text, marginTop: 16 }]}>
+              Nutrición ({nutritionPlans.length})
+            </Text>
+            {nutritionPlans.length === 0 ? (
+              <Card><Text style={{ color: colors.icon, fontSize: 14 }}>Sin planes de nutrición.</Text></Card>
+            ) : (
+              nutritionPlans.map((p) => (
+                <Card key={p.id} style={styles.sessionCard}>
+                  <View style={styles.sessionRow}>
+                    <View style={[styles.sessionIcon, { backgroundColor: '#dcfce718' }]}>
+                      <Ionicons name="nutrition-outline" size={16} color="#15803d" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.sessionTitle, { color: colors.text }]} numberOfLines={1}>
+                        {p.title}
+                      </Text>
+                      <Text style={[styles.sessionDate, { color: colors.icon }]}>
+                        {new Date(p.start_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        {p.end_date ? ` – ${new Date(p.end_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}` : ' (en curso)'}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusTag, { backgroundColor: '#f0fdf4' }]}>
+                      <Text style={{ fontSize: 10, color: '#15803d', fontWeight: '600' }}>{p.status}</Text>
+                    </View>
+                  </View>
+                </Card>
+              ))
+            )}
+
+            {/* Fisioterapia */}
+            <Text style={[styles.sectionsTitle, { color: colors.text, marginTop: 16 }]}>
+              Fisioterapia ({physioCases.length})
+            </Text>
+            {physioCases.length === 0 ? (
+              <Card><Text style={{ color: colors.icon, fontSize: 14 }}>Sin casos de fisioterapia.</Text></Card>
+            ) : (
+              physioCases.map((c) => (
+                <Card key={c.id} style={styles.sessionCard}>
+                  <View style={styles.sessionRow}>
+                    <View style={[styles.sessionIcon, { backgroundColor: '#ffe4e6' }]}>
+                      <Ionicons name="body-outline" size={16} color="#be123c" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.sessionTitle, { color: colors.text }]} numberOfLines={1}>
+                        {c.injuries?.[0]?.injury_type ?? 'Caso de fisioterapia'}
+                      </Text>
+                      <Text style={[styles.sessionDate, { color: colors.icon }]}>
+                        Abierto {new Date(c.opened_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusTag, { backgroundColor: '#fff1f2' }]}>
+                      <Text style={{ fontSize: 10, color: '#be123c', fontWeight: '600' }}>{c.status}</Text>
+                    </View>
+                  </View>
+                </Card>
+              ))
+            )}
+
+            {/* Psicología */}
+            <Text style={[styles.sectionsTitle, { color: colors.text, marginTop: 16 }]}>
+              Psicología ({psychCases.length})
+            </Text>
+            {psychCases.length === 0 ? (
+              <Card><Text style={{ color: colors.icon, fontSize: 14 }}>Sin casos de psicología.</Text></Card>
+            ) : (
+              psychCases.map((c) => (
+                <Card key={c.id} style={styles.sessionCard}>
+                  <View style={styles.sessionRow}>
+                    <View style={[styles.sessionIcon, { backgroundColor: '#fef9c3' }]}>
+                      <Ionicons name="happy-outline" size={16} color="#854d0e" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.sessionTitle, { color: colors.text }]} numberOfLines={1}>
+                        {c.summary ?? 'Caso de psicología'}
+                      </Text>
+                      <Text style={[styles.sessionDate, { color: colors.icon }]}>
+                        Abierto {new Date(c.opened_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusTag, { backgroundColor: '#fefce8' }]}>
+                      <Text style={{ fontSize: 10, color: '#854d0e', fontWeight: '600' }}>{c.status}</Text>
+                    </View>
+                  </View>
                 </Card>
               ))
             )}
@@ -270,7 +370,7 @@ const styles = StyleSheet.create({
   sectionBadgeText: { fontSize: 13, fontWeight: '600' },
   miniProgress: { height: 4, backgroundColor: '#e2e8f0', borderRadius: 2 },
   miniProgressFill: { height: 4, borderRadius: 2 },
-  // Training sessions (Seguimiento tab)
+  // Follow-up sections (Seguimiento tab)
   sessionCard: { marginBottom: 10 },
   sessionRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
   sessionIcon: {
@@ -280,4 +380,5 @@ const styles = StyleSheet.create({
   sessionTitle: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
   sessionDate: { fontSize: 12 },
   sessionNotes: { fontSize: 12, lineHeight: 17, marginTop: 4, fontStyle: 'italic' },
+  statusTag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
 });

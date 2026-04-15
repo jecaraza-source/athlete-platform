@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, useColorScheme,
-  RefreshControl, Alert, TouchableOpacity, TextInput,
+  RefreshControl, Alert, TouchableOpacity,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -91,6 +91,103 @@ type FormState = {
 
 const todayISO = new Date().toISOString().slice(0, 10);
 
+// ---------------------------------------------------------------------------
+// DateField — accesible date selector sin dependencias extra
+// Muestra la fecha en formato largo y permite navegar ±1 día.
+// ---------------------------------------------------------------------------
+
+const MONTHS_ES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+const DAYS_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+function parseISO(iso: string): Date | null {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function formatLong(iso: string): string {
+  const d = parseISO(iso);
+  if (!d) return 'Fecha inválida';
+  return `${DAYS_ES[d.getDay()]}, ${d.getDate()} de ${MONTHS_ES[d.getMonth()]} de ${d.getFullYear()}`;
+}
+
+function shiftDay(iso: string, delta: number): string {
+  const d = parseISO(iso) ?? new Date();
+  d.setDate(d.getDate() + delta);
+  const yyyy = d.getFullYear();
+  const mm   = String(d.getMonth() + 1).padStart(2, '0');
+  const dd   = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+type DateFieldProps = {
+  value: string;
+  onChange: (iso: string) => void;
+  error?: string;
+};
+
+function DateField({ value, onChange, error }: DateFieldProps) {
+  const scheme = useColorScheme() ?? 'light';
+  const colors = Colors[scheme];
+  const isValid = parseISO(value) !== null;
+
+  return (
+    <View style={styles.fieldWrapper}>
+      <Text style={[styles.fieldLabel, { color: colors.text }]}>Fecha *</Text>
+
+      {/* Navigation row */}
+      <View style={[
+        styles.dateRow,
+        {
+          backgroundColor: scheme === 'dark' ? '#1e2022' : '#f8fafc',
+          borderColor: error ? '#dc2626' : scheme === 'dark' ? '#374151' : '#e2e8f0',
+        },
+      ]}>
+        {/* Previous day */}
+        <TouchableOpacity
+          onPress={() => onChange(shiftDay(value, -1))}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.dateBtnWrap}
+        >
+          <Ionicons name="chevron-back" size={20} color={PRIMARY} />
+        </TouchableOpacity>
+
+        {/* Date display — tapping it resets to today */}
+        <TouchableOpacity
+          style={styles.dateLabelWrap}
+          onPress={() => onChange(todayISO)}
+          hitSlop={{ top: 4, bottom: 4, left: 0, right: 0 }}
+        >
+          <Text style={[styles.dateISO, { color: isValid ? colors.text : '#dc2626' }]}>
+            {value || '—'}
+          </Text>
+          <Text style={[styles.dateLong, { color: isValid ? colors.icon : '#dc2626' }]}>
+            {isValid ? formatLong(value) : 'Formato inválido (usa AAAA-MM-DD)'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Next day */}
+        <TouchableOpacity
+          onPress={() => onChange(shiftDay(value, +1))}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.dateBtnWrap}
+        >
+          <Ionicons name="chevron-forward" size={20} color={PRIMARY} />
+        </TouchableOpacity>
+      </View>
+
+      {error && <Text style={styles.fieldError}>{error}</Text>}
+      <Text style={[styles.dateHint, { color: colors.icon }]}>
+        Toca la fecha para volver a hoy
+      </Text>
+    </View>
+  );
+}
+
 function NewSessionForm({
   athleteId,
   onSaved,
@@ -167,27 +264,11 @@ function NewSessionForm({
       />
 
       {/* Date field */}
-      <View style={styles.fieldWrapper}>
-        <Text style={[styles.fieldLabel, { color: colors.text }]}>Fecha *</Text>
-        <TextInput
-          style={[
-            styles.dateInput,
-            {
-              backgroundColor: scheme === 'dark' ? '#1e2022' : '#f8fafc',
-              color: colors.text,
-              borderColor: errors.session_date ? '#dc2626' : scheme === 'dark' ? '#374151' : '#e2e8f0',
-            },
-          ]}
-          value={form.session_date}
-          onChangeText={(v) => set('session_date', v)}
-          placeholder="AAAA-MM-DD"
-          placeholderTextColor={colors.icon}
-          keyboardType="numbers-and-punctuation"
-        />
-        {errors.session_date && (
-          <Text style={styles.fieldError}>{errors.session_date}</Text>
-        )}
-      </View>
+      <DateField
+        value={form.session_date}
+        onChange={(v) => set('session_date', v)}
+        error={errors.session_date}
+      />
 
       {/* Time row */}
       <View style={styles.timeRow}>
@@ -379,10 +460,15 @@ const styles = StyleSheet.create({
   // Date field
   fieldWrapper: { marginBottom: 14 },
   fieldLabel: { fontSize: 13, fontWeight: '600', marginBottom: 6 },
-  dateInput: {
-    height: 48, borderWidth: 1, borderRadius: 10,
-    paddingHorizontal: 14, fontSize: 15,
+  dateRow: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderRadius: 10, overflow: 'hidden',
   },
+  dateBtnWrap: { paddingHorizontal: 12, paddingVertical: 12 },
+  dateLabelWrap: { flex: 1, alignItems: 'center', paddingVertical: 8 },
+  dateISO: { fontSize: 15, fontWeight: '600' },
+  dateLong: { fontSize: 11, marginTop: 2 },
+  dateHint: { fontSize: 10, marginTop: 4, textAlign: 'center' },
   fieldError: { marginTop: 4, fontSize: 12, color: '#dc2626' },
 
   // Time row
