@@ -312,6 +312,10 @@
       "title": "Notificaciones",
       "description": "Email, push y correos de seguimiento de tickets."
     },
+    "protocolsAdmin": {
+      "title": "Protocolos",
+      "description": "Carga y gestiona los PDF de protocolos por disciplina."
+    },
     "tickets": {
       "title": "Tickets",
       "description": "Gesti\u00f3n interna de casos \u2014 rastrea, asigna y resuelve incidencias.",

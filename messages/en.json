@@ -312,6 +312,10 @@
       "title": "Notifications",
       "description": "Email, push, and ticket follow-up emails."
     },
+    "protocolsAdmin": {
+      "title": "Protocols",
+      "description": "Upload and manage protocol PDFs per discipline."
+    },
     "tickets": {
       "title": "Tickets",
       "description": "Internal case management \u2014 track, assign, and resolve issues.",

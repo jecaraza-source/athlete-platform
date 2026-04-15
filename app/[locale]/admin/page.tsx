@@ -54,6 +54,14 @@ export default async function AdminPage() {
           <h2 className="text-lg font-semibold text-rose-800">{t('tickets.title')}</h2>
           <p className="text-sm text-rose-600 mt-1">{t('tickets.description')}</p>
         </Link>
+
+        <Link
+          href="/admin/protocols"
+          className="rounded-lg border border-violet-200 bg-violet-50 p-6 hover:bg-violet-100 transition-colors"
+        >
+          <h2 className="text-lg font-semibold text-violet-800">{t('protocolsAdmin.title')}</h2>
+          <p className="text-sm text-violet-600 mt-1">{t('protocolsAdmin.description')}</p>
+        </Link>
       </div>
     </main>
   );
