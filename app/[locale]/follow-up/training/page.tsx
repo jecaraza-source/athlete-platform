@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/rbac/server';
 import { getTranslations } from 'next-intl/server';
 import NewSessionForm from './new-session-form';
+import EditSessionForm from './edit-session-form';
+import DeleteSessionButton from './delete-session-button';
 import AthleteFilter from '../nutrition/athlete-filter';
 import AttachmentsLoader from '@/components/attachments/attachments-loader';
 
@@ -48,7 +50,7 @@ export default async function TrainingPage({
     supabaseAdmin
       .from('profiles')
       .select('id, first_name, last_name')
-      .eq('role', 'trainer')
+      .eq('role', 'coach')
       .order('last_name', { ascending: true }),
   ]);
 
@@ -85,6 +87,7 @@ export default async function TrainingPage({
       <div className="space-y-4">
         {sessions.map((session) => (
           <div key={session.id} className="rounded-lg border border-gray-200 p-5">
+            {/* Session header */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
               <div>
                 <h2 className="text-lg font-semibold">{session.title}</h2>
@@ -99,21 +102,15 @@ export default async function TrainingPage({
               </div>
             </div>
 
-            <div className="mt-3 text-sm text-gray-700 space-y-1">
-              <p>
-                <span className="font-medium">{t('time')}:</span>{' '}
-                {session.start_time && session.end_time
-                  ? `${session.start_time} – ${session.end_time}`
-                  : session.start_time ?? tc('na')}
+            {/* Inline edit form — shows read view by default */}
+            <div className="mt-4 border-t border-gray-100 pt-3">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                Session details
               </p>
-              <p>
-                <span className="font-medium">{t('location')}:</span>{' '}
-                {session.location ?? tc('na')}
-              </p>
-              <p>
-                <span className="font-medium">{t('notes')}:</span>{' '}
-                {session.notes ?? tc('na')}
-              </p>
+              <EditSessionForm session={session} />
+              <div className="mt-2 flex justify-end">
+                <DeleteSessionButton sessionId={session.id} />
+              </div>
             </div>
 
             {/* Documentos anexos */}

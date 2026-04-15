@@ -95,7 +95,9 @@ export default async function DiagnosticPage({
 
   return (
     <main className="p-6 max-w-7xl mx-auto">
-      <BackButton href={`/athletes/${id}`} label="Volver al Expediente" />
+      <div className="print:hidden">
+        <BackButton href={`/athletes/${id}`} label="Volver al Expediente" />
+      </div>
       <DiagnosticTabs
         athlete={athlete}
         diagnostic={diagnostic}

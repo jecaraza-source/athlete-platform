@@ -148,7 +148,7 @@ export default function DiagnosticTabs({
       </div>
 
       {/* ── Barra de progreso global ───────────────────────────────── */}
-      <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm print:hidden">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold text-gray-700">Avance total del diagnóstico</span>
           <span className="text-sm font-bold text-emerald-700">{completionPct}%</span>
@@ -173,7 +173,7 @@ export default function DiagnosticTabs({
       </div>
 
       {/* ── Tarjetas semáforo por sección ──────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6 print:hidden">
         {SECTION_KEYS.map((section) => (
           <SectionCard
             key={section}
@@ -186,7 +186,7 @@ export default function DiagnosticTabs({
       </div>
 
       {/* ── Botones de navegación de tabs ─────────────────────────── */}
-      <div className="flex flex-wrap gap-1 mb-6 border-b border-gray-200 pb-px">
+      <div className="flex flex-wrap gap-1 mb-6 border-b border-gray-200 pb-px print:hidden">
         {SECTION_KEYS.map((section) => (
           <button
             key={section}

@@ -64,13 +64,19 @@ export const PERMISSION_NAMES = [
   'manage_users',
   'manage_roles',
   'manage_permissions',
-  // Tickets
+  // Tickets (migration 005)
   'view_tickets',
   'create_tickets',
   'edit_tickets',
   'assign_tickets',
   'comment_tickets',
   'close_tickets',
+  // Notifications (migration 010)
+  'manage_email_campaigns',
+  'manage_push_campaigns',
+  'manage_notification_templates',
+  'manage_ticket_emails',
+  'view_notification_logs',
 ] as const;
 export type PermissionName = (typeof PERMISSION_NAMES)[number];
 

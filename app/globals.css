@@ -6,6 +6,38 @@
   box-sizing: border-box;
 }
 
+@media print {
+  @page {
+    margin: 1.5cm;
+    size: A4 portrait;
+  }
+
+  /* Make form controls render as clean text output */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    border: none !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 1px 0 !important;
+    resize: none !important;
+    font-size: 10pt !important;
+    color: #111827 !important;
+  }
+
+  textarea {
+    height: auto !important;
+    overflow: visible !important;
+    min-height: 0 !important;
+  }
+
+  /* Grid layout adjustments for print */
+  .grid {
+    display: grid !important;
+  }
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,

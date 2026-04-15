@@ -16,7 +16,7 @@ export default async function AppShell({ children }: { children: ReactNode }) {
         <div className="px-5 py-5 border-b border-gray-200">
         <Image
           src="/logo.png"
-          alt="Athlete Platform"
+          alt="AO Deportes"
           width={160}
           height={40}
           className="mb-6"

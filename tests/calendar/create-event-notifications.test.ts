@@ -58,23 +58,23 @@ vi.mock('@/lib/notifications/providers/onesignal-adapter', () => ({
 }));
 
 // Import after mocks are declared so the module under test picks up mocked deps
-import { createEvent } from '@/app/calendar/actions';
+import { createEvent } from '@/app/[locale]/calendar/actions';
 import { assertPermission } from '@/lib/rbac/server';
 
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
 
-type AthleteRow = { id: string; first_name: string; last_name: string; email: string | null };
+type AthleteRow = { id: string; first_name: string; last_name: string; email: string | null; profile_id: string | null };
 type TokenRow   = { onesignal_player_id: string };
 
 const ATHLETES: AthleteRow[] = [
-  { id: 'ath-1', first_name: 'Ana',  last_name: 'García',   email: 'ana@example.com'  },
-  { id: 'ath-2', first_name: 'Luis', last_name: 'Martínez', email: 'luis@example.com' },
+  { id: 'ath-1', first_name: 'Ana',  last_name: 'García',   email: 'ana@example.com',  profile_id: 'prof-1' },
+  { id: 'ath-2', first_name: 'Luis', last_name: 'Martínez', email: 'luis@example.com', profile_id: 'prof-2' },
 ];
 
 const ATHLETE_NO_EMAIL: AthleteRow = {
-  id: 'ath-3', first_name: 'Pedro', last_name: 'Ruiz', email: null,
+  id: 'ath-3', first_name: 'Pedro', last_name: 'Ruiz', email: null, profile_id: 'prof-3',
 };
 
 const TOKENS: TokenRow[] = [

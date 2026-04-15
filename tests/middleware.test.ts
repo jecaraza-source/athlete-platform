@@ -66,20 +66,31 @@ beforeEach(() => {
 
 // ===========================================================================
 // Public routes
+// NOTE: All page routes must include the locale prefix (/en/) because the
+// middleware redirects any path without a locale prefix before applying the
+// auth gate. API routes (/api/...) are exempt from locale handling.
 // ===========================================================================
 
 describe('middleware — public routes', () => {
-  it('allows /login for anonymous users', async () => {
+  it('allows /en/login for anonymous users', async () => {
     currentUser = null;
-    const res = await middleware(makeRequest('/login'));
+    const res = await middleware(makeRequest('/en/login'));
     expect(res.status).toBe(200);
   });
 
-  it('redirects authenticated users away from /login to /dashboard', async () => {
-    currentUser = { id: 'auth-user-1' };
+  it('redirects un-prefixed paths to add locale prefix (anonymous)', async () => {
+    currentUser = null;
     const res = await middleware(makeRequest('/login'));
+    // Locale redirect fires before auth gate; default locale is "en"
     expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe('https://example.com/dashboard');
+    expect(res.headers.get('location')).toBe('https://example.com/en/login');
+  });
+
+  it('redirects authenticated users away from /en/login to /en/dashboard', async () => {
+    currentUser = { id: 'auth-user-1' };
+    const res = await middleware(makeRequest('/en/login'));
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toBe('https://example.com/en/dashboard');
   });
 
   it('allows public API auth routes through without a session', async () => {
@@ -90,54 +101,71 @@ describe('middleware — public routes', () => {
 });
 
 // ===========================================================================
-// Protected page routes
+// Protected page routes — tested with locale prefix
 // ===========================================================================
 
 describe('middleware — protected pages for anonymous users', () => {
-  it('redirects /admin to /login with redirectTo preserved', async () => {
+  it('redirects /en/admin to /en/login with redirectTo preserved', async () => {
+    currentUser = null;
+    const res = await middleware(makeRequest('/en/admin'));
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toBe(
+      'https://example.com/en/login?redirectTo=%2Fen%2Fadmin'
+    );
+  });
+
+  it('redirects nested /en/admin routes to /en/login with redirectTo preserved', async () => {
+    currentUser = null;
+    const res = await middleware(makeRequest('/en/admin/access-control/users'));
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toBe(
+      'https://example.com/en/login?redirectTo=%2Fen%2Fadmin%2Faccess-control%2Fusers'
+    );
+  });
+
+  it('redirects /en/follow-up to /en/login with redirectTo preserved', async () => {
+    currentUser = null;
+    const res = await middleware(makeRequest('/en/follow-up'));
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toBe(
+      'https://example.com/en/login?redirectTo=%2Fen%2Ffollow-up'
+    );
+  });
+
+  it('redirects /en/follow-up/physio to /en/login with redirectTo preserved', async () => {
+    currentUser = null;
+    const res = await middleware(makeRequest('/en/follow-up/physio'));
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toBe(
+      'https://example.com/en/login?redirectTo=%2Fen%2Ffollow-up%2Fphysio'
+    );
+  });
+
+  it('redirects /en/calendar to /en/login', async () => {
+    currentUser = null;
+    const res = await middleware(makeRequest('/en/calendar'));
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toBe(
+      'https://example.com/en/login?redirectTo=%2Fen%2Fcalendar'
+    );
+  });
+
+  it('redirects /en/athletes/123 to /en/login', async () => {
+    currentUser = null;
+    const res = await middleware(makeRequest('/en/athletes/123'));
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toBe(
+      'https://example.com/en/login?redirectTo=%2Fen%2Fathletes%2F123'
+    );
+  });
+
+  it('adds locale prefix to un-prefixed protected path (307 locale redirect, not /login)', async () => {
+    // The first redirect is always locale addition; a second request would then
+    // hit the auth gate. This test confirms the locale redirect fires first.
     currentUser = null;
     const res = await middleware(makeRequest('/admin'));
     expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe('https://example.com/login?redirectTo=%2Fadmin');
-  });
-
-  it('redirects nested admin routes to /login with redirectTo preserved', async () => {
-    currentUser = null;
-    const res = await middleware(makeRequest('/admin/access-control/users'));
-    expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe(
-      'https://example.com/login?redirectTo=%2Fadmin%2Faccess-control%2Fusers'
-    );
-  });
-
-  it('redirects /follow-up to /login with redirectTo preserved', async () => {
-    currentUser = null;
-    const res = await middleware(makeRequest('/follow-up'));
-    expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe('https://example.com/login?redirectTo=%2Ffollow-up');
-  });
-
-  it('redirects follow-up sub-routes to /login with redirectTo preserved', async () => {
-    currentUser = null;
-    const res = await middleware(makeRequest('/follow-up/physio'));
-    expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe(
-      'https://example.com/login?redirectTo=%2Ffollow-up%2Fphysio'
-    );
-  });
-
-  it('redirects /calendar to /login', async () => {
-    currentUser = null;
-    const res = await middleware(makeRequest('/calendar'));
-    expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe('https://example.com/login?redirectTo=%2Fcalendar');
-  });
-
-  it('redirects /athletes/123 to /login', async () => {
-    currentUser = null;
-    const res = await middleware(makeRequest('/athletes/123'));
-    expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe('https://example.com/login?redirectTo=%2Fathletes%2F123');
+    expect(res.headers.get('location')).toBe('https://example.com/en/admin');
   });
 });
 
@@ -160,21 +188,21 @@ describe('middleware — protected API routes for anonymous users', () => {
 // ===========================================================================
 
 describe('middleware — authenticated pass-through', () => {
-  it('allows authenticated users to access /admin', async () => {
+  it('allows authenticated users to access /en/admin', async () => {
     currentUser = { id: 'auth-user-1' };
-    const res = await middleware(makeRequest('/admin'));
+    const res = await middleware(makeRequest('/en/admin'));
     expect(res.status).toBe(200);
   });
 
-  it('allows authenticated users to access /follow-up/nutrition', async () => {
+  it('allows authenticated users to access /en/follow-up/nutrition', async () => {
     currentUser = { id: 'auth-user-1' };
-    const res = await middleware(makeRequest('/follow-up/nutrition'));
+    const res = await middleware(makeRequest('/en/follow-up/nutrition'));
     expect(res.status).toBe(200);
   });
 
-  it('allows authenticated users to access /calendar', async () => {
+  it('allows authenticated users to access /en/calendar', async () => {
     currentUser = { id: 'auth-user-1' };
-    const res = await middleware(makeRequest('/calendar'));
+    const res = await middleware(makeRequest('/en/calendar'));
     expect(res.status).toBe(200);
   });
 
