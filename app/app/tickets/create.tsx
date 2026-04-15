@@ -23,7 +23,7 @@ export default function CreateTicketScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
   const router = useRouter();
-  const { profile } = useAuthStore();
+  const { profile, session } = useAuthStore();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -82,12 +82,14 @@ export default function CreateTicketScreen() {
     setLoading(true);
     try {
       await createTicket({
-        title: title.trim(),
-        description: description.trim(),
+        title:             title.trim(),
+        description:       description.trim(),
         priority,
-        created_by: profile.id,
-        requester_user_id: profile.id,
-        assigned_to: assignee?.id,
+        created_by:        profile.id,
+        // requester_user_id must be auth.uid() (Supabase auth UUID), NOT
+        // profiles.id — the RLS policy compares it against auth.uid().
+        requester_user_id: session?.user?.id,
+        assigned_to:       assignee?.id,
       });
       router.back();
     } catch (e: unknown) {
