@@ -27,16 +27,36 @@ export type DisciplineKey = 'coach' | 'physio' | 'medic' | 'nutrition' | 'psycho
 const BUCKET   = 'protocols';
 const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
 
+/**
+ * Creates the 'protocols' bucket if it doesn't already exist.
+ * Safe to call multiple times — Supabase returns an error for duplicate bucket
+ * names which we intentionally ignore.
+ */
+async function ensureBucket(): Promise<void> {
+  await supabaseAdmin.storage.createBucket(BUCKET, {
+    public:        false,
+    fileSizeLimit: MAX_SIZE,
+    allowedMimeTypes: ['application/pdf'],
+  });
+  // Ignore the error — it just means the bucket already exists.
+}
+
 // =============================================================================
 // Queries (read — no auth guard needed; middleware + page guards handle access)
 // =============================================================================
 
 /** Returns all protocol rows ordered by discipline. */
 export async function getAllProtocols(): Promise<Protocol[]> {
-  const { data } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('protocols')
     .select('*')
     .order('discipline');
+  if (error) {
+    // Silently return empty when the table hasn't been migrated yet
+    const isMissing = error.message?.includes('protocols') || error.message?.includes('schema cache');
+    if (!isMissing) console.error('[protocols] getAllProtocols:', error.message);
+    return [];
+  }
   return (data ?? []) as Protocol[];
 }
 
@@ -44,11 +64,16 @@ export async function getAllProtocols(): Promise<Protocol[]> {
 export async function getProtocolByDiscipline(
   discipline: DisciplineKey
 ): Promise<Protocol | null> {
-  const { data } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('protocols')
     .select('*')
     .eq('discipline', discipline)
     .maybeSingle();
+  if (error) {
+    const isMissing = error.message?.includes('protocols') || error.message?.includes('schema cache');
+    if (!isMissing) console.error('[protocols] getProtocolByDiscipline:', error.message);
+    return null;
+  }
   return data as Protocol | null;
 }
 
@@ -95,6 +120,9 @@ export async function uploadProtocol(
 
   const title   = (formData.get('title')   as string | null)?.trim() || null;
   const version = (formData.get('version') as string | null)?.trim() || null;
+
+  // ── Ensure the storage bucket exists ───────────────────────────────────
+  await ensureBucket();
 
   // ── Remove old file from storage if one exists ──────────────────────────
   const existing = await getProtocolByDiscipline(discipline);
