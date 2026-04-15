@@ -1,16 +1,9 @@
 const { defineConfig } = require('eslint/config');
-const nextPlugin = require('@next/eslint-plugin-next');
-const tsParser = require('@typescript-eslint/parser');
+const expoConfig = require('eslint-config-expo/flat');
 
 module.exports = defineConfig([
+  ...expoConfig,
   {
-    plugins: { '@next/next': nextPlugin },
-    languageOptions: { parser: tsParser },
-    rules: {
-      ...nextPlugin.configs['core-web-vitals'].rules,
-    },
-  },
-  {
-    ignores: ['dist/*', '.next/*', 'node_modules/*'],
+    ignores: ['dist/*', 'node_modules/*'],
   },
 ]);
