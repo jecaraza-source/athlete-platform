@@ -31,6 +31,7 @@ type AthleteDetail = {
   school_or_club: string | null;
   discipline: string | null;
   disability_status: string | null;
+  email: string | null;
   guardian_name: string | null;
   guardian_phone: string | null;
   guardian_email: string | null;
@@ -38,6 +39,7 @@ type AthleteDetail = {
   emergency_contact_phone: string | null;
   medical_notes_summary: string | null;
   status: string;
+  profile_id: string | null;
 };
 
 function SectionHeader({ title, href, viewAllLabel }: { title: string; href: string; viewAllLabel: string }) {
@@ -77,7 +79,7 @@ export default async function AthleteDetailPage({
   ] = await Promise.all([
     supabaseAdmin
       .from('athletes')
-      .select('id, athlete_code, first_name, last_name, date_of_birth, sex, height_cm, weight_kg, dominant_side, school_or_club, guardian_name, guardian_phone, guardian_email, emergency_contact_name, emergency_contact_phone, medical_notes_summary, status')
+      .select('id, athlete_code, first_name, last_name, date_of_birth, sex, height_cm, weight_kg, dominant_side, school_or_club, guardian_name, guardian_phone, guardian_email, emergency_contact_name, emergency_contact_phone, medical_notes_summary, status, profile_id, email')
       .eq('id', id)
       .single(),
     supabaseAdmin
@@ -149,6 +151,8 @@ export default async function AthleteDetailPage({
     ...(data as Omit<AthleteDetail, 'discipline' | 'disability_status'>),
     discipline:        (extData as Record<string, string> | null)?.discipline        ?? null,
     disability_status: (extData as Record<string, string> | null)?.disability_status ?? null,
+    profile_id:        (data as { profile_id?: string | null }).profile_id ?? null,
+    email:             (data as { email?: string | null }).email ?? null,
   };
   const diagnostic = diagRaw as { overall_status: string; completion_pct: number } | null;
   const sections   = sectionsRaw as { section: string; status: string }[] | null;

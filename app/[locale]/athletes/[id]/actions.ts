@@ -27,6 +27,7 @@ export async function updateAthlete(id: string, formData: FormData) {
       school_or_club:    raw('school_or_club'),
       discipline:        raw('discipline'),
       disability_status: raw('disability_status'),
+      email:             raw('email'),
     };
   } else if (section === 'guardian') {
     payload = {
@@ -40,6 +41,10 @@ export async function updateAthlete(id: string, formData: FormData) {
       emergency_contact_phone: raw('emergency_contact_phone'),
       medical_notes_summary: raw('medical_notes_summary'),
     };
+  } else if (section === 'account') {
+    // Link or unlink the athlete's Supabase Auth profile
+    const profileId = (formData.get('profile_id') as string) || null;
+    payload = { profile_id: profileId };
   }
 
   const { error } = await supabaseAdmin

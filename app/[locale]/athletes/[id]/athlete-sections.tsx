@@ -15,6 +15,7 @@ type AthleteDetail = {
   school_or_club: string | null;
   discipline: string | null;
   disability_status: string | null;
+  email: string | null;
   guardian_name: string | null;
   guardian_phone: string | null;
   guardian_email: string | null;
@@ -162,6 +163,7 @@ export function GeneralInfoSection({ athlete }: { athlete: AthleteDetail }) {
           <Field label="Peso" value={athlete.weight_kg != null ? `${athlete.weight_kg} kg` : null} />
           <Field label="Disciplina" value={getDisciplineLabel(athlete.discipline)} />
           <Field label="Discapacidad" value={getDisabilityLabel(athlete.disability_status)} />
+          <Field label="Email (acceso móvil)" value={athlete.email} />
         </>
       }
       form={
@@ -186,6 +188,18 @@ export function GeneralInfoSection({ athlete }: { athlete: AthleteDetail }) {
               { value: 'con_discapacidad', label: 'Con discapacidad' },
             ]}
           />
+          <div className="col-span-2">
+            <FormField
+              label="Email de acceso móvil"
+              name="email"
+              type="email"
+              defaultValue={athlete.email}
+              placeholder="correo@ejemplo.com"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Debe coincidir con el email de inicio de sesión del atleta en la app.
+            </p>
+          </div>
         </div>
       }
     />
