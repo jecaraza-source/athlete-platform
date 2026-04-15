@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, useColorScheme, RefreshControl, ActivityIndicator,
@@ -111,7 +111,7 @@ export default function CalendarScreen() {
   const colors = Colors[scheme];
   const today = new Date();
 
-  const { profile, isAthlete, isStaff, isInitialized } = useAuthStore();
+  const { profile, isAthlete, isInitialized } = useAuthStore();
 
   const [year, setYear]   = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -120,7 +120,10 @@ export default function CalendarScreen() {
   const [events, setEvents]         = useState<CalendarEvent[]>([]);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // athleteId is cached so we only query the athletes table once per session
   const [athleteId, setAthleteId]   = useState<string | null>(null);
+  // Incrementing this counter forces a re-load (used by pull-to-refresh)
+  const [reloadKey, setReloadKey]   = useState(0);
 
   // Set of YYYY-MM-DD strings that have at least one event
   const eventDays = new Set(events.map((e) => e.start_at.slice(0, 10)));
@@ -129,46 +132,75 @@ export default function CalendarScreen() {
   const selectedKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
   const dayEvents = events.filter((e) => e.start_at.slice(0, 10) === selectedKey);
 
-  const loadEvents = useCallback(async (y: number, m: number) => {
-    if (!profile) return;
-    try {
-      const [startISO, endISO] = rangeForMonth(y, m);
-      if (isAthlete()) {
-        let aId = athleteId;
-        if (!aId) {
-          const athlete = await getAthleteByProfileId(profile.id);
-          aId = athlete?.id ?? null;
-          setAthleteId(aId);
-        }
-        if (!aId) { setEvents([]); return; }
-        const data = await listEventsForAthlete(aId, startISO, endISO);
-        setEvents(data);
-      } else if (isStaff()) {
-        const data = await listEventsInRange(startISO, endISO);
-        setEvents(data);
-      }
-    } catch (e) {
-      console.warn('[calendar] load error', e);
-      setEvents([]);
-    } finally {
+  // ---------------------------------------------------------------------------
+  // Main data-loading effect.
+  // Runs whenever: year/month changes, profile loads, auth fully initializes,
+  // the cached athleteId is set, or the user pulls to refresh.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    // Wait until auth is fully resolved so role checks are reliable
+    if (!isInitialized || !profile) {
       setLoading(false);
-      setRefreshing(false);
+      return;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.id, athleteId]);
 
-  // Re-run loadEvents when: month/year changes, profile loads, OR auth finishes
-  // initializing (roles become available for isAthlete()/isStaff() checks).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setLoading(true); loadEvents(year, month); }, [year, month, profile?.id, isInitialized]);
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const [startISO, endISO] = rangeForMonth(year, month);
+
+        let data: CalendarEvent[];
+
+        if (isAthlete()) {
+          // ── Athlete: show only events they are a participant of ──────────
+          let aId = athleteId;
+          if (!aId) {
+            const athleteRow = await getAthleteByProfileId(profile.id);
+            aId = athleteRow?.id ?? null;
+            if (!cancelled) setAthleteId(aId);
+          }
+          if (!aId) {
+            // No linked athlete record — show empty calendar
+            if (!cancelled) setEvents([]);
+            return;
+          }
+          data = await listEventsForAthlete(aId, startISO, endISO);
+        } else {
+          // ── Staff / admin / any other role: show ALL events in range ─────
+          // This is the safe fallback — even unknown roles see the calendar.
+          data = await listEventsInRange(startISO, endISO);
+        }
+
+        if (!cancelled) setEvents(data);
+      } catch (e) {
+        console.warn('[calendar] load error', e);
+        if (!cancelled) setEvents([]);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [year, month, profile?.id, isInitialized, athleteId, reloadKey]);
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear((y) => y - 1); }
     else setMonth((m) => m - 1);
+    setSelectedDay(1);
   }
   function nextMonth() {
     if (month === 11) { setMonth(0); setYear((y) => y + 1); }
     else setMonth((m) => m + 1);
+    setSelectedDay(1);
+  }
+  function forceReload() {
+    setRefreshing(true);
+    setReloadKey((k) => k + 1);
   }
 
   // Build calendar grid
@@ -187,8 +219,8 @@ export default function CalendarScreen() {
       style={[styles.flex, { backgroundColor: colors.background }]}
       refreshControl={
         <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => { setRefreshing(true); loadEvents(year, month); }}
+        refreshing={refreshing}
+          onRefresh={forceReload}
         />
       }
     >
