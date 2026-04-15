@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+@media print {
+  @page {
+    margin: 2cm 1.8cm;
+    size: A4 portrait;
+  }
+
+  /* Base typography */
+  body {
+    font-size: 10pt;
+    color: #111827;
+    background: white !important;
+  }
+
+  /* Remove decorative card borders, shadows and rounded corners */
+  .rounded-xl,
+  .rounded-lg,
+  .rounded-md {
+    border-radius: 0 !important;
+  }
+
+  .shadow-sm,
+  .shadow {
+    box-shadow: none !important;
+  }
+
+  /* Remove card-like borders from the diagnostic tab wrapper */
+  .print\:border-0 {
+    border: none !important;
+  }
+
+  /* Avoid breaking a section across pages */
+  h2, h3 {
+    break-after: avoid;
+  }
+
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Grid layout adjustments for print */
+  .grid {
+    display: grid !important;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

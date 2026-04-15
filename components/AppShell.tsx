@@ -13,8 +13,8 @@ export default async function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-gray-50 text-gray-900">
-      {/* Sidebar */}
-      <aside className="w-56 shrink-0 bg-gray-50 border-r border-gray-200 flex flex-col">
+      {/* Sidebar — hidden when printing */}
+      <aside className="w-56 shrink-0 bg-gray-50 border-r border-gray-200 flex flex-col print:hidden">
         {/* Logo */}
         <div className="px-5 py-5 border-b border-gray-200">
         <Image
@@ -49,7 +49,7 @@ export default async function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 bg-white">{children}</main>
+      <main className="flex-1 bg-white print:w-full">{children}</main>
     </div>
   );
 }

@@ -5,8 +5,8 @@ import { useRouter, usePathname } from '@/i18n/navigation';
 import { useTransition } from 'react';
 
 const LOCALES = [
-  { code: 'en', label: 'EN' },
-  { code: 'es', label: 'ES' },
+  { code: 'en', label: 'EN', flag: '🇬🇧' },
+  { code: 'es', label: 'ES', flag: '🇲🇽' },
 ] as const;
 
 export default function LanguageSwitcher() {
@@ -24,7 +24,7 @@ export default function LanguageSwitcher() {
 
   return (
     <div className="flex items-center gap-1 px-3 py-2">
-      {LOCALES.map(({ code, label }) => (
+      {LOCALES.map(({ code, label, flag }) => (
         <button
           key={code}
           onClick={() => switchLocale(code)}
@@ -35,7 +35,7 @@ export default function LanguageSwitcher() {
               : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
           }`}
         >
-          {label}
+          <span className="mr-1">{flag}</span>{label}
         </button>
       ))}
     </div>
