@@ -281,6 +281,13 @@ export async function updateProfile(id: string, formData: FormData) {
 export async function deleteProfile(id: string) {
   await requirePermission('manage_users');
 
+  // Fetch auth_user_id before deleting the profile row so we can remove the Auth account
+  const { data: profileRow } = await supabaseAdmin
+    .from('profiles')
+    .select('auth_user_id')
+    .eq('id', id)
+    .maybeSingle();
+
   // Remove linked athlete row first
   await supabaseAdmin.from('athletes').delete().eq('profile_id', id);
 
@@ -291,8 +298,9 @@ export async function deleteProfile(id: string) {
   };
 
   await Promise.all([
-    nullifyOrDelete('athlete_notes', 'author_profile_id'),
-    nullifyOrDelete('nutrition_plans', 'nutritionist_profile_id'),
+    // athlete_notes is a pre-existing base-schema table (see 000_base_schema.sql)
+    nullifyOrDelete('athlete_notes',        'author_profile_id'),
+    nullifyOrDelete('nutrition_plans',      'nutritionist_profile_id'),
     nullifyOrDelete('nutrition_checkins', 'nutritionist_profile_id'),
     nullifyOrDelete('training_sessions', 'coach_profile_id'),
     nullifyOrDelete('physio_cases', 'physio_profile_id'),
@@ -304,6 +312,12 @@ export async function deleteProfile(id: string) {
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Remove the Supabase Auth account so the user cannot sign in again
+  if (profileRow?.auth_user_id) {
+    await supabaseAdmin.auth.admin.deleteUser(profileRow.auth_user_id);
+    // Ignore auth-delete errors — the profile row is already gone
   }
 
   revalidatePath('/admin/staff');

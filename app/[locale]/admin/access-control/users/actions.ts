@@ -67,6 +67,7 @@ export async function deleteUser(
   };
 
   await Promise.all([
+    // athlete_notes is a pre-existing base-schema table (see 000_base_schema.sql)
     nullifyOrDelete('athlete_notes',        'author_profile_id'),
     nullifyOrDelete('nutrition_plans',      'nutritionist_profile_id'),
     nullifyOrDelete('nutrition_checkins',   'nutritionist_profile_id'),

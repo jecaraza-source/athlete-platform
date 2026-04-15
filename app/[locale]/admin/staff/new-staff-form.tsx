@@ -2,19 +2,11 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createProfile } from './actions';
 import { DISCIPLINES } from '@/lib/types/diagnostic';
 
-const ROLES = [
-  { value: 'super_admin',  label: 'Super Admin' },
-  { value: 'admin',        label: 'Admin' },
-  { value: 'athlete',      label: 'Athlete' },
-  { value: 'psychologist', label: 'Psychologist' },
-  { value: 'trainer',      label: 'Trainer' },
-  { value: 'nutritionist', label: 'Nutritionist' },
-  { value: 'physio',       label: 'Physio' },
-  { value: 'medic',        label: 'Medic' },
-];
+const ROLE_VALUES = ['super_admin', 'admin', 'athlete', 'psychologist', 'trainer', 'nutritionist', 'physio', 'medic'] as const;
 
 export default function NewStaffForm({
   hasExtendedColumns = true,
@@ -25,6 +17,12 @@ export default function NewStaffForm({
   presetRole?: string;
   buttonLabel?: string;
 }) {
+  const t = useTranslations('admin.staff');
+  const tc = useTranslations('common');
+  const roles = ROLE_VALUES.map((value) => ({
+    value,
+    label: t(`role${value.split('_').map((s: string) => s[0].toUpperCase() + s.slice(1)).join('')}` as Parameters<typeof t>[0]),
+  }));
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -59,7 +57,7 @@ export default function NewStaffForm({
       ) : (
         <div className="rounded-lg border border-gray-200 p-5">
           <h2 className="font-semibold mb-4">
-            {presetRole === 'athlete' ? 'Add Athlete' : presetRole === 'super_admin' || presetRole === 'admin' ? 'New Admin' : 'New Staff Member'}
+            {presetRole === 'athlete' ? t('addAthlete') : presetRole === 'super_admin' || presetRole === 'admin' ? t('newAdminTitle') : t('newStaffMemberTitle')}
           </h2>
 
           {error && (
@@ -72,7 +70,7 @@ export default function NewStaffForm({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="first_name">
-                  First name <span className="text-red-500">*</span>
+                  {tc('firstName')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="first_name"
@@ -86,7 +84,7 @@ export default function NewStaffForm({
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="last_name">
-                  Last name <span className="text-red-500">*</span>
+                  {tc('lastName')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="last_name"
@@ -104,7 +102,7 @@ export default function NewStaffForm({
                 ) : (
                   <div>
                     <label className="block text-sm font-medium mb-1" htmlFor="role">
-                      Role <span className="text-red-500">*</span>
+                      {t('roleLabel')} <span className="text-red-500">*</span>
                     </label>
                     <select
                       id="role"
@@ -112,8 +110,8 @@ export default function NewStaffForm({
                       required
                       className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                     >
-                      <option value="">Select role…</option>
-                      {ROLES.map((r) => (
+                      <option value="">{t('selectRole')}</option>
+                      {roles.map((r) => (
                         <option key={r.value} value={r.value}>
                           {r.label}
                         </option>
@@ -126,13 +124,13 @@ export default function NewStaffForm({
               {hasExtendedColumns && (
                 <div>
                   <label className="block text-sm font-medium mb-1" htmlFor="specialty">
-                    Specialty
+                    {t('specialty')}
                   </label>
                   <input
                     id="specialty"
                     name="specialty"
                     type="text"
-                    placeholder="e.g. Sports psychology, Strength & conditioning"
+                    placeholder={t('specialtyPlaceholder')}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   />
                 </div>
@@ -178,7 +176,7 @@ export default function NewStaffForm({
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="email">
-                  Email <span className="text-red-500">*</span>
+                  {tc('email')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="email"
@@ -193,7 +191,7 @@ export default function NewStaffForm({
               {hasExtendedColumns && (
                 <div>
                   <label className="block text-sm font-medium mb-1" htmlFor="phone">
-                    Phone
+                    {tc('phone')}
                   </label>
                   <input
                     id="phone"
@@ -212,14 +210,14 @@ export default function NewStaffForm({
                 disabled={isPending}
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
-                {isPending ? 'Saving…' : presetRole === 'athlete' ? 'Add Athlete' : 'Save'}
+                {isPending ? tc('saving') : presetRole === 'athlete' ? t('addAthlete') : tc('save')}
               </button>
               <button
                 type="button"
                 onClick={() => { setOpen(false); setError(null); }}
                 className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                {tc('cancel')}
               </button>
             </div>
           </form>

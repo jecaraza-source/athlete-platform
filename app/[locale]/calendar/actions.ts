@@ -50,7 +50,7 @@ export async function createEvent(formData: FormData) {
     if (notifyEmail || notifyPush) {
       const { data: athletes } = await supabaseAdmin
         .from('athletes')
-        .select('id, first_name, last_name, email')
+        .select('id, first_name, last_name, email, profile_id')
         .in('id', athleteIds);
 
       if (athletes && athletes.length > 0) {
@@ -74,24 +74,30 @@ export async function createEvent(formData: FormData) {
         }
 
         if (notifyPush) {
-          const profileIds = athletes.map((a) => a.id);
-          const { data: tokens } = await supabaseAdmin
-            .from('push_device_tokens')
-            .select('onesignal_player_id')
-            .in('profile_id', profileIds)
-            .eq('is_active', true)
-            .not('onesignal_player_id', 'is', null);
+          // Use profile_id (FK to profiles) — not athlete.id — to look up device tokens
+          const profileIds = (athletes as { profile_id: string | null }[])
+            .map((a) => a.profile_id)
+            .filter((id): id is string => id != null);
 
-          const playerIds = (tokens ?? [])
-            .map((t) => t.onesignal_player_id as string)
-            .filter(Boolean);
+          if (profileIds.length > 0) {
+            const { data: tokens } = await supabaseAdmin
+              .from('push_device_tokens')
+              .select('onesignal_player_id')
+              .in('profile_id', profileIds)
+              .eq('is_active', true)
+              .not('onesignal_player_id', 'is', null);
 
-          if (playerIds.length > 0) {
-            oneSignalAdapter.send({
-              player_ids: playerIds,
-              title:      'New Event',
-              message:    `${payload.title} — ${startDate}`,
-            }).catch(() => {});
+            const playerIds = (tokens ?? [])
+              .map((t) => t.onesignal_player_id as string)
+              .filter(Boolean);
+
+            if (playerIds.length > 0) {
+              oneSignalAdapter.send({
+                player_ids: playerIds,
+                title:      'New Event',
+                message:    `${payload.title} — ${startDate}`,
+              }).catch(() => {});
+            }
           }
         }
       }
@@ -144,7 +150,7 @@ export async function updateEvent(id: string, formData: FormData) {
 
       const { data: athletes } = await supabaseAdmin
         .from('athletes')
-        .select('id, first_name, last_name, email')
+        .select('id, first_name, last_name, email, profile_id')
         .in('id', athleteIds);
 
       if (athletes && athletes.length > 0) {
@@ -167,24 +173,29 @@ export async function updateEvent(id: string, formData: FormData) {
         }
 
         if (notifyPush) {
-          const profileIds = athletes.map((a) => a.id);
-          const { data: tokens } = await supabaseAdmin
-            .from('push_device_tokens')
-            .select('onesignal_player_id')
-            .in('profile_id', profileIds)
-            .eq('is_active', true)
-            .not('onesignal_player_id', 'is', null);
+          const profileIds = (athletes as { profile_id: string | null }[])
+            .map((a) => a.profile_id)
+            .filter((id): id is string => id != null);
 
-          const playerIds = (tokens ?? [])
-            .map((t) => t.onesignal_player_id as string)
-            .filter(Boolean);
+          if (profileIds.length > 0) {
+            const { data: tokens } = await supabaseAdmin
+              .from('push_device_tokens')
+              .select('onesignal_player_id')
+              .in('profile_id', profileIds)
+              .eq('is_active', true)
+              .not('onesignal_player_id', 'is', null);
 
-          if (playerIds.length > 0) {
-            oneSignalAdapter.send({
-              player_ids: playerIds,
-              title:      'Event Updated',
-              message:    `${title} — ${startDate}`,
-            }).catch(() => {});
+            const playerIds = (tokens ?? [])
+              .map((t) => t.onesignal_player_id as string)
+              .filter(Boolean);
+
+            if (playerIds.length > 0) {
+              oneSignalAdapter.send({
+                player_ids: playerIds,
+                title:      'Event Updated',
+                message:    `${title} — ${startDate}`,
+              }).catch(() => {});
+            }
           }
         }
       }

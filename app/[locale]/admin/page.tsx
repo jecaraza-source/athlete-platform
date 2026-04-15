@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import BackButton from '@/components/back-button';
 import { getTranslations } from 'next-intl/server';
+import { requireAdminAccess } from '@/lib/rbac/server';
 
 export default async function AdminPage() {
+  await requireAdminAccess();
   const t = await getTranslations('admin');
   const tc = await getTranslations('common');
 

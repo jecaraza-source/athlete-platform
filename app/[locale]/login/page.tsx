@@ -28,7 +28,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900">{t('signIn')}</h1>
-          <p className="mt-1 text-sm text-gray-500">Athlete Platform</p>
+          <p className="mt-1 text-sm text-gray-500">AO Deportes</p>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">

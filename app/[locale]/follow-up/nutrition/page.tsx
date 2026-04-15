@@ -3,12 +3,11 @@ import { getTranslations } from 'next-intl/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/rbac/server';
 import NewPlanForm from './new-plan-form';
-import UploadButton from './upload-button';
-import { getNutritionFileUrl } from './upload-action';
 import AthleteFilter from './athlete-filter';
 import CheckinForm from './checkin-form';
 import CheckinChart from './checkin-chart';
 import PlanStatusSelect from './plan-status-select';
+import AttachmentsLoader from '@/components/attachments/attachments-loader';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +29,6 @@ type NutritionPlan = {
   start_date: string;
   end_date: string | null;
   status: string;
-  file_path: string | null;
   athletes: { first_name: string; last_name: string } | null;
   profiles: { first_name: string; last_name: string } | null;
 };
@@ -50,10 +48,8 @@ export default async function NutritionPage({
 
   const { athlete: selectedAthleteId = '' } = await searchParams;
 
-  function buildPlansQuery(withFilePath: boolean) {
-    const cols = withFilePath
-      ? 'id, athlete_id, title, start_date, end_date, status, file_path, athletes(first_name, last_name), profiles(first_name, last_name)'
-      : 'id, athlete_id, title, start_date, end_date, status, athletes(first_name, last_name), profiles(first_name, last_name)';
+  function buildPlansQuery() {
+    const cols = 'id, athlete_id, title, start_date, end_date, status, athletes(first_name, last_name), profiles(first_name, last_name)';
     let q = supabaseAdmin.from('nutrition_plans').select(cols);
     if (selectedAthleteId) q = q.eq('athlete_id', selectedAthleteId);
     return q.order('start_date', { ascending: false });
@@ -64,21 +60,12 @@ export default async function NutritionPage({
     .select('id, athlete_id, checkin_date, weight_kg, body_fat_percent, adherence_score, notes, next_actions')
     .order('checkin_date', { ascending: false });
 
-  const [plansResult, { data: athletesData }, { data: profilesData }, { data: checkinsData }] = await Promise.all([
-    buildPlansQuery(true),
+  const [{ data, error }, { data: athletesData }, { data: profilesData }, { data: checkinsData }] = await Promise.all([
+    buildPlansQuery(),
     supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name', { ascending: true }),
     supabaseAdmin.from('profiles').select('id, first_name, last_name').eq('role', 'nutritionist').order('last_name', { ascending: true }),
     checkinsQuery,
   ]);
-
-  // Fall back to query without file_path if the column doesn't exist yet
-  const finalResult =
-    plansResult.error?.message?.includes('file_path')
-      ? await buildPlansQuery(false)
-      : plansResult;
-
-  const { data, error } = finalResult;
-  const filePathSupported = !plansResult.error?.message?.includes('file_path');
 
   const plans = (data ?? []) as unknown as NutritionPlan[];
   const athletes = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
@@ -92,12 +79,8 @@ export default async function NutritionPage({
     return acc;
   }, {});
 
-  // Generate signed download URLs only if column exists
-  const signedUrls = await Promise.all(
-    plans.map((p) =>
-      filePathSupported && p.file_path ? getNutritionFileUrl(p.file_path) : Promise.resolve(null)
-    )
-  );
+  const t = await getTranslations('followUp.nutrition');
+  const tc = await getTranslations('common');
 
   const t = await getTranslations('followUp.nutrition');
   const tc = await getTranslations('common');
@@ -173,19 +156,18 @@ export default async function NutritionPage({
               />
             )}
 
-            <div className="mt-3 flex items-center gap-3">
-              {filePathSupported && <UploadButton planId={plan.id} hasFile={!!plan.file_path} />}
-              {signedUrls[i] && (
-                <a
-                  href={signedUrls[i]!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-blue-600 hover:underline"
-                >
-                  {t('download')}
-                </a>
-              )}
-            </div>
+            {/* Documentos anexos — unificado */}
+            {plan.athlete_id && (
+              <div className="mt-4">
+                <AttachmentsLoader
+                  athleteId={plan.athlete_id}
+                  module="nutrition"
+                  relatedRecordId={plan.id}
+                  title="Documentos del plan"
+                  defaultCollapsed
+                />
+              </div>
+            )}
           </div>
         ))}
       </div>

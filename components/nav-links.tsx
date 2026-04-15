@@ -59,7 +59,7 @@ const adminLink = {
   active:   'bg-rose-100 text-rose-900',
 };
 
-export default function NavLinks() {
+export default function NavLinks({ showAdmin = false }: { showAdmin?: boolean }) {
   const pathname = usePathname();
   const t = useTranslations('nav');
 
@@ -151,12 +151,14 @@ export default function NavLinks() {
         >
           {t(prefsLink.key as Parameters<typeof t>[0])}
         </Link>
-        <Link
-          href={adminLink.href}
-          className={linkClass(adminLink.href, adminLink.inactive, adminLink.active)}
-        >
-          {t(adminLink.key as Parameters<typeof t>[0])}
-        </Link>
+        {showAdmin && (
+          <Link
+            href={adminLink.href}
+            className={linkClass(adminLink.href, adminLink.inactive, adminLink.active)}
+          >
+            {t(adminLink.key as Parameters<typeof t>[0])}
+          </Link>
+        )}
       </div>
     </nav>
   );

@@ -6,8 +6,16 @@ import AppShell from '@/components/AppShell';
 import { routing } from '@/i18n/routing';
 
 export const metadata: Metadata = {
-  title: 'Athlete Platform',
-  description: 'Athlete development platform',
+  title: 'AO Deportes',
+  description: 'Plataforma de gestión y desarrollo de atletas — AO Deportes',
+  openGraph: {
+    title: 'AO Deportes',
+    description: 'Plataforma de gestión y desarrollo de atletas',
+    url: 'https://aodeporte.com',
+    siteName: 'AO Deportes',
+    locale: 'es_MX',
+    type: 'website',
+  },
 };
 
 export default async function LocaleLayout({

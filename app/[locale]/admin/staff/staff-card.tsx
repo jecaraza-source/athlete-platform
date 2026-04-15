@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { updateProfile } from './actions';
 import DeleteStaffButton from './delete-staff-button';
 
@@ -14,16 +15,7 @@ export type Profile = {
   specialty: string | null;
 };
 
-const ROLES = [
-  { value: 'super_admin',  label: 'Super Admin' },
-  { value: 'admin',        label: 'Admin' },
-  { value: 'athlete',      label: 'Athlete' },
-  { value: 'psychologist', label: 'Psychologist' },
-  { value: 'trainer',      label: 'Trainer' },
-  { value: 'nutritionist', label: 'Nutritionist' },
-  { value: 'physio',       label: 'Physio' },
-  { value: 'medic',        label: 'Medic' },
-];
+const ROLE_VALUES = ['super_admin', 'admin', 'athlete', 'psychologist', 'trainer', 'nutritionist', 'physio', 'medic'] as const;
 
 const roleBadgeColors: Record<string, string> = {
   super_admin:  'bg-red-100 text-red-700',
@@ -43,6 +35,8 @@ export default function StaffCard({
   profile: Profile;
   hasExtendedColumns: boolean;
 }) {
+  const t = useTranslations('admin.staff');
+  const tc = useTranslations('common');
   const [editing, setEditing] = useState(false);
   const [profile, setProfile] = useState(initialProfile);
   const [error, setError] = useState<string | null>(null);
@@ -70,10 +64,15 @@ export default function StaffCard({
     });
   }
 
+  const roles = ROLE_VALUES.map((value) => ({
+    value,
+    label: t(`role${value.split('_').map(s => s[0].toUpperCase() + s.slice(1)).join('')}` as Parameters<typeof t>[0]),
+  }));
+
   if (editing) {
     return (
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-5 flex flex-col gap-3">
-        <h3 className="font-semibold text-sm">Edit Staff Member</h3>
+        <h3 className="font-semibold text-sm">{t('editStaffMember')}</h3>
 
         {error && (
           <p className="rounded border border-red-300 bg-red-50 p-2 text-xs text-red-700">
@@ -85,7 +84,7 @@ export default function StaffCard({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-1" htmlFor={`fn-${profile.id}`}>
-                First name <span className="text-red-500">*</span>
+                {tc('firstName')} <span className="text-red-500">*</span>
               </label>
               <input
                 id={`fn-${profile.id}`}
@@ -98,7 +97,7 @@ export default function StaffCard({
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" htmlFor={`ln-${profile.id}`}>
-                Last name <span className="text-red-500">*</span>
+                {tc('lastName')} <span className="text-red-500">*</span>
               </label>
               <input
                 id={`ln-${profile.id}`}
@@ -115,7 +114,7 @@ export default function StaffCard({
             <>
               <div>
                 <label className="block text-xs font-medium mb-1" htmlFor={`role-${profile.id}`}>
-                  Role
+                  {t('roleLabel')}
                 </label>
                 <select
                   id={`role-${profile.id}`}
@@ -123,8 +122,8 @@ export default function StaffCard({
                   defaultValue={profile.role ?? ''}
                   className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
                 >
-                  <option value="">Select role…</option>
-                  {ROLES.map((r) => (
+                  <option value="">{t('selectRole')}</option>
+                  {roles.map((r) => (
                     <option key={r.value} value={r.value}>
                       {r.label}
                     </option>
@@ -134,21 +133,21 @@ export default function StaffCard({
 
               <div>
                 <label className="block text-xs font-medium mb-1" htmlFor={`spec-${profile.id}`}>
-                  Specialty
+                  {t('specialty')}
                 </label>
                 <input
                   id={`spec-${profile.id}`}
                   name="specialty"
                   type="text"
                   defaultValue={profile.specialty ?? ''}
-                  placeholder="e.g. Sports psychology, Strength & conditioning"
+                  placeholder={t('specialtyPlaceholder')}
                   className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-medium mb-1" htmlFor={`email-${profile.id}`}>
-                  Email
+                  {tc('email')}
                 </label>
                 <input
                   id={`email-${profile.id}`}
@@ -162,7 +161,7 @@ export default function StaffCard({
 
               <div>
                 <label className="block text-xs font-medium mb-1" htmlFor={`phone-${profile.id}`}>
-                  Phone
+                  {tc('phone')}
                 </label>
                 <input
                   id={`phone-${profile.id}`}
@@ -182,14 +181,14 @@ export default function StaffCard({
               disabled={isPending}
               className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {isPending ? 'Saving…' : 'Save changes'}
+            {isPending ? tc('saving') : tc('saveChanges')}
             </button>
             <button
               type="button"
               onClick={() => { setEditing(false); setError(null); }}
               className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium hover:bg-white transition-colors"
             >
-              Cancel
+              {tc('cancel')}
             </button>
           </div>
         </form>
@@ -222,7 +221,7 @@ export default function StaffCard({
       <div className="text-sm text-gray-600 space-y-1">
         {profile.email && (
           <p>
-            <span className="font-medium">Email:</span>{' '}
+            <span className="font-medium">{tc('email')}:</span>{' '}
             <a href={`mailto:${profile.email}`} className="text-blue-600 hover:underline">
               {profile.email}
             </a>
@@ -230,11 +229,11 @@ export default function StaffCard({
         )}
         {profile.phone && (
           <p>
-            <span className="font-medium">Phone:</span> {profile.phone}
+            <span className="font-medium">{tc('phone')}:</span> {profile.phone}
           </p>
         )}
         {!profile.email && !profile.phone && hasExtendedColumns && (
-          <p className="text-xs text-gray-400 italic">No contact info yet.</p>
+          <p className="text-xs text-gray-400 italic">{t('noContactInfo')}</p>
         )}
       </div>
 
@@ -243,7 +242,7 @@ export default function StaffCard({
           onClick={() => setEditing(true)}
           className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
         >
-          Edit
+          {tc('edit')}
         </button>
         <DeleteStaffButton id={profile.id} />
       </div>

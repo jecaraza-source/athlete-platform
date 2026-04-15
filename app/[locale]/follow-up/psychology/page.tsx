@@ -6,11 +6,13 @@ import NewCaseForm from './new-case-form';
 import NewSessionForm from './new-session-form';
 import EditSessionForm from './edit-session-form';
 import CaseStatusSelect from './case-status-select';
+import AttachmentsLoader from '@/components/attachments/attachments-loader';
 
 export const dynamic = 'force-dynamic';
 
 type PsychologyCase = {
   id: string;
+  athlete_id: string | null;
   status: string;
   opened_at: string;
   summary: string | null;
@@ -40,7 +42,7 @@ export default async function PsychologyPage() {
     await Promise.all([
       supabaseAdmin
         .from('psychology_cases')
-        .select('id, status, opened_at, summary, athletes(first_name, last_name), profiles(first_name, last_name), psychology_sessions(id, session_date, mood_score, stress_score, topic_summary, recommendations, next_session_date)')
+        .select('id, athlete_id, status, opened_at, summary, athletes(first_name, last_name), profiles(first_name, last_name), psychology_sessions(id, session_date, mood_score, stress_score, topic_summary, recommendations, next_session_date)')
         .order('opened_at', { ascending: false }),
       supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name'),
       supabaseAdmin.from('profiles').select('id, first_name, last_name').eq('role', 'psychologist').order('last_name'),
@@ -132,6 +134,19 @@ export default async function PsychologyPage() {
                 </div>
               )}
             </div>
+
+            {/* Documentos anexos */}
+            {c.athlete_id && (
+              <div className="mt-4">
+                <AttachmentsLoader
+                  athleteId={c.athlete_id}
+                  module="psychology"
+                  relatedRecordId={c.id}
+                  title="Documentos del caso"
+                  defaultCollapsed
+                />
+              </div>
+            )}
           </div>
         ))}
       </div>

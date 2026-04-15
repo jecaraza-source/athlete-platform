@@ -1,10 +1,13 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { updateRole } from '../actions';
 import type { Role } from '@/lib/rbac/types';
 
 export default function EditRoleForm({ role }: { role: Role }) {
+  const t = useTranslations('admin.accessControl.roles');
+  const tc = useTranslations('common');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -30,31 +33,31 @@ export default function EditRoleForm({ role }: { role: Role }) {
       )}
       {success && (
         <p className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-700">
-          Saved successfully.
+          {tc('savedSuccessfully')}
         </p>
       )}
 
       <div>
-        <label className="block text-sm font-medium mb-1">Role name</label>
+        <label className="block text-sm font-medium mb-1">{t('roleName')}</label>
         <input
           type="text"
           value={role.name}
           disabled
           className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
         />
-        <p className="mt-1 text-xs text-gray-400">Role names cannot be changed after creation.</p>
+        <p className="mt-1 text-xs text-gray-400">{t('roleNameReadonly')}</p>
       </div>
 
       <div>
         <label className="block text-sm font-medium mb-1" htmlFor="description">
-          Description
+          {tc('description')}
         </label>
         <input
           id="description"
           name="description"
           type="text"
           defaultValue={role.description ?? ''}
-          placeholder="What is this role for?"
+          placeholder={t('descriptionPlaceholder')}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
         />
       </div>
@@ -64,7 +67,7 @@ export default function EditRoleForm({ role }: { role: Role }) {
         disabled={isPending}
         className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50 transition-colors"
       >
-        {isPending ? 'Saving…' : 'Save changes'}
+        {isPending ? tc('saving') : tc('saveChanges')}
       </button>
     </form>
   );

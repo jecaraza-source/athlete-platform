@@ -3,17 +3,26 @@
 import { useRef, useTransition, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { StatusBadge, PriorityBadge } from './ticket-badges';
 import type { TicketFilters, TicketWithProfiles } from '@/lib/tickets/types';
 import type { ProfileSummary } from '@/lib/rbac/types';
+import Pagination from '@/components/pagination';
+
+const PER_PAGE = 25;
 
 interface Props {
   tickets: TicketWithProfiles[];
   profiles: ProfileSummary[];
   initialFilters: TicketFilters;
+  page: number;
 }
 
-export default function TicketsClient({ tickets, profiles, initialFilters }: Props) {
+export default function TicketsClient({ tickets, profiles, initialFilters, page }: Props) {
+  const totalPages = Math.ceil(tickets.length / PER_PAGE);
+  const paginated  = tickets.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const t = useTranslations('admin.tickets');
+  const tc = useTranslations('common');
   // Mirror filter state locally so inputs are controlled after navigation
   const [filters, setFilters] = useState<TicketFilters>(initialFilters);
   const [, startTransition] = useTransition();
@@ -61,12 +70,12 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
         {/* Search */}
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="search">
-            Search
+            {t('searchLabel')}
           </label>
           <input
             id="search"
             type="text"
-            placeholder="Search by title…"
+            placeholder={t('searchPlaceholder')}
             value={filters.search ?? ''}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="rounded-md border border-gray-300 px-3 py-2 text-sm w-52"
@@ -76,7 +85,7 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
         {/* Status */}
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="status">
-            Status
+            {t('statusLabel')}
           </label>
           <select
             id="status"
@@ -84,18 +93,18 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
             onChange={(e) => handleSelect('status', e.target.value)}
             className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
-            <option value="">All statuses</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
+            <option value="">{t('allStatuses')}</option>
+            <option value="open">{t('statusOpen')}</option>
+            <option value="in_progress">{t('statusInProgress')}</option>
+            <option value="resolved">{t('statusResolved')}</option>
+            <option value="closed">{t('statusClosed')}</option>
           </select>
         </div>
 
         {/* Priority */}
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="priority">
-            Priority
+            {t('priorityLabel')}
           </label>
           <select
             id="priority"
@@ -103,18 +112,18 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
             onChange={(e) => handleSelect('priority', e.target.value)}
             className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
-            <option value="">All priorities</option>
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
+            <option value="">{t('allPriorities')}</option>
+            <option value="low">{t('priorityLow')}</option>
+            <option value="medium">{t('priorityMedium')}</option>
+            <option value="high">{t('priorityHigh')}</option>
+            <option value="urgent">{t('priorityUrgent')}</option>
           </select>
         </div>
 
         {/* Assigned to */}
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="assigned_to">
-            Assigned to
+            {t('assignedToLabel')}
           </label>
           <select
             id="assigned_to"
@@ -122,8 +131,8 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
             onChange={(e) => handleSelect('assigned_to', e.target.value)}
             className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
-            <option value="">Anyone</option>
-            <option value="unassigned">Unassigned</option>
+            <option value="">{t('anyoneOption')}</option>
+            <option value="unassigned">{t('unassigned')}</option>
             {profiles.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.first_name} {p.last_name}
@@ -137,7 +146,7 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
             onClick={clearFilters}
             className="text-sm text-gray-500 hover:text-gray-700 underline self-end pb-2"
           >
-            Clear filters
+            {tc('clearFilters')}
           </button>
         )}
       </div>
@@ -145,13 +154,13 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
       {/* ── Table ───────────────────────────────────────────────────────── */}
       {tickets.length === 0 ? (
         <div className="rounded-lg border border-gray-200 py-16 text-center">
-          <p className="text-gray-500 text-sm">No tickets match the current filters.</p>
+        <p className="text-gray-500 text-sm">{t('noMatch')}</p>
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
               className="mt-2 text-sm text-blue-600 hover:text-blue-700"
             >
-              Clear filters
+              {tc('clearFilters')}
             </button>
           )}
         </div>
@@ -161,19 +170,19 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title
+                  {t('columnTitle')}
                 </th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  {t('columnStatus')}
                 </th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Priority
+                  {t('columnPriority')}
                 </th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Assigned to
+                  {t('columnAssignedTo')}
                 </th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created
+                  {t('columnCreated')}
                 </th>
                 <th className="relative px-5 py-3">
                   <span className="sr-only">Open</span>
@@ -181,7 +190,7 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {tickets.map((ticket) => (
+              {paginated.map((ticket) => (
                 <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-4 max-w-xs">
                     <Link
@@ -192,7 +201,7 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
                     </Link>
                     {ticket.created_by_profile && (
                       <p className="text-xs text-gray-400 mt-0.5">
-                        by {ticket.created_by_profile.first_name}{' '}
+                        {t('ticketBy')} {ticket.created_by_profile.first_name}{' '}
                         {ticket.created_by_profile.last_name}
                       </p>
                     )}
@@ -210,22 +219,22 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
                         {ticket.assigned_to_profile.last_name}
                       </>
                     ) : (
-                      <span className="text-gray-400 italic">Unassigned</span>
+                      <span className="text-gray-400 italic">{t('unassigned')}</span>
                     )}
                   </td>
                   <td className="px-5 py-4 text-gray-400 whitespace-nowrap">
-                    {new Date(ticket.created_at).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day:   'numeric',
-                      year:  'numeric',
-                    })}
+                  {new Date(ticket.created_at).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day:   'numeric',
+                    year:  'numeric',
+                  })}
                   </td>
                   <td className="px-5 py-4 text-right whitespace-nowrap">
                     <Link
                       href={`/admin/tickets/${ticket.id}`}
                       className="text-xs font-medium text-rose-600 hover:text-rose-700"
                     >
-                      View →
+                      {t('viewTicket')}
                     </Link>
                   </td>
                 </tr>
@@ -235,9 +244,12 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
         </div>
       )}
 
-      <p className="mt-3 text-xs text-gray-400">
-        {tickets.length} ticket{tickets.length !== 1 ? 's' : ''} shown
-      </p>
+      <div className="mt-3 flex items-center justify-between">
+        <p className="text-xs text-gray-400">
+          {t('count', { count: tickets.length })}
+        </p>
+        <Pagination page={page} totalPages={totalPages} pageParam="page" />
+      </div>
     </div>
   );
 }

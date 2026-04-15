@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import BackButton from '@/components/back-button';
 import { requirePermission, getCurrentUser } from '@/lib/rbac/server';
+import { getTranslations } from 'next-intl/server';
 import {
   getTicket,
   getTicketComments,
@@ -35,6 +36,7 @@ interface PageProps {
 
 export default async function TicketDetailPage({ params }: PageProps) {
   await requirePermission('view_tickets');
+  const t = await getTranslations('admin.tickets');
 
   const { id } = await params;
 
@@ -66,9 +68,9 @@ export default async function TicketDetailPage({ params }: PageProps) {
 
   return (
     <main className="p-8">
-      <BackButton href="/admin/tickets" label="Back to Tickets" />
+      <BackButton href="/admin/tickets" label={t('backToTickets')} />
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
+      {/* ── Header ─────────────────────────────────────────────────────────────────── */}
       <div className="mt-4 mb-8 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-rose-700 mb-3">{ticket.title}</h1>
@@ -86,21 +88,21 @@ export default async function TicketDetailPage({ params }: PageProps) {
           {/* Description */}
           <section className="rounded-lg border border-gray-200 p-6">
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-              Description
+              {t('descriptionLabel')}
             </h2>
             {ticket.description ? (
               <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">
                 {ticket.description}
               </p>
             ) : (
-              <p className="text-gray-400 italic text-sm">No description provided.</p>
+              <p className="text-gray-400 italic text-sm">{t('noDescriptionProvided')}</p>
             )}
           </section>
 
           {/* Comments */}
           <section>
             <h2 className="text-lg font-semibold mb-4">
-              Comentarios{' '}
+              {t('commentsLabel')}{' '}
               {comments.length > 0 && (
                 <span className="text-sm font-normal text-gray-400">
                   ({comments.length})
@@ -164,7 +166,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
           <div className="rounded-lg border border-gray-200 p-5 space-y-4 text-sm">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                Created by
+                {t('createdByLabel')}
               </p>
               <p className="text-gray-800">
                 {ticket.created_by_profile
@@ -174,10 +176,10 @@ export default async function TicketDetailPage({ params }: PageProps) {
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                Assigned staff
+                {t('assignedStaffLabel')}
               </p>
               {assignees.length === 0 ? (
-                <span className="text-gray-400 italic text-sm">Unassigned</span>
+                <span className="text-gray-400 italic text-sm">{t('unassignedLabel')}</span>
               ) : (
                 <ul className="space-y-1">
                   {assignees.map((a) => (
@@ -193,7 +195,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
             {linkedAthletes.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                  Linked athletes
+                  {t('linkedAthletesLabel')}
                 </p>
                 <ul className="space-y-1">
                   {linkedAthletes.map((la) => (
@@ -214,7 +216,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
             {ticket.due_date && (
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                  Fecha límite
+                  {t('dueDateLabel')}
                 </p>
                 <p className={`font-medium ${
                   new Date(ticket.due_date) < new Date() && ticket.status !== 'closed' && ticket.status !== 'resolved'
@@ -225,14 +227,14 @@ export default async function TicketDetailPage({ params }: PageProps) {
                     year: 'numeric', month: 'long', day: 'numeric',
                   })}
                   {new Date(ticket.due_date) < new Date() && ticket.status !== 'closed' && ticket.status !== 'resolved' && (
-                    <span className="ml-1 text-xs">(Vencido)</span>
+                    <span className="ml-1 text-xs">({t('overdueLabel')})</span>
                   )}
                 </p>
               </div>
             )}
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                Abierto
+                {t('openedOnLabel')}
               </p>
               <p className="text-gray-600">
                 {new Date(ticket.created_at).toLocaleDateString('es-MX', {
@@ -242,7 +244,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                Última actualización
+                {t('lastUpdatedLabel')}
               </p>
               <p className="text-gray-600">
                 {new Date(ticket.updated_at).toLocaleDateString('es-MX', {
@@ -258,7 +260,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
               {(userCanEdit || userCanClose) && (
                 <div className="rounded-lg border border-gray-200 p-5">
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                    Change Status
+                    {t('changeStatusLabel')}
                   </h3>
                   <ChangeStatusForm
                     ticketId={ticket.id}
@@ -271,7 +273,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
               {userCanAssign && (
                 <div className="rounded-lg border border-gray-200 p-5">
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                    Assign staff
+                    {t('assignStaffLabel')}
                   </h3>
                   <AssignTicketForm
                     ticketId={ticket.id}
@@ -284,10 +286,10 @@ export default async function TicketDetailPage({ params }: PageProps) {
               {(userCanEdit || userCanAssign) && (
                 <div className="rounded-lg border border-gray-200 p-5">
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                    Athlete follow-up
+                    {t('athleteFollowUpLabel')}
                   </h3>
                   <p className="text-xs text-gray-500 mb-3">
-                    Link athletes whose performance this ticket relates to.
+                    {t('athleteFollowUpDesc')}
                   </p>
                   <AthleteLinksForm
                     ticketId={ticket.id}
@@ -303,7 +305,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
           {activity.length > 0 && (
             <div className="rounded-lg border border-gray-200 p-5">
               <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                Activity
+                {t('activityLabel')}
               </h3>
               <ul className="space-y-2.5">
                 {activity.map((entry) => (

@@ -1,3 +1,6 @@
+'use client';
+
+import { useTranslations } from 'next-intl';
 import type { TicketPriority, TicketStatus } from '@/lib/tickets/types';
 
 // ---------------------------------------------------------------------------
@@ -11,19 +14,19 @@ const STATUS_STYLES: Record<TicketStatus, string> = {
   closed:      'bg-gray-100 text-gray-600',
 };
 
-const STATUS_LABELS: Record<TicketStatus, string> = {
-  open:        'Open',
-  in_progress: 'In Progress',
-  resolved:    'Resolved',
-  closed:      'Closed',
-};
-
 export function StatusBadge({ status }: { status: TicketStatus }) {
+  const t = useTranslations('admin.tickets');
+  const labelMap: Record<TicketStatus, string> = {
+    open:        t('statusOpen'),
+    in_progress: t('statusInProgress'),
+    resolved:    t('statusResolved'),
+    closed:      t('statusClosed'),
+  };
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[status]}`}
     >
-      {STATUS_LABELS[status]}
+      {labelMap[status]}
     </span>
   );
 }
@@ -40,12 +43,18 @@ const PRIORITY_STYLES: Record<TicketPriority, string> = {
 };
 
 export function PriorityBadge({ priority }: { priority: TicketPriority }) {
-  const label = priority.charAt(0).toUpperCase() + priority.slice(1);
+  const t = useTranslations('admin.tickets');
+  const labelMap: Record<TicketPriority, string> = {
+    low:    t('priorityLow'),
+    medium: t('priorityMedium'),
+    high:   t('priorityHigh'),
+    urgent: t('priorityUrgent'),
+  };
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${PRIORITY_STYLES[priority]}`}
     >
-      {label}
+      {labelMap[priority]}
     </span>
   );
 }

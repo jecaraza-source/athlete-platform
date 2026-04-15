@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { assertPermission } from '@/lib/rbac/server';
-import type { DiagnosticSectionKey } from '@/lib/types/diagnostic';
+import { SECTION_KEYS, type DiagnosticSectionKey } from '@/lib/types/diagnostic';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -66,14 +66,54 @@ async function logAction(
   });
 }
 
-async function getSectionRecord(athleteId: string, section: DiagnosticSectionKey) {
-  const { data } = await supabaseAdmin
+async function ensureSectionRecord(
+  athleteId: string,
+  section: DiagnosticSectionKey,
+): Promise<{ id: string; diagnostic_id: string } | null> {
+  // 1. Ensure the diagnostic header exists (create with all 5 sections on first use)
+  let { data: diag } = await supabaseAdmin
+    .from('athlete_initial_diagnostic')
+    .select('id')
+    .eq('athlete_id', athleteId)
+    .maybeSingle();
+
+  if (!diag) {
+    const { data: created, error } = await supabaseAdmin
+      .from('athlete_initial_diagnostic')
+      .insert({ athlete_id: athleteId })
+      .select('id')
+      .single();
+    if (error || !created) return null;
+    diag = created;
+
+    // Seed all 5 section rows so the progress calculation is accurate from the start
+    await supabaseAdmin.from('athlete_diagnostic_sections').insert(
+      SECTION_KEYS.map((s) => ({
+        diagnostic_id: created.id,
+        athlete_id:    athleteId,
+        section:       s,
+      }))
+    );
+  }
+
+  // 2. Fetch the specific section row (handles older diagnostics missing sections)
+  const { data: sec } = await supabaseAdmin
     .from('athlete_diagnostic_sections')
     .select('id, diagnostic_id')
     .eq('athlete_id', athleteId)
     .eq('section', section)
     .maybeSingle();
-  return data;
+
+  if (sec) return sec;
+
+  // 3. Section missing on an older diagnostic — create it individually
+  const { data: newSec, error: secErr } = await supabaseAdmin
+    .from('athlete_diagnostic_sections')
+    .insert({ diagnostic_id: diag.id, athlete_id: athleteId, section })
+    .select('id, diagnostic_id')
+    .single();
+
+  return secErr ? null : newSec;
 }
 
 async function updateSectionStatus(
@@ -147,8 +187,8 @@ export async function saveMedicalSection(
   const denied = await assertPermission('edit_athletes');
   if (denied) return denied;
 
-  const section = await getSectionRecord(athleteId, 'medico');
-  if (!section) return { error: 'Sección médica no encontrada.' };
+  const section = await ensureSectionRecord(athleteId, 'medico');
+  if (!section) return { error: 'No se pudo inicializar la sección médica.' };
 
   const payload = extractMedicalPayload(formData);
 
@@ -206,8 +246,8 @@ export async function saveNutritionSection(
   const denied = await assertPermission('edit_athletes');
   if (denied) return denied;
 
-  const section = await getSectionRecord(athleteId, 'nutricion');
-  if (!section) return { error: 'Sección de nutrición no encontrada.' };
+  const section = await ensureSectionRecord(athleteId, 'nutricion');
+  if (!section) return { error: 'No se pudo inicializar la sección de nutrición.' };
 
   const { error } = await supabaseAdmin
     .from('athlete_nutrition_evaluation')
@@ -266,8 +306,8 @@ export async function savePsychologySection(
   const denied = await assertPermission('edit_athletes');
   if (denied) return denied;
 
-  const section = await getSectionRecord(athleteId, 'psicologia');
-  if (!section) return { error: 'Sección de psicología no encontrada.' };
+  const section = await ensureSectionRecord(athleteId, 'psicologia');
+  if (!section) return { error: 'No se pudo inicializar la sección de psicología.' };
 
   const { error } = await supabaseAdmin
     .from('athlete_psychology_evaluation')
@@ -328,8 +368,8 @@ export async function saveCoachSection(
   const denied = await assertPermission('edit_athletes');
   if (denied) return denied;
 
-  const section = await getSectionRecord(athleteId, 'entrenador');
-  if (!section) return { error: 'Sección de entrenador no encontrada.' };
+  const section = await ensureSectionRecord(athleteId, 'entrenador');
+  if (!section) return { error: 'No se pudo inicializar la sección de entrenador.' };
 
   const { error } = await supabaseAdmin
     .from('athlete_coach_evaluation')
@@ -397,8 +437,8 @@ export async function savePhysioSection(
   const denied = await assertPermission('edit_athletes');
   if (denied) return denied;
 
-  const section = await getSectionRecord(athleteId, 'fisioterapia');
-  if (!section) return { error: 'Sección de fisioterapia no encontrada.' };
+  const section = await ensureSectionRecord(athleteId, 'fisioterapia');
+  if (!section) return { error: 'No se pudo inicializar la sección de fisioterapia.' };
 
   const { error } = await supabaseAdmin
     .from('athlete_physiotherapy_evaluation')

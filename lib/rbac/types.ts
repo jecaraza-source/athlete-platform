@@ -32,7 +32,8 @@ export type RolePermission = {
   permission_id: string;
 };
 
-export type UserRole = {
+/** Shape of a row in the `user_roles` pivot table (profile ↔ role assignment). */
+export type UserRoleRow = {
   id?: number;
   profile_id: string;
   /** INTEGER — references roles.id */
@@ -41,8 +42,12 @@ export type UserRole = {
 };
 
 // ---------------------------------------------------------------------------
-// Well-known role names — used for type-safe comparisons
+// Well-known role names — re-exported from the shared package so the web app
+// and the mobile app share a single source of truth.
+// Imported as RoleCode to avoid shadowing the DB row type above.
 // ---------------------------------------------------------------------------
+
+export type { UserRole as RoleCode } from '@athlete-platform/shared';
 
 export const SYSTEM_ROLES = ['super_admin', 'admin', 'coach', 'staff', 'athlete'] as const;
 export type SystemRoleName = (typeof SYSTEM_ROLES)[number];
@@ -64,13 +69,19 @@ export const PERMISSION_NAMES = [
   'manage_users',
   'manage_roles',
   'manage_permissions',
-  // Tickets
+  // Tickets (migration 005)
   'view_tickets',
   'create_tickets',
   'edit_tickets',
   'assign_tickets',
   'comment_tickets',
   'close_tickets',
+  // Notifications (migration 010)
+  'manage_email_campaigns',
+  'manage_push_campaigns',
+  'manage_notification_templates',
+  'manage_ticket_emails',
+  'view_notification_logs',
 ] as const;
 export type PermissionName = (typeof PERMISSION_NAMES)[number];
 

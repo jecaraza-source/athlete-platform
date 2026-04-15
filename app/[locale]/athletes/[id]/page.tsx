@@ -2,7 +2,9 @@ import Link from 'next/link';
 import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/rbac/server';
+import { getTranslations } from 'next-intl/server';
 import { GeneralInfoSection, GuardianSection, EmergencyContactSection } from './athlete-sections';
+import AthleteDocuments from './athlete-documents';
 import {
   getDisciplineLabel,
   getDisabilityLabel,
@@ -38,12 +40,12 @@ type AthleteDetail = {
   status: string;
 };
 
-function SectionHeader({ title, href }: { title: string; href: string }) {
+function SectionHeader({ title, href, viewAllLabel }: { title: string; href: string; viewAllLabel: string }) {
   return (
     <div className="flex items-center justify-between mb-3">
       <h2 className="font-semibold text-base">{title}</h2>
       <Link href={href} className="text-xs text-blue-600 hover:underline">
-        View all →
+        {viewAllLabel}
       </Link>
     </div>
   );
@@ -51,12 +53,16 @@ function SectionHeader({ title, href }: { title: string; href: string }) {
 
 export default async function AthleteDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ docmodule?: string; docsearch?: string }>;
 }) {
   await requirePermission('view_athletes');
+  const ta = await getTranslations('athletes');
 
   const { id } = await params;
+  const { docmodule, docsearch } = await searchParams;
 
   // ──────────────────────────────────────────────────────────────────────
   // 1. Query base (columnas originales — siempre presentes en la BD)
@@ -109,8 +115,8 @@ export default async function AthleteDetailPage({
   if (error || !data) {
     return (
       <main className="p-8">
-        <BackButton href="/athletes" label="Volver a Atletas" />
-        <h1 className="text-2xl font-bold mt-4">Atleta no encontrado</h1>
+        <BackButton href="/athletes" label={ta('backToAthletes')} />
+        <h1 className="text-2xl font-bold mt-4">{ta('notFound')}</h1>
       </main>
     );
   }
@@ -162,7 +168,7 @@ export default async function AthleteDetailPage({
 
   return (
     <main className="p-8">
-      <BackButton href="/athletes" label="Volver a Atletas" />
+      <BackButton href="/athletes" label={ta('backToAthletes')} />
 
       {/* Banner de diagnóstico inicial pendiente */}
       {!diagComplete && (
@@ -170,16 +176,16 @@ export default async function AthleteDetailPage({
           <div className="flex items-center gap-2">
             <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT[diagStatus]}`} />
             <p className="text-sm text-amber-800">
-              <strong>Diagnóstico inicial:</strong>{' '}
+              <strong>{ta('diagnosticInitial')}:</strong>{' '}
               {STATUS_LABELS[diagStatus]}{diagPct > 0 ? ` (${diagPct}%)` : ''}
-              {diagStatus === 'pendiente' && ' — El expediente diagnóstico no ha sido iniciado.'}
+              {diagStatus === 'pendiente' && ta('diagnosticPendingNote')}
             </p>
           </div>
           <Link
             href={`/athletes/${id}/diagnostic`}
             className="text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap"
           >
-            Ir al diagnóstico inicial →
+            {ta('diagnosticGoTo')}
           </Link>
         </div>
       )}
@@ -191,10 +197,10 @@ export default async function AthleteDetailPage({
             {athlete.first_name} {athlete.last_name}
           </h1>
           {athlete.athlete_code && (
-            <p className="text-sm text-gray-500 mt-0.5">Código: {athlete.athlete_code}</p>
+            <p className="text-sm text-gray-500 mt-0.5">{ta('athleteCode')}: {athlete.athlete_code}</p>
           )}
           <div className="flex flex-wrap gap-3 mt-1 text-sm text-gray-500">
-            <span>Disciplina: <strong className="text-gray-700">{getDisciplineLabel(athlete.discipline)}</strong></span>
+            <span>{ta('disciplineLabel')}: <strong className="text-gray-700">{getDisciplineLabel(athlete.discipline)}</strong></span>
             {athlete.disability_status && (
               <span>· {getDisabilityLabel(athlete.disability_status)}</span>
             )}
@@ -216,9 +222,9 @@ export default async function AthleteDetailPage({
 
       {/* Calendar */}
       <div className="mt-8 rounded-lg border border-gray-200 p-5">
-        <SectionHeader title="Calendar" href="/calendar" />
+        <SectionHeader title={ta('calendarSection')} href="/calendar" viewAllLabel={ta('viewAll')} />
         {events.length === 0 ? (
-          <p className="text-sm text-gray-500">No events found.</p>
+          <p className="text-sm text-gray-500">{ta('noEvents')}</p>
         ) : (
           <div className="space-y-2">
             {events.map((ep) => ep.events && (
@@ -239,14 +245,14 @@ export default async function AthleteDetailPage({
       {/* Diagnóstico Inicial — resumen semáforo */}
       <div className="mt-8 rounded-lg border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-base">Diagnóstico Inicial Integral</h2>
+          <h2 className="font-semibold text-base">{ta('diagnosticTitle')}</h2>
           <Link href={`/athletes/${id}/diagnostic`} className="text-xs text-blue-600 hover:underline">
-            Ver completo →
+            {ta('diagnosticViewFull')}
           </Link>
         </div>
         <div className="mb-3">
           <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-            <span>Avance total</span>
+            <span>{ta('diagnosticProgress')}</span>
             <span className="font-semibold text-emerald-700">{diagPct}%</span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-2">
@@ -273,14 +279,14 @@ export default async function AthleteDetailPage({
       </div>
 
       {/* Follow-up */}
-      <h2 className="text-xl font-bold mt-8 mb-4">Seguimiento</h2>
+      <h2 className="text-xl font-bold mt-8 mb-4">{ta('followUpSection')}</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
         {/* Training */}
         <div className="rounded-lg border border-gray-200 p-5">
-          <SectionHeader title="Training" href={`/follow-up/training`} />
+          <SectionHeader title={ta('trainingSection')} href="/follow-up/training" viewAllLabel={ta('viewAll')} />
           {sessions.length === 0 ? (
-            <p className="text-sm text-gray-500">No sessions found.</p>
+            <p className="text-sm text-gray-500">{ta('noSessions')}</p>
           ) : (
             <div className="space-y-2">
               {sessions.map((s) => (
@@ -295,9 +301,9 @@ export default async function AthleteDetailPage({
 
         {/* Nutrition */}
         <div className="rounded-lg border border-gray-200 p-5">
-          <SectionHeader title="Nutrition" href={`/follow-up/nutrition?athlete=${id}`} />
+          <SectionHeader title={ta('nutritionSection')} href={`/follow-up/nutrition?athlete=${id}`} viewAllLabel={ta('viewAll')} />
           {plans.length === 0 ? (
-            <p className="text-sm text-gray-500">No plans found.</p>
+            <p className="text-sm text-gray-500">{ta('noPlans')}</p>
           ) : (
             <div className="space-y-2">
               {plans.map((p) => (
@@ -312,9 +318,9 @@ export default async function AthleteDetailPage({
 
         {/* Physio */}
         <div className="rounded-lg border border-gray-200 p-5">
-          <SectionHeader title="Physio" href="/follow-up/physio" />
+          <SectionHeader title={ta('physioSection')} href="/follow-up/physio" viewAllLabel={ta('viewAll')} />
           {cases.length === 0 ? (
-            <p className="text-sm text-gray-500">No cases found.</p>
+            <p className="text-sm text-gray-500">{ta('noCases')}</p>
           ) : (
             <div className="space-y-2">
               {cases.map((c) => (
@@ -329,9 +335,9 @@ export default async function AthleteDetailPage({
 
         {/* Psychology */}
         <div className="rounded-lg border border-gray-200 p-5">
-          <SectionHeader title="Psychology" href="/follow-up/psychology" />
+          <SectionHeader title={ta('psychologySection')} href="/follow-up/psychology" viewAllLabel={ta('viewAll')} />
           {psychCases.length === 0 ? (
-            <p className="text-sm text-gray-500">No cases found.</p>
+            <p className="text-sm text-gray-500">{ta('noCases')}</p>
           ) : (
             <div className="space-y-2">
               {psychCases.map((c) => (
@@ -346,6 +352,13 @@ export default async function AthleteDetailPage({
         </div>
 
       </div>
+
+      {/* Documentos del expediente — vista consolidada */}
+      <AthleteDocuments
+        athleteId={id}
+        moduleFilter={docmodule}
+        search={docsearch}
+      />
     </main>
   );
 }

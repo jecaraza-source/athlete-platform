@@ -1,51 +1,145 @@
-# Welcome to your Expo app 👋
+# AO Deportes — Web App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Plataforma de gestión y desarrollo de atletas. Construida con [Next.js](https://nextjs.org) 16, [Supabase](https://supabase.com), y desplegada en [Vercel](https://vercel.com).
 
-## Get started
+Dominio de producción: **https://aodeporte.com**
 
-1. Install dependencies
+## Stack tecnológico
 
-   ```bash
-   npm install
-   ```
+- **Framework**: Next.js 16 (App Router)
+- **Lenguaje**: TypeScript
+- **Estilos**: Tailwind CSS v4
+- **Backend/Auth**: Supabase (PostgreSQL + Auth + Storage)
+- **Email**: Resend
+- **Push notifications**: OneSignal
+- **i18n**: next-intl (español e inglés)
+- **Deployment**: Vercel
 
-2. Start the app
+## Desarrollo local
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. Instalar dependencias
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Configurar variables de entorno
 
-## Learn more
+Copia `.env.example` a `.env.local` y rellena los valores:
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+cp .env.example .env.local
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Variables requeridas:
 
-## Join the community
+| Variable | Descripción |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | URL de tu proyecto Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave anónima de Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (solo server-side) |
+| `RESEND_API_KEY` | API key de Resend para emails |
+| `RESEND_FROM_EMAIL` | Dirección remitente verificada en Resend |
+| `ONESIGNAL_APP_ID` | App ID de OneSignal |
+| `ONESIGNAL_REST_API_KEY` | REST API key de OneSignal |
+| `NEXT_PUBLIC_APP_URL` | URL base de la app (`http://localhost:3000` en dev) |
+| `CRON_SECRET` | Secret compartido para proteger los cron jobs |
 
-Join our community of developers creating universal apps.
+### 3. Iniciar servidor de desarrollo
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
-# athlete-platform
+```bash
+npm run dev
+```
+
+Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+
+## Scripts disponibles
+
+```bash
+npm run dev        # Servidor de desarrollo
+npm run build      # Build de producción
+npm run start      # Servidor de producción (requiere build previo)
+npm run lint       # ESLint
+npm run test       # Vitest (modo watch)
+npm run test:run   # Vitest (una sola ejecución)
+```
+
+## Arquitectura
+
+### Routing
+
+Usa el App Router de Next.js con segmento `[locale]` para internacionalización:
+
+```
+app/
+  layout.tsx                    # Root layout (html/body)
+  globals.css
+  [locale]/
+    layout.tsx                  # Layout con AppShell + next-intl
+    page.tsx                    # Redirige a /dashboard
+    login/
+    dashboard/
+    athletes/
+    calendar/
+    follow-up/
+    protocols/
+    preferencias/
+    admin/                      # Panel de administración
+      access-control/           # RBAC: roles, permisos, usuarios
+      notificaciones/           # Email, push, tickets
+      staff/
+      tickets/
+  api/
+    cron/                       # Cron jobs (protegidos por CRON_SECRET)
+      process-email-jobs/
+      process-push-jobs/
+      process-ticket-automation/
+    admin/run-cron/             # Trigger manual de crons
+```
+
+### Middleware (proxy.ts)
+
+Maneja locale detection, redirección automática y autenticación Supabase en cada request.
+
+### Supabase
+
+- `lib/supabase.ts` — cliente pública (browser)
+- `lib/supabase-server.ts` — cliente server-side con cookies (Server Components / Actions)
+- `lib/supabase-admin.ts` — cliente con service role key (solo server)
+
+### i18n
+
+Traduciones en `messages/en.json` y `messages/es.json`. Configuración en `i18n/`.
+
+## Deployment en Vercel
+
+### Variables de entorno requeridas en Vercel
+
+Configura estas variables en **Settings → Environment Variables** de tu proyecto Vercel:
+
+| Variable | Dev | Preview | Production |
+|---|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✓ | ✓ | ✓ |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✓ | ✓ | ✓ |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✓ | ✓ | ✓ |
+| `RESEND_API_KEY` | ✓ | ✓ | ✓ |
+| `RESEND_FROM_EMAIL` | ✓ | ✓ | ✓ |
+| `ONESIGNAL_APP_ID` | ✓ | ✓ | ✓ |
+| `ONESIGNAL_REST_API_KEY` | ✓ | ✓ | ✓ |
+| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` | URL de preview | `https://aodeporte.com` |
+| `CRON_SECRET` | string aleatorio | string aleatorio | string aleatorio |
+
+### Dominio
+
+1. En Vercel → **Settings → Domains**: agrega `aodeporte.com` y `www.aodeporte.com`.
+2. En tu proveedor de dominio: configura los registros DNS según las instrucciones de Vercel (generalmente registros A/CNAME hacia `cname.vercel-dns.com`).
+
+### Cron Jobs
+
+Definidos en `vercel.json`. Se ejecutan diariamente a medianoche UTC. Vercel los llama con el header `Authorization: Bearer <CRON_SECRET>`.
+
+## Monorepo
+
+Este proyecto vive en `apps/web/` dentro del monorepo `athlete-platform`. El monorepo también contiene:
+- `apps/mobile/` — App React Native (Expo)
+- `packages/shared/` — Tipos compartidos

@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { changeUserPassword } from './actions';
 
 export default function ChangePasswordForm({ authUserId }: { authUserId: string }) {
+  const t = useTranslations('admin.accessControl.usersAndRoles');
+  const tc = useTranslations('common');
   const [open, setOpen]       = useState(false);
   const [error, setError]     = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -49,7 +52,7 @@ export default function ChangePasswordForm({ authUserId }: { authUserId: string 
   if (success) {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-        <span>✓</span> Password updated
+        <span>✓</span> {t('passwordUpdated')}
       </span>
     );
   }
@@ -61,7 +64,7 @@ export default function ChangePasswordForm({ authUserId }: { authUserId: string 
         onClick={() => setOpen(true)}
         className="text-xs text-gray-400 hover:text-violet-600 hover:underline transition-colors"
       >
-        Change password
+        {t('changePassword')}
       </button>
     );
   }
@@ -74,7 +77,7 @@ export default function ChangePasswordForm({ authUserId }: { authUserId: string 
           type="password"
           required
           minLength={8}
-          placeholder="New password (min 8 chars)"
+          placeholder={t('newPasswordPlaceholder')}
           className="w-44 rounded border border-gray-300 px-2 py-1 text-xs focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
         />
         <button
@@ -82,14 +85,14 @@ export default function ChangePasswordForm({ authUserId }: { authUserId: string 
           disabled={isPending}
           className="rounded bg-violet-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50 transition-colors"
         >
-          {isPending ? 'Saving…' : 'Set'}
+          {isPending ? tc('saving') : t('setPassword')}
         </button>
         <button
           type="button"
           onClick={close}
           className="text-xs text-gray-400 hover:text-gray-600"
         >
-          Cancel
+          {tc('cancel')}
         </button>
       </div>
       {error && (

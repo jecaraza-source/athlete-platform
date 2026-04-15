@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import PermissionRow from './permission-row';
 import type { Permission } from '@/lib/rbac/types';
 
@@ -13,6 +14,7 @@ export default function PermissionsClient({
   permissions: Permission[];
   rolesByPerm: Record<string, RoleRef[]>;
 }) {
+  const t = useTranslations('admin.accessControl.permissions');
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -36,7 +38,7 @@ export default function PermissionsClient({
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name or description…"
+          placeholder={t('searchPlaceholder')}
           className="w-full rounded-lg border border-gray-300 pl-8 pr-3 py-2 text-sm placeholder:text-gray-400 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
         />
       </div>
@@ -46,9 +48,9 @@ export default function PermissionsClient({
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-5 py-3 font-semibold text-gray-700">Name</th>
-              <th className="text-left px-5 py-3 font-semibold text-gray-700">Description</th>
-              <th className="text-left px-5 py-3 font-semibold text-gray-700">Used by roles</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-700">{t('columnName')}</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-700">{t('columnDescription')}</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-700">{t('columnUsedBy')}</th>
               <th className="px-5 py-3" />
             </tr>
           </thead>
@@ -66,12 +68,12 @@ export default function PermissionsClient({
                 <td colSpan={4} className="px-5 py-12 text-center">
                   {permissions.length === 0 ? (
                     <p className="text-gray-400 text-sm">
-                      No permissions yet. Click &quot;+ New permission&quot; to create the first one.
+                      {t('noPermissions')}
                     </p>
                   ) : (
                     <div className="space-y-1">
-                      <p className="text-gray-500 font-medium text-sm">No permissions match your search.</p>
-                      <p className="text-gray-400 text-xs">Try a different keyword.</p>
+                      <p className="text-gray-500 font-medium text-sm">{t('noMatch')}</p>
+                      <p className="text-gray-400 text-xs">{t('tryKeyword')}</p>
                     </div>
                   )}
                 </td>
@@ -82,7 +84,7 @@ export default function PermissionsClient({
 
         {search && filtered.length > 0 && filtered.length < permissions.length && (
           <div className="border-t border-gray-100 bg-gray-50 px-5 py-2.5 text-xs text-gray-500">
-            Showing {filtered.length} of {permissions.length} permissions
+            {t('showing', { shown: filtered.length, total: permissions.length })}
           </div>
         )}
       </div>
