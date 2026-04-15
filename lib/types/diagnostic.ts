@@ -1,13 +1,13 @@
 // =============================================================================
 // lib/types/diagnostic.ts
-// Tipos compartidos para el módulo de Diagnóstico Inicial Integral del Atleta
+// Tipos del módulo de Diagnóstico Inicial Integral del Atleta.
+// DiagnosticStatus y DisabilityStatus se re-exportan desde el paquete compartido
+// para mantener una sola fuente de verdad en todo el monorepo.
 // =============================================================================
 
-export type DiagnosticStatus =
-  | 'pendiente'
-  | 'en_proceso'
-  | 'completo'
-  | 'requiere_atencion';
+// Import + re-export shared types — single source of truth across web + mobile
+import type { DiagnosticStatus, DisabilityStatus } from '@athlete-platform/shared';
+export type { DiagnosticStatus, DisabilityStatus };
 
 export type DiagnosticSectionKey =
   | 'medico'
@@ -15,10 +15,6 @@ export type DiagnosticSectionKey =
   | 'psicologia'
   | 'entrenador'
   | 'fisioterapia';
-
-export type DisabilityStatus =
-  | 'con_discapacidad'
-  | 'sin_discapacidad';
 
 export type PlanType =
   | 'medico'

@@ -1,6 +1,10 @@
 {
   "common": {
     "backToDashboard": "Back to Dashboard",
+    "paginationPrev": "\u2190 Previous",
+    "paginationNext": "Next \u2192",
+    "paginationOf": "of",
+    "paginationPage": "Page",
     "backToFollowUp": "Back to Follow-up",
     "backToAdmin": "Back to Admin",
     "backToProtocols": "Back to Protocols",
@@ -66,7 +70,13 @@
     "athletesDescription": "Manage athlete records and profiles.",
     "calendarDescription": "Review and manage upcoming events.",
     "followUpDescription": "Track training, nutrition, physio, psychology, and medical services.",
-    "protocolsDescription": "Standard operating guidelines for each discipline."
+    "protocolsDescription": "Standard operating guidelines for each discipline.",
+    "metricsActiveAthletes": "Active athletes",
+    "metricsOpenTickets": "Open tickets",
+    "metricsUpcomingEvents": "Events this week",
+    "metricsPendingDiagnostics": "Pending diagnostics",
+    "metricsTotal": "of {total} total",
+    "metricsNone": "None"
   },
   "athletes": {
     "title": "Athletes",
@@ -75,6 +85,15 @@
     "name": "Name",
     "schoolOrClub": "School / Club",
     "status": "Status",
+    "searchPlaceholder": "Search by name\u2026",
+    "colDiscipline": "Discipline",
+    "colDiagnostic": "Initial Diagnostic",
+    "filterAll": "All",
+    "filterActive": "Active",
+    "filterInactive": "Inactive",
+    "filterDiagnostic": "Diagnostic",
+    "noResults": "No athletes match the current filters.",
+    "showing": "{count, plural, one {# athlete} other {# athletes}}",
     "backToAthletes": "Back to Athletes",
     "notFound": "Athlete not found",
     "viewAll": "View all \u2192",

@@ -7,14 +7,20 @@ import { useTranslations } from 'next-intl';
 import { StatusBadge, PriorityBadge } from './ticket-badges';
 import type { TicketFilters, TicketWithProfiles } from '@/lib/tickets/types';
 import type { ProfileSummary } from '@/lib/rbac/types';
+import Pagination from '@/components/pagination';
+
+const PER_PAGE = 25;
 
 interface Props {
   tickets: TicketWithProfiles[];
   profiles: ProfileSummary[];
   initialFilters: TicketFilters;
+  page: number;
 }
 
-export default function TicketsClient({ tickets, profiles, initialFilters }: Props) {
+export default function TicketsClient({ tickets, profiles, initialFilters, page }: Props) {
+  const totalPages = Math.ceil(tickets.length / PER_PAGE);
+  const paginated  = tickets.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const t = useTranslations('admin.tickets');
   const tc = useTranslations('common');
   // Mirror filter state locally so inputs are controlled after navigation
@@ -184,7 +190,7 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {tickets.map((ticket) => (
+              {paginated.map((ticket) => (
                 <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-4 max-w-xs">
                     <Link
@@ -238,9 +244,12 @@ export default function TicketsClient({ tickets, profiles, initialFilters }: Pro
         </div>
       )}
 
-      <p className="mt-3 text-xs text-gray-400">
-        {t('count', { count: tickets.length })}
-      </p>
+      <div className="mt-3 flex items-center justify-between">
+        <p className="text-xs text-gray-400">
+          {t('count', { count: tickets.length })}
+        </p>
+        <Pagination page={page} totalPages={totalPages} pageParam="page" />
+      </div>
     </div>
   );
 }

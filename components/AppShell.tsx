@@ -1,12 +1,15 @@
 import Image from 'next/image';
 import { ReactNode } from 'react';
-import { getAuthUser } from '@/lib/rbac/server';
+import { getAuthUser, hasRole } from '@/lib/rbac/server';
 import SignOutButton from './sign-out-button';
 import NavLinks from './nav-links';
 import LanguageSwitcher from './language-switcher';
 
 export default async function AppShell({ children }: { children: ReactNode }) {
   const authUser = await getAuthUser();
+
+  // Determine admin-level access once, server-side, to drive sidebar visibility
+  const showAdmin = await hasRole('super_admin', 'admin', 'program_director');
 
   return (
     <div className="min-h-screen flex bg-gray-50 text-gray-900">
@@ -26,7 +29,7 @@ export default async function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Navigation */}
-        <NavLinks />
+        <NavLinks showAdmin={showAdmin} />
 
         {/* Footer */}
         <div className="border-t border-gray-200">

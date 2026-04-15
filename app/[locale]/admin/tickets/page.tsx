@@ -24,6 +24,8 @@ export default async function TicketsPage({ searchParams }: PageProps) {
     search:      (params.search      as string) || undefined,
   };
 
+  const page = Math.max(1, parseInt((params.page as string) || '1', 10));
+
   const [tickets, profiles] = await Promise.all([
     getTickets(filters),
     getAllProfiles(),
@@ -55,6 +57,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
         tickets={tickets}
         profiles={profiles}
         initialFilters={filters}
+        page={page}
       />
     </main>
   );
