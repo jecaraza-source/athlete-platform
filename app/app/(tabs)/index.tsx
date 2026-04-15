@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, useColorScheme, RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store';
 import { Colors, PRIMARY, StatusColors } from '@/constants/theme';
 import { Card } from '@/components/ui/card';
 import { Loading } from '@/components/ui/loading';
 import { Badge } from '@/components/ui/badge';
+import { Ionicons } from '@expo/vector-icons';
 import { countAthletes, getAthleteByProfileId } from '@/services/athletes';
 import { countOpenTickets } from '@/services/tickets';
 import { getDiagnostic, getDiagnosticSections } from '@/services/diagnostic';
@@ -16,6 +19,7 @@ import { DIAGNOSTIC_STATUS_LABELS, SECTION_LABELS } from '@/types';
 export default function DashboardScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
+  const router = useRouter();
   const { profile, isStaff, isAthlete, fullName, roles } = useAuthStore();
 
   const [loading, setLoading] = useState(true);
@@ -166,6 +170,30 @@ export default function DashboardScreen() {
             )}
           </>
         )}
+        {/* Protocols quick access — visible to all roles */}
+        <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 8 }]}>Protocolos</Text>
+        <TouchableOpacity
+          onPress={() => router.push('/app/protocols' as never)}
+          style={[
+            styles.protocolCard,
+            { backgroundColor: scheme === 'dark' ? '#1e2022' : '#f5f3ff' },
+          ]}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.protocolIcon, { backgroundColor: '#ede9fe' }]}>
+            <Ionicons name="document-text-outline" size={20} color="#7c3aed" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.protocolTitle, { color: colors.text }]}>
+              Guías operativas del equipo
+            </Text>
+            <Text style={[styles.protocolSub, { color: colors.icon }]}>
+              Entrenador · Fisio · Médico · Nutrición · Psicología
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.icon} />
+        </TouchableOpacity>
+
       </ScrollView>
     </View>
   );
@@ -193,4 +221,18 @@ const styles = StyleSheet.create({
   sections: { gap: 8 },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionName: { fontSize: 13 },
+
+  // Protocols
+  protocolCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 12, padding: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
+  },
+  protocolIcon: {
+    width: 40, height: 40, borderRadius: 10,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  protocolTitle: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
+  protocolSub:   { fontSize: 11 },
 });

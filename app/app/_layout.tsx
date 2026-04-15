@@ -37,6 +37,12 @@ export default function AppLayout() {
         name="tickets/create"
         options={{ title: 'Nuevo ticket', headerBackTitle: 'Tickets' }}
       />
+
+      {/* Protocols list */}
+      <Stack.Screen
+        name="protocols"
+        options={{ title: 'Protocolos', headerBackTitle: 'Inicio' }}
+      />
     </Stack>
   );
 }
