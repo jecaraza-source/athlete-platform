@@ -55,9 +55,12 @@ const PUBLIC_PATHS: string[] = [
 
 /**
  * Path prefixes that are always public regardless of auth state.
+ * - /api/auth   — Supabase auth callbacks
+ * - /api/cron/  — Vercel Cron jobs (secured via CRON_SECRET header in each handler)
  */
 const PUBLIC_PREFIXES: string[] = [
   '/api/auth',
+  '/api/cron/',
 ];
 
 function isPublicPath(strippedPathname: string): boolean {

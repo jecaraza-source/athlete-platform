@@ -49,6 +49,10 @@ export type UserRoleRow = {
 
 export type { UserRole as RoleCode } from '@/lib/types/shared';
 
+/**
+ * Canonical system roles seeded by migrations 001-002.
+ * Must match packages/shared/src/types.ts and apps/mobile/types/index.ts.
+ */
 export const SYSTEM_ROLES = ['super_admin', 'admin', 'coach', 'staff', 'athlete'] as const;
 export type SystemRoleName = (typeof SYSTEM_ROLES)[number];
 

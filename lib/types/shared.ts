@@ -1,16 +1,22 @@
 // Types originally from @athlete-platform/shared (packages/shared/src/types.ts)
 // Inlined here so the web app has no external file:// dependency in production.
+//
+// IMPORTANT: keep this file in sync with packages/shared/src/types.ts.
 
+/**
+ * Canonical system role codes as stored in the `roles` table.
+ * These match the `code` column values seeded by migrations 001-002.
+ *
+ * Note: `requireAdminAccess` in lib/rbac/server.ts also accepts
+ * 'program_director' for backwards compatibility with any existing DB rows
+ * that have that legacy role assigned.
+ */
 export type UserRole =
   | 'super_admin'
-  | 'program_director'
+  | 'admin'
   | 'coach'
-  | 'nutritionist'
-  | 'physio'
-  | 'psychologist'
-  | 'event_coordinator'
-  | 'athlete'
-  | 'guardian';
+  | 'staff'
+  | 'athlete';
 
 export type AthleteStatus =
   | 'active'
