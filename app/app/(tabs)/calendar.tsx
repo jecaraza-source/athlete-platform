@@ -1,151 +1,323 @@
-import { View, Text, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
-import { useState } from 'react';
-import { Colors } from '@/constants/theme';
+import { useEffect, useState, useCallback } from 'react';
+import {
+  View, Text, ScrollView, TouchableOpacity,
+  StyleSheet, useColorScheme, RefreshControl, ActivityIndicator,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, PRIMARY } from '@/constants/theme';
+import { useAuthStore } from '@/store';
+import { getAthleteByProfileId } from '@/services/athletes';
+import { listEventsInRange, listEventsForAthlete, type CalendarEvent } from '@/services/calendar';
 
-const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+const MONTHS_ES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+type EventTypeConfig = { label: string; color: string; bg: string; icon: string };
+
+const EVENT_TYPE: Record<string, EventTypeConfig> = {
+  training:    { label: 'Entrenamiento', color: '#0369a1', bg: '#e0f2fe', icon: 'barbell-outline' },
+  competition: { label: 'Competencia',  color: '#dc2626', bg: '#fee2e2', icon: 'trophy-outline' },
+  meeting:     { label: 'Reunión',      color: '#7c3aed', bg: '#f3e8ff', icon: 'people-outline' },
+  medical:     { label: 'Médico',       color: '#15803d', bg: '#dcfce7', icon: 'medical-outline' },
+};
+const EVENT_TYPE_DEFAULT: EventTypeConfig = {
+  label: 'Evento', color: '#92400e', bg: '#fef3c7', icon: 'calendar-outline',
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
 }
-
 function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
+function rangeForMonth(year: number, month: number): [string, string] {
+  const start = new Date(year, month, 1);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(year, month + 1, 0);
+  end.setHours(23, 59, 59, 999);
+  return [start.toISOString(), end.toISOString()];
+}
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ---------------------------------------------------------------------------
+// Event card
+// ---------------------------------------------------------------------------
+
+function EventCard({ event }: { event: CalendarEvent }) {
+  const scheme = useColorScheme() ?? 'light';
+  const colors = Colors[scheme];
+  const cfg = EVENT_TYPE[event.event_type] ?? EVENT_TYPE_DEFAULT;
+
+  // Build participant names string (only for staff view where participants are fetched)
+  const participantNames = event.participants.length > 0
+    ? event.participants.map((p) => `${p.first_name} ${p.last_name}`).join(', ')
+    : null;
+
+  return (
+    <View
+      style={[
+        styles.eventCard,
+        { backgroundColor: scheme === 'dark' ? '#1e2022' : '#fff', borderLeftColor: cfg.color },
+      ]}
+    >
+      <View style={styles.eventCardRow}>
+        <View style={[styles.eventTypeBadge, { backgroundColor: cfg.bg }]}>
+          <Ionicons name={cfg.icon as never} size={13} color={cfg.color} />
+          <Text style={[styles.eventTypeText, { color: cfg.color }]}>{cfg.label}</Text>
+        </View>
+        <Text style={[styles.eventTime, { color: colors.icon }]}>
+          {formatTime(event.start_at)}
+          {event.end_at ? ` – ${formatTime(event.end_at)}` : ''}
+        </Text>
+      </View>
+      <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
+      {event.description ? (
+        <Text style={[styles.eventDesc, { color: colors.icon }]} numberOfLines={2}>
+          {event.description}
+        </Text>
+      ) : null}
+      {participantNames && (
+        <View style={styles.participantsRow}>
+          <Ionicons name="people-outline" size={12} color={colors.icon} />
+          <Text style={[styles.participantsText, { color: colors.icon }]} numberOfLines={1}>
+            {participantNames}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main screen
+// ---------------------------------------------------------------------------
 
 export default function CalendarScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
-
   const today = new Date();
-  const [year, setYear] = useState(today.getFullYear());
+
+  const { profile, isAthlete, isStaff, isInitialized } = useAuthStore();
+
+  const [year, setYear]   = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
+  const [selectedDay, setSelectedDay] = useState<number>(today.getDate());
 
+  const [events, setEvents]         = useState<CalendarEvent[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [athleteId, setAthleteId]   = useState<string | null>(null);
+
+  // Set of YYYY-MM-DD strings that have at least one event
+  const eventDays = new Set(events.map((e) => e.start_at.slice(0, 10)));
+
+  // Events for the currently selected day
+  const selectedKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+  const dayEvents = events.filter((e) => e.start_at.slice(0, 10) === selectedKey);
+
+  const loadEvents = useCallback(async (y: number, m: number) => {
+    if (!profile) return;
+    try {
+      const [startISO, endISO] = rangeForMonth(y, m);
+      if (isAthlete()) {
+        let aId = athleteId;
+        if (!aId) {
+          const athlete = await getAthleteByProfileId(profile.id);
+          aId = athlete?.id ?? null;
+          setAthleteId(aId);
+        }
+        if (!aId) { setEvents([]); return; }
+        const data = await listEventsForAthlete(aId, startISO, endISO);
+        setEvents(data);
+      } else if (isStaff()) {
+        const data = await listEventsInRange(startISO, endISO);
+        setEvents(data);
+      }
+    } catch (e) {
+      console.warn('[calendar] load error', e);
+      setEvents([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, athleteId]);
+
+  // Re-run loadEvents when: month/year changes, profile loads, OR auth finishes
+  // initializing (roles become available for isAthlete()/isStaff() checks).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setLoading(true); loadEvents(year, month); }, [year, month, profile?.id, isInitialized]);
+
+  function prevMonth() {
+    if (month === 0) { setMonth(11); setYear((y) => y - 1); }
+    else setMonth((m) => m - 1);
+  }
+  function nextMonth() {
+    if (month === 11) { setMonth(0); setYear((y) => y + 1); }
+    else setMonth((m) => m + 1);
+  }
+
+  // Build calendar grid
   const daysInMonth = getDaysInMonth(year, month);
-  const firstDay = getFirstDayOfMonth(year, month);
-
-  // Build grid cells: leading empty + day numbers
+  const firstDay    = getFirstDayOfMonth(year, month);
   const cells: (number | null)[] = [
     ...Array(firstDay).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
-  // Pad to full rows
   while (cells.length % 7 !== 0) cells.push(null);
-
-  function prevMonth() {
-    if (month === 0) { setMonth(11); setYear(y => y - 1); }
-    else setMonth(m => m - 1);
-  }
-
-  function nextMonth() {
-    if (month === 11) { setMonth(0); setYear(y => y + 1); }
-    else setMonth(m => m + 1);
-  }
-
-  const monthLabel = new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
-
-  const rows = [];
-  for (let i = 0; i < cells.length; i += 7) {
-    rows.push(cells.slice(i, i + 7));
-  }
+  const rows: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
-          <Text style={[styles.navText, { color: colors.tint }]}>‹</Text>
+    <ScrollView
+      style={[styles.flex, { backgroundColor: colors.background }]}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => { setRefreshing(true); loadEvents(year, month); }}
+        />
+      }
+    >
+      {/* Month navigator */}
+      <View style={styles.nav}>
+        <TouchableOpacity onPress={prevMonth} style={styles.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="chevron-back" size={22} color={PRIMARY} />
         </TouchableOpacity>
-        <Text style={[styles.monthLabel, { color: colors.text }]}>{monthLabel}</Text>
-        <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
-          <Text style={[styles.navText, { color: colors.tint }]}>›</Text>
+        <Text style={[styles.monthLabel, { color: colors.text }]}>
+          {MONTHS_ES[month]} {year}
+        </Text>
+        <TouchableOpacity onPress={nextMonth} style={styles.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="chevron-forward" size={22} color={PRIMARY} />
         </TouchableOpacity>
       </View>
 
-      {/* Day-of-week labels */}
+      {/* Day-of-week header */}
       <View style={styles.row}>
-        {DAYS_OF_WEEK.map(d => (
+        {DAY_LABELS.map((d) => (
           <View key={d} style={styles.cell}>
             <Text style={[styles.dayOfWeek, { color: colors.icon }]}>{d}</Text>
           </View>
         ))}
       </View>
 
-      {/* Date grid */}
+      {/* Calendar grid */}
       {rows.map((row, ri) => (
         <View key={ri} style={styles.row}>
           {row.map((day, ci) => {
+            if (day === null) return <View key={ci} style={styles.cell} />;
             const isToday =
-              day !== null &&
               day === today.getDate() &&
               month === today.getMonth() &&
               year === today.getFullYear();
+            const isSelected = day === selectedDay;
+            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const hasEvent = eventDays.has(dateKey);
+
             return (
-              <View key={ci} style={styles.cell}>
-                {day !== null && (
-                  <View style={[
+              <TouchableOpacity
+                key={ci}
+                style={styles.cell}
+                onPress={() => setSelectedDay(day)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
                     styles.dayCircle,
-                    isToday && { backgroundColor: colors.tint },
-                  ]}>
-                    <Text style={[
-                      styles.dayText,
-                      { color: isToday ? '#fff' : colors.text },
-                    ]}>
-                      {day}
-                    </Text>
-                  </View>
+                    isSelected && { backgroundColor: PRIMARY },
+                    isToday && !isSelected && { borderWidth: 2, borderColor: PRIMARY },
+                  ]}
+                >
+                  <Text style={[styles.dayText, { color: isSelected ? '#fff' : colors.text }]}>
+                    {day}
+                  </Text>
+                </View>
+                {hasEvent && (
+                  <View style={[styles.dot, { backgroundColor: isSelected ? '#fff' : PRIMARY }]} />
                 )}
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>
       ))}
-    </View>
+
+      {/* Events for selected day */}
+      <View style={styles.eventsSection}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          {DAY_LABELS[new Date(year, month, selectedDay).getDay()]}{' '}
+          {selectedDay} de {MONTHS_ES[month]}
+        </Text>
+
+        {loading ? (
+          <ActivityIndicator color={PRIMARY} style={{ marginTop: 20 }} />
+        ) : dayEvents.length === 0 ? (
+          <View style={styles.emptyDay}>
+            <Ionicons name="calendar-outline" size={36} color={colors.icon} />
+            <Text style={[styles.emptyText, { color: colors.icon }]}>Sin eventos este día</Text>
+          </View>
+        ) : (
+          dayEvents.map((ev) => <EventCard key={ev.id} event={ev} />)
+        )}
+      </View>
+    </ScrollView>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 60,
-    paddingHorizontal: 16,
+  flex: { flex: 1 },
+  nav: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  navBtn: {
-    padding: 8,
-  },
-  navText: {
-    fontSize: 28,
-    lineHeight: 32,
-  },
-  monthLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  row: {
-    flexDirection: 'row',
-  },
-  cell: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  dayOfWeek: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
+  navBtn: { padding: 4 },
+  monthLabel: { fontSize: 18, fontWeight: '700' },
+  row: { flexDirection: 'row' },
+  cell: { flex: 1, alignItems: 'center', paddingVertical: 4 },
+  dayOfWeek: { fontSize: 11, fontWeight: '600' },
   dayCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
   },
-  dayText: {
-    fontSize: 14,
+  dayText: { fontSize: 14, fontWeight: '500' },
+  dot: { width: 5, height: 5, borderRadius: 3, marginTop: 2 },
+  eventsSection: { padding: 16, paddingBottom: 40 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 12 },
+  emptyDay: { alignItems: 'center', paddingTop: 24, gap: 8 },
+  emptyText: { fontSize: 14 },
+  eventCard: {
+    borderRadius: 12, padding: 14, marginBottom: 10, borderLeftWidth: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
   },
+  eventCardRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 6,
+  },
+  eventTypeBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20,
+  },
+  eventTypeText: { fontSize: 11, fontWeight: '600' },
+  eventTime: { fontSize: 12 },
+  eventTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+  eventDesc: { fontSize: 13, lineHeight: 18 },
+  participantsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  participantsText: { fontSize: 11, flex: 1 },
 });
