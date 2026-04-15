@@ -76,46 +76,60 @@ export async function listEventsInRange(
 }
 
 /**
- * Fetch events where a specific athlete is a participant.
- * Two-step: get event IDs from event_participants, then fetch those events.
+ * Fetch events visible to a specific athlete.
+ *
+ * An athlete sees an event if:
+ *  (a) they are explicitly listed as a participant in event_participants, OR
+ *  (b) the event has NO participants at all (global / public event).
+ *
+ * Strategy:
+ *  1. Fetch all events in the date range.
+ *  2. Fetch all event_participants rows for those events.
+ *  3. Filter client-side using the two rules above.
  */
 export async function listEventsForAthlete(
   athleteId: string,
   startISO: string,
   endISO: string,
 ): Promise<CalendarEvent[]> {
-  // Step 1 — get the event IDs this athlete is linked to
-  const { data: parts, error: partErr } = await supabase
-    .from('event_participants')
-    .select('event_id')
-    .eq('participant_id', athleteId);
-
-  if (partErr) {
-    console.warn('[calendar] listEventsForAthlete (step1) error:', partErr.message);
-    return [];
-  }
-  if (!parts || parts.length === 0) {
-    console.warn('[calendar] No event_participants found for athleteId:', athleteId);
-    return [];
-  }
-
-  const eventIds = parts.map((p) => (p as { event_id: string }).event_id);
-  console.warn('[calendar] athlete event IDs:', eventIds.length);
-
-  // Step 2 — fetch those events within the requested month range
-  const { data, error } = await supabase
+  // Step 1 — all events in the month range
+  const { data: allEvents, error: eventsErr } = await supabase
     .from('events')
     .select(FIELDS)
-    .in('id', eventIds)
     .gte('start_at', startISO)
     .lte('start_at', endISO)
     .order('start_at', { ascending: true });
 
-  if (error) {
-    console.warn('[calendar] listEventsForAthlete (step2) error:', error.message);
-    return [];
-  }
-  return (data ?? []).map((ev) => ({
+  if (eventsErr || !allEvents || allEvents.length === 0) return [];
+
+  const eventIds = allEvents.map((e) => (e as { id: string }).id);
+
+  // Step 2 — participant records for all these events
+  const { data: parts } = await supabase
+    .from('event_participants')
+    .select('event_id, participant_id')
+    .in('event_id', eventIds);
+
+  const participants = (parts ?? []) as { event_id: string; participant_id: string }[];
+
+  // Set of event IDs that have at least one participant assigned
+  const eventsWithParticipants = new Set(participants.map((p) => p.event_id));
+  // Set of event IDs where THIS athlete is explicitly a participant
+  const athleteEventIds = new Set(
+    participants
+      .filter((p) => p.participant_id === athleteId)
+      .map((p) => p.event_id),
+  );
+
+  // Step 3 — include event if athlete is a participant OR event is global (no participants)
+  const visible = allEvents.filter((ev) => {
+    const id = (ev as { id: string }).id;
+    return eventsWithParticipants.has(id)
+      ? athleteEventIds.has(id)   // has participants → only if athlete is one of them
+      : true;                      // no participants  → global event, always visible
+  });
+
+  return visible.map((ev) => ({
     ...(ev as Omit<CalendarEvent, 'participants'>),
     participants: [],
   }));

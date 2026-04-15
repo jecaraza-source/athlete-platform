@@ -52,6 +52,25 @@ export async function getAthleteByProfileId(profileId: string): Promise<Athlete 
   return data as Athlete | null;
 }
 
+/**
+ * Get the athlete whose login email matches.
+ * Primary lookup for athlete-role users — requires athletes.email to be set
+ * in the admin (Atletas → Información General → Email de acceso móvil).
+ */
+export async function getAthleteByEmail(email: string): Promise<Athlete | null> {
+  try {
+    const { data, error } = await supabase
+      .from('athletes')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+    if (error) return null; // column may not exist yet (pending migration)
+    return data as Athlete | null;
+  } catch {
+    return null;
+  }
+}
+
 /** Count athletes by status. */
 export async function countAthletes(): Promise<{ total: number; activos: number }> {
   const { count: total } = await supabase

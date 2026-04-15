@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Loading } from '@/components/ui/loading';
 import { EmptyView } from '@/components/ui/empty-view';
 import { useAuthStore } from '@/store';
-import { getAthleteByProfileId } from '@/services/athletes';
+import { getAthleteByEmail, getAthleteByProfileId } from '@/services/athletes';
 import {
   listTrainingSessions,
   createTrainingSession,
@@ -346,11 +346,20 @@ export default function TrainingScreen() {
   async function loadData(refresh = false) {
     if (!profile) { setLoading(false); return; }
     try {
-      // Resolve athlete ID from profile on first load
+      // Resolve athlete ID from profile on first load.
+      // Primary: match by email (requires athletes.email set in admin).
+      // Fallback: match by profile_id (legacy explicit link).
       let aId = athleteId;
       if (!aId) {
-        const athlete = await getAthleteByProfileId(profile.id);
-        aId = athlete?.id ?? null;
+        const email = profile.email;
+        if (email) {
+          const byEmail = await getAthleteByEmail(email);
+          aId = byEmail?.id ?? null;
+        }
+        if (!aId) {
+          const byProfile = await getAthleteByProfileId(profile.id);
+          aId = byProfile?.id ?? null;
+        }
         setAthleteId(aId);
       }
       if (!aId) { setLoading(false); return; }

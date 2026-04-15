@@ -6,7 +6,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, PRIMARY } from '@/constants/theme';
 import { useAuthStore } from '@/store';
-import { listEventsInRange, type CalendarEvent } from '@/services/calendar';
+import { listEventsInRange, listEventsForAthlete, type CalendarEvent } from '@/services/calendar';
+import { getAthleteByEmail, getAthleteByProfileId } from '@/services/athletes';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -110,7 +111,7 @@ export default function CalendarScreen() {
   const colors = Colors[scheme];
   const today = new Date();
 
-  const { profile, isInitialized } = useAuthStore();
+  const { profile, isAthlete, isInitialized } = useAuthStore();
 
   const [year, setYear]   = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -119,6 +120,8 @@ export default function CalendarScreen() {
   const [events, setEvents]         = useState<CalendarEvent[]>([]);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // Cache the athlete's DB id so we don't re-query on every month change
+  const [athleteId, setAthleteId]   = useState<string | null>(null);
   const [reloadKey, setReloadKey]   = useState(0);
 
   // Set of YYYY-MM-DD strings that have at least one event
@@ -143,11 +146,38 @@ export default function CalendarScreen() {
 
     (async () => {
       setLoading(true);
-      try {
-        const [startISO, endISO] = rangeForMonth(year, month);
-        // All authenticated users see all events.
-        // event_participants is used for attendance tracking, not visibility.
-        const data = await listEventsInRange(startISO, endISO);
+        try {
+          const [startISO, endISO] = rangeForMonth(year, month);
+          let data: CalendarEvent[];
+
+          if (isAthlete()) {
+            // Athlete: resolve their athletes.id once, then fetch only their events.
+            let aId = athleteId;
+            if (!aId) {
+              // Primary: match by email (admin sets athletes.email = login email)
+              const email = profile.email;
+              if (email) {
+                const byEmail = await getAthleteByEmail(email);
+                aId = byEmail?.id ?? null;
+              }
+              // Fallback: match by profile_id (legacy explicit link)
+              if (!aId) {
+                const byProfile = await getAthleteByProfileId(profile.id);
+                aId = byProfile?.id ?? null;
+              }
+              if (!cancelled) setAthleteId(aId);
+            }
+            if (aId) {
+              data = await listEventsForAthlete(aId, startISO, endISO);
+            } else {
+              // No athlete record found — show all events as fallback
+              data = await listEventsInRange(startISO, endISO);
+            }
+          } else {
+            // Staff / admin / any other role: show ALL events in the range
+            data = await listEventsInRange(startISO, endISO);
+          }
+
         if (!cancelled) setEvents(data);
       } catch (e) {
         console.warn('[calendar] load error', e);
@@ -161,7 +191,7 @@ export default function CalendarScreen() {
     })();
 
     return () => { cancelled = true; };
-  }, [year, month, profile?.id, isInitialized, reloadKey]);
+  }, [year, month, profile?.id, isInitialized, athleteId, reloadKey]);
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear((y) => y - 1); }

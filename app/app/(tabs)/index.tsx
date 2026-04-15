@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Loading } from '@/components/ui/loading';
 import { Badge } from '@/components/ui/badge';
 import { Ionicons } from '@expo/vector-icons';
-import { countAthletes, getAthleteByProfileId } from '@/services/athletes';
+import { countAthletes, getAthleteByEmail, getAthleteByProfileId } from '@/services/athletes';
 import { countOpenTickets } from '@/services/tickets';
 import { getDiagnostic, getDiagnosticSections } from '@/services/diagnostic';
 import type { AthleteInitialDiagnostic, AthleteSection } from '@/types';
@@ -43,8 +43,12 @@ export default function DashboardScreen() {
         setAthleteCount(counts);
         setOpenTickets(tickets);
       } else if (isAthlete() && profile) {
-        const athlete = await getAthleteByProfileId(profile.id);
-        if (athlete) {
+        // Primary: email. Fallback: profile_id.
+        const email = profile.email;
+        const athlete = email
+          ? (await getAthleteByEmail(email)) ?? (await getAthleteByProfileId(profile.id))
+          : await getAthleteByProfileId(profile.id);
+          if (athlete) {
           const diag = await getDiagnostic(athlete.id);
           setDiagnostic(diag);
           if (diag) {

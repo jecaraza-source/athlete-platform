@@ -119,8 +119,17 @@ export default function TabsLayout() {
         }}
       />
 
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          title: 'Calendario',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
       {/* Hide legacy screens from tab bar */}
-      <Tabs.Screen name="calendar" options={{ href: null }} />
       <Tabs.Screen name="plan" options={{ href: null }} />
       <Tabs.Screen name="progress" options={{ href: null }} />
     </Tabs>
