@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, PRIMARY } from '@/constants/theme';
 import { useAuthStore } from '@/store';
 import { getAthleteByProfileId } from '@/services/athletes';
-import { listEventsInRange, listEventsForAthlete, type CalendarEvent } from '@/services/calendar';
+import { listEventsInRange, listEventsForAthlete, countEventsInRange, type CalendarEvent } from '@/services/calendar';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -120,10 +120,11 @@ export default function CalendarScreen() {
   const [events, setEvents]         = useState<CalendarEvent[]>([]);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  // athleteId is cached so we only query the athletes table once per session
   const [athleteId, setAthleteId]   = useState<string | null>(null);
-  // Incrementing this counter forces a re-load (used by pull-to-refresh)
   const [reloadKey, setReloadKey]   = useState(0);
+  // Debug counters — remove after confirming events load correctly
+  const [dbCount, setDbCount]       = useState<number | null>(null);
+  const [debugRole, setDebugRole]   = useState('');
 
   // Set of YYYY-MM-DD strings that have at least one event
   const eventDays = new Set(events.map((e) => e.start_at.slice(0, 10)));
@@ -150,6 +151,15 @@ export default function CalendarScreen() {
       setLoading(true);
       try {
         const [startISO, endISO] = rangeForMonth(year, month);
+
+        // DEBUG: count raw events in DB and log role info
+        const totalInDb = await countEventsInRange(startISO, endISO);
+        const roleLabel = isAthlete() ? 'atleta' : 'staff/admin';
+        if (!cancelled) {
+          setDbCount(totalInDb);
+          setDebugRole(roleLabel);
+        }
+        console.warn(`[calendar] range: ${startISO.slice(0,10)} → ${endISO.slice(0,10)} | DB total: ${totalInDb} | role: ${roleLabel}`);
 
         let data: CalendarEvent[];
 
@@ -224,6 +234,23 @@ export default function CalendarScreen() {
         />
       }
     >
+      {/* DEBUG banner — shows DB count + role so we can diagnose missing events */}
+      {dbCount !== null && (
+        <View style={[
+          styles.debugBanner,
+          { backgroundColor: dbCount === 0 ? '#fee2e2' : '#dcfce7' },
+        ]}>
+          <Text style={[
+            styles.debugText,
+            { color: dbCount === 0 ? '#dc2626' : '#15803d' },
+          ]}>
+            {dbCount === 0
+              ? `⚠ 0 eventos en DB este mes (role: ${debugRole})`
+              : `✓ ${dbCount} evento(s) en DB | cargados: ${events.length} | ${debugRole}`}
+          </Text>
+        </View>
+      )}
+
       {/* Month navigator */}
       <View style={styles.nav}>
         <TouchableOpacity onPress={prevMonth} style={styles.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -352,4 +379,9 @@ const styles = StyleSheet.create({
   eventDesc: { fontSize: 13, lineHeight: 18 },
   participantsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
   participantsText: { fontSize: 11, flex: 1 },
+  debugBanner: {
+    marginHorizontal: 12, marginTop: 8, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 6,
+  },
+  debugText: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
 });

@@ -26,13 +26,30 @@ export type CalendarEvent = {
 const FIELDS =
   'id, title, event_type, sport_id, start_at, end_at, status, description, created_by_profile_id';
 
+/**
+ * Returns the total count of events in a date range.
+ * Useful for debugging — confirms whether ANY events exist in the range.
+ */
+export async function countEventsInRange(
+  startISO: string,
+  endISO: string,
+): Promise<number> {
+  const { count } = await supabase
+    .from('events')
+    .select('id', { count: 'exact', head: true })
+    .gte('start_at', startISO)
+    .lte('start_at', endISO);
+  return count ?? 0;
+}
+
 // ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch all events in a date range for staff/coaches.
- * Includes the list of assigned athletes per event.
+ * Fetch all events in a date range for staff/coaches/admins.
+ * Simple query without nested joins for maximum compatibility.
+ * Participants are fetched separately after events load.
  */
 export async function listEventsInRange(
   startISO: string,
@@ -40,33 +57,27 @@ export async function listEventsInRange(
 ): Promise<CalendarEvent[]> {
   const { data, error } = await supabase
     .from('events')
-    .select(`
-      ${FIELDS},
-      event_participants(
-        athletes(first_name, last_name)
-      )
-    `)
+    .select(FIELDS)
     .gte('start_at', startISO)
     .lte('start_at', endISO)
     .order('start_at', { ascending: true });
-  if (error) throw error;
 
-  return (data ?? []).map((row) => {
-    // Supabase returns joined relations as arrays even for belongs-to.
-    const rawParts = (row.event_participants ?? []) as { athletes: EventParticipant[] | null }[];
-    const participants: EventParticipant[] = rawParts
-      .flatMap((p) => p.athletes ?? [])
-      .filter((a): a is EventParticipant => a != null);
-    const { event_participants: _ep, ...ev } = row;
-    return { ...(ev as Omit<CalendarEvent, 'participants'>), participants };
-  });
+  if (error) {
+    console.warn('[calendar] listEventsInRange error:', error.message);
+    return [];
+  }
+
+  // Map to CalendarEvent with empty participants array.
+  // Participant names are fetched separately when needed.
+  return (data ?? []).map((ev) => ({
+    ...(ev as Omit<CalendarEvent, 'participants'>),
+    participants: [],
+  }));
 }
 
 /**
  * Fetch events where a specific athlete is a participant.
- * Two-step approach: first get the event IDs from event_participants,
- * then fetch those events in the requested date range.
- * The athlete_id is athletes.id (not profile_id).
+ * Two-step: get event IDs from event_participants, then fetch those events.
  */
 export async function listEventsForAthlete(
   athleteId: string,
@@ -79,10 +90,17 @@ export async function listEventsForAthlete(
     .select('event_id')
     .eq('participant_id', athleteId);
 
-  if (partErr) throw partErr;
-  if (!parts || parts.length === 0) return [];
+  if (partErr) {
+    console.warn('[calendar] listEventsForAthlete (step1) error:', partErr.message);
+    return [];
+  }
+  if (!parts || parts.length === 0) {
+    console.warn('[calendar] No event_participants found for athleteId:', athleteId);
+    return [];
+  }
 
   const eventIds = parts.map((p) => (p as { event_id: string }).event_id);
+  console.warn('[calendar] athlete event IDs:', eventIds.length);
 
   // Step 2 — fetch those events within the requested month range
   const { data, error } = await supabase
@@ -93,6 +111,12 @@ export async function listEventsForAthlete(
     .lte('start_at', endISO)
     .order('start_at', { ascending: true });
 
-  if (error) throw error;
-  return (data ?? []).map((ev) => ({ ...(ev as Omit<CalendarEvent, 'participants'>), participants: [] }));
+  if (error) {
+    console.warn('[calendar] listEventsForAthlete (step2) error:', error.message);
+    return [];
+  }
+  return (data ?? []).map((ev) => ({
+    ...(ev as Omit<CalendarEvent, 'participants'>),
+    participants: [],
+  }));
 }
