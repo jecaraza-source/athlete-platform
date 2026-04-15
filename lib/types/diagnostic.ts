@@ -6,7 +6,7 @@
 // =============================================================================
 
 // Import + re-export shared types — single source of truth across web + mobile
-import type { DiagnosticStatus, DisabilityStatus } from '@athlete-platform/shared';
+import type { DiagnosticStatus, DisabilityStatus } from '@/lib/types/shared';
 export type { DiagnosticStatus, DisabilityStatus };
 
 export type DiagnosticSectionKey =

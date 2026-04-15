@@ -47,7 +47,7 @@ export type UserRoleRow = {
 // Imported as RoleCode to avoid shadowing the DB row type above.
 // ---------------------------------------------------------------------------
 
-export type { UserRole as RoleCode } from '@athlete-platform/shared';
+export type { UserRole as RoleCode } from '@/lib/types/shared';
 
 export const SYSTEM_ROLES = ['super_admin', 'admin', 'coach', 'staff', 'athlete'] as const;
 export type SystemRoleName = (typeof SYSTEM_ROLES)[number];
