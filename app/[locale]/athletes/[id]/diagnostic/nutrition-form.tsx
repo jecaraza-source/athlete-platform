@@ -4,72 +4,6 @@ import { useRef, useState, useTransition } from 'react';
 import { saveNutritionSection } from './actions';
 import type { DiagnosticStatus, NutritionEvaluation } from '@/lib/types/diagnostic';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/types/diagnostic';
-import PrintableFormView, { type PrintSection } from '@/components/print/PrintableFormView';
-
-function buildNutritionSections(d: NutritionEvaluation | null): PrintSection[] {
-  if (!d) return [];
-  return [
-    {
-      title: '1. Historia Clínica',
-      fields: [
-        { label: 'Antecedentes médicos', value: d.medical_antecedents },
-        { label: 'Antecedentes heredofamiliares / patológicos / no patológicos', value: d.heredofamilial_antecedents },
-      ],
-    },
-    {
-      title: '2. Evaluación Antropométrica',
-      fields: [
-        { label: 'Talla (cm)', value: d.height_cm },
-        { label: 'Pliegues cutáneos', value: d.skinfolds },
-        { label: 'Composición corporal', value: d.body_composition },
-      ],
-    },
-    {
-      title: '3. Evaluación Dietética',
-      fields: [
-        { label: 'Consumo alimentario (recordatorio 24h / frecuencia)', value: d.food_intake },
-        { label: 'Datos cuantitativos (calorías, macronutrientes)', value: d.quantitative_data },
-        { label: 'Datos cualitativos (calidad de la dieta)', value: d.qualitative_data },
-      ],
-    },
-    {
-      title: '4. Gasto Energético',
-      fields: [
-        { label: 'Cálculo del gasto energético total', value: d.energy_expenditure },
-        { label: 'Cálculo de porcentajes de macronutrientes', value: d.calorie_percentages },
-      ],
-    },
-    {
-      title: '5. Integración Clínica y Metabólica',
-      fields: [
-        { label: 'Consolidación de resultados antropométricos, clínicos y metabólicos', value: d.clinical_metabolic_integration },
-      ],
-    },
-    {
-      title: '6. Diagnóstico Integral del Estado Nutricional',
-      fields: [
-        { label: 'Resultados cualitativos', value: d.qualitative_results },
-        { label: 'Resultados cuantitativos', value: d.quantitative_results },
-        { label: 'Diagnóstico nutricional', value: d.nutritional_diagnosis },
-      ],
-    },
-    {
-      title: '7. Plan Alimentario Personalizado',
-      fields: [
-        { label: 'Esquema de alimentación personalizado', value: d.food_plan },
-        { label: 'Requerimientos energéticos individualizados', value: d.energy_requirements },
-        { label: 'Objetivos deportivos específicos', value: d.sport_objectives },
-        { label: 'Características individuales del atleta', value: d.individual_characteristics },
-      ],
-    },
-    {
-      title: 'Observaciones Generales',
-      fields: [
-        { label: 'Observaciones', value: d.observations },
-      ],
-    },
-  ];
-}
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -124,16 +58,16 @@ export default function NutritionForm({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5 print:hidden">
+      <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-bold text-gray-800">Rubro Nutrición</h2>
         <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${STATUS_COLORS[sectionStatus]}`}>
           {STATUS_LABELS[sectionStatus]}
         </span>
       </div>
-      {error   && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">{error}</p>}
-      {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700 print:hidden">{success}</p>}
+      {error   && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>}
 
-      <form ref={formRef} className="print:hidden">
+      <form ref={formRef}>
         <SectionTitle>1. Historia Clínica</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Textarea label="Antecedentes médicos" name="medical_antecedents" defaultValue={d?.medical_antecedents} placeholder="Enfermedades previas, condiciones crónicas…" />
@@ -209,11 +143,6 @@ export default function NutritionForm({
           )}
         </div>
       </form>
-
-      <PrintableFormView
-        formTitle="Evaluación Nutricional — Diagnóstico Inicial"
-        sections={buildNutritionSections(d)}
-      />
     </div>
   );
 }

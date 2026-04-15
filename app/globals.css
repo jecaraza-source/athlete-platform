@@ -8,42 +8,28 @@
 
 @media print {
   @page {
-    margin: 2cm 1.8cm;
+    margin: 1.5cm;
     size: A4 portrait;
   }
 
-  /* Base typography */
-  body {
-    font-size: 10pt;
-    color: #111827;
-    background: white !important;
-  }
-
-  /* Remove decorative card borders, shadows and rounded corners */
-  .rounded-xl,
-  .rounded-lg,
-  .rounded-md {
-    border-radius: 0 !important;
-  }
-
-  .shadow-sm,
-  .shadow {
-    box-shadow: none !important;
-  }
-
-  /* Remove card-like borders from the diagnostic tab wrapper */
-  .print\:border-0 {
+  /* Make form controls render as clean text output */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
     border: none !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 1px 0 !important;
+    resize: none !important;
+    font-size: 10pt !important;
+    color: #111827 !important;
   }
 
-  /* Avoid breaking a section across pages */
-  h2, h3 {
-    break-after: avoid;
-  }
-
-  p {
-    orphans: 3;
-    widows: 3;
+  textarea {
+    height: auto !important;
+    overflow: visible !important;
+    min-height: 0 !important;
   }
 
   /* Grid layout adjustments for print */

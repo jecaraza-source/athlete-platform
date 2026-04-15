@@ -4,77 +4,6 @@ import { useRef, useState, useTransition } from 'react';
 import { saveCoachSection } from './actions';
 import type { DiagnosticStatus, CoachEvaluation } from '@/lib/types/diagnostic';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/types/diagnostic';
-import PrintableFormView, { type PrintSection } from '@/components/print/PrintableFormView';
-
-function buildCoachSections(d: CoachEvaluation | null): PrintSection[] {
-  if (!d) return [];
-  return [
-    {
-      title: '1. Evaluación Inicial — Pruebas Físicas',
-      fields: [
-        { label: 'Fuerza', value: d.strength_test },
-        { label: 'Potencia', value: d.power_test },
-        { label: 'Velocidad', value: d.speed_test },
-        { label: 'Resistencia', value: d.endurance_test },
-        { label: 'Flexibilidad', value: d.flexibility_test },
-      ],
-    },
-    {
-      title: '2. Análisis Técnico',
-      fields: [
-        { label: 'Detección de debilidades técnicas', value: d.technical_weaknesses },
-        { label: 'Valoración de capacidades competitivas', value: d.competitive_capabilities },
-      ],
-    },
-    {
-      title: '3. Evaluación Biomecánica',
-      fields: [
-        { label: 'Eficiencia del movimiento', value: d.movement_efficiency },
-        { label: 'Mecánica corporal', value: d.body_mechanics },
-        { label: 'Alineación segmentaria', value: d.segment_alignment },
-      ],
-    },
-    {
-      title: '4. Perfil Deportivo del Atleta',
-      fields: [
-        { label: 'Perfil deportivo completo', value: d.athlete_sport_profile },
-      ],
-    },
-    {
-      title: '5. Intervención por Disciplina',
-      fields: [
-        { label: 'Plan de intervención específico para la disciplina del atleta', value: d.discipline_intervention },
-      ],
-    },
-    {
-      title: '6. Plan de Entrenamiento Individualizado',
-      fields: [
-        { label: 'Estructura de la temporada deportiva', value: d.season_structure },
-        { label: 'Calendario competitivo', value: d.competitive_calendar },
-        { label: 'Objetivos de rendimiento', value: d.performance_objectives },
-        { label: 'Etapas de preparación del atleta', value: d.preparation_stages },
-      ],
-    },
-    {
-      title: '7. Supervisión del Entrenador',
-      fields: [
-        { label: 'Corrección técnica', value: d.technical_correction },
-        { label: 'Supervisión de cargas de entrenamiento', value: d.load_supervision },
-        { label: 'Preparación para competencia', value: d.competition_preparation },
-        { label: 'Análisis de desempeño', value: d.performance_analysis },
-        { label: 'Retroalimentación continua', value: d.continuous_feedback },
-        { label: 'Monitoreo de mejora en marcas', value: d.mark_monitoring },
-        { label: 'Ajuste del plan de entrenamiento', value: d.plan_adjustments },
-      ],
-    },
-    {
-      title: 'Observaciones Generales',
-      fields: [
-        { label: 'Observaciones', value: d.observations },
-      ],
-    },
-  ];
-}
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -117,16 +46,16 @@ export default function CoachForm({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5 print:hidden">
+      <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-bold text-gray-800">Rubro Entrenador</h2>
         <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${STATUS_COLORS[sectionStatus]}`}>
           {STATUS_LABELS[sectionStatus]}
         </span>
       </div>
-      {error   && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">{error}</p>}
-      {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700 print:hidden">{success}</p>}
+      {error   && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>}
 
-      <form ref={formRef} className="print:hidden">
+      <form ref={formRef}>
         <SectionTitle>1. Evaluación Inicial — Pruebas Físicas</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Textarea label="Fuerza" name="strength_test" defaultValue={d?.strength_test} placeholder="Resultados de pruebas de fuerza…" />
@@ -216,11 +145,6 @@ export default function CoachForm({
           )}
         </div>
       </form>
-
-      <PrintableFormView
-        formTitle="Evaluación del Entrenador — Diagnóstico Inicial"
-        sections={buildCoachSections(d)}
-      />
     </div>
   );
 }

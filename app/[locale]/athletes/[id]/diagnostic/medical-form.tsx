@@ -4,113 +4,6 @@ import { useRef, useState, useTransition } from 'react';
 import { saveMedicalSection } from './actions';
 import type { DiagnosticStatus, MedicalEvaluation } from '@/lib/types/diagnostic';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/types/diagnostic';
-import PrintableFormView, { type PrintSection } from '@/components/print/PrintableFormView';
-
-// ---------------------------------------------------------------------------
-// Print data builder
-// ---------------------------------------------------------------------------
-
-const RISK_LEVEL_LABELS: Record<string, string> = {
-  bajo: 'Bajo', medio: 'Medio', alto: 'Alto', critico: 'Crítico',
-};
-
-function buildMedicalSections(d: MedicalEvaluation | null): PrintSection[] {
-  if (!d) return [];
-  return [
-    {
-      title: '1. Evaluación Antropométrica',
-      fields: [
-        { label: 'Peso corporal (kg)', value: d.weight_kg },
-        { label: 'Talla (cm)', value: d.height_cm },
-        { label: 'IMC', value: d.bmi },
-        { label: '% Grasa corporal', value: d.body_fat_pct },
-      ],
-    },
-    {
-      title: '2. Evaluación de Signos Vitales',
-      fields: [
-        { label: 'Frecuencia cardíaca en reposo (bpm)', value: d.heart_rate_rest },
-        { label: 'Presión arterial', value: d.blood_pressure },
-      ],
-    },
-    {
-      title: '3. Evaluación Cardiovascular',
-      fields: [
-        { label: 'Electrocardiograma en reposo', value: d.ecg_rest },
-        { label: 'Electrocardiograma en esfuerzo', value: d.ecg_effort },
-      ],
-    },
-    {
-      title: '4. Evaluación Musculoesquelética y Postural',
-      fields: [
-        { label: 'Fuerza muscular', value: d.muscle_strength },
-        { label: 'Flexibilidad', value: d.flexibility },
-        { label: 'Postura', value: d.posture },
-        { label: 'Integridad articular', value: d.joint_integrity },
-      ],
-    },
-    {
-      title: '5. Evaluación Funcional Básica',
-      fields: [
-        { label: 'Pruebas de fuerza', value: d.strength_tests },
-        { label: 'Resistencia', value: d.resistance_tests },
-        { label: 'Flexibilidad (funcional)', value: d.flexibility_tests },
-        { label: 'Equilibrio y coordinación', value: d.balance_coordination },
-      ],
-    },
-    {
-      title: '6. Antecedentes de Lesiones',
-      fields: [
-        { label: 'Historial de lesiones (tipo, gravedad, recurrencia, tratamiento, secuelas)', value: d.injury_history },
-      ],
-    },
-    {
-      title: '7. Resultados',
-      fields: [
-        { label: 'Informe de resultados integrados', value: d.clinical_result },
-        { label: 'Emisión de diagnóstico', value: d.diagnosis },
-      ],
-    },
-    {
-      title: '8. Detección de Factores de Riesgo',
-      fields: [
-        { label: 'Valoración del historial de lesiones (musculares, ligamentarias, fracturas, tendinopatías)', value: d.injury_risk_factors },
-        { label: 'Condiciones médicas relevantes (cardiovasculares, respiratorias, metabólicas)', value: d.medical_conditions },
-      ],
-    },
-    {
-      title: '9. Integración Diagnóstica',
-      fields: [
-        { label: 'Correlación de historia clínica, exploración, estudios y estudios de gabinete', value: d.diagnostic_integration },
-        { label: 'Nivel de riesgo', value: d.risk_level ? (RISK_LEVEL_LABELS[d.risk_level] ?? d.risk_level) : null },
-        { label: 'Prioridades de atención', value: d.care_priorities },
-      ],
-    },
-    {
-      title: '10. Plan Médico Individual del Atleta (PMIA)',
-      fields: [
-        { label: 'Plan de prevención de lesiones', value: d.injury_prevention_plan },
-        { label: 'Recomendaciones médicas individualizadas', value: d.medical_recommendations },
-        { label: 'Control nutricional y coordinación interdisciplinaria', value: d.nutritional_coordination },
-        { label: 'Estrategias de recuperación', value: d.recovery_strategies },
-        { label: 'Control de cargas de entrenamiento', value: d.training_load_control },
-        { label: 'Programación de seguimiento médico', value: d.follow_up_schedule },
-      ],
-    },
-    {
-      title: '11. Monitoreo Continuo del Estado de Salud',
-      fields: [
-        { label: 'Notas de monitoreo (lesiones deportivas, evaluación en entrenamientos, ajustes de tratamiento)', value: d.monitoring_notes },
-      ],
-    },
-    {
-      title: 'Observaciones Generales',
-      fields: [
-        { label: 'Observaciones', value: d.observations },
-      ],
-    },
-  ];
-}
 
 // ---------------------------------------------------------------------------
 // Reusable primitives
@@ -201,19 +94,18 @@ export default function MedicalForm({
 
   return (
     <div>
-      {/* Header del rubro — screen only */}
-      <div className="flex items-center justify-between mb-5 print:hidden">
+      {/* Header del rubro */}
+      <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-bold text-gray-800">Rubro Médico</h2>
         <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${STATUS_COLORS[sectionStatus]}`}>
           {STATUS_LABELS[sectionStatus]}
         </span>
       </div>
 
-      {error   && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">{error}</p>}
-      {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700 print:hidden">{success}</p>}
+      {error   && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>}
 
-      {/* Editable form — hidden when printing */}
-      <form ref={formRef} className="print:hidden">
+      <form ref={formRef}>
         {/* 1. Historia Clínica Deportiva — Evaluación Antropométrica */}
         <SectionTitle>1. Evaluación Antropométrica</SectionTitle>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -365,12 +257,6 @@ export default function MedicalForm({
           )}
         </div>
       </form>
-
-      {/* Print-only clean document view */}
-      <PrintableFormView
-        formTitle="Evaluación Médica — Diagnóstico Inicial"
-        sections={buildMedicalSections(d)}
-      />
     </div>
   );
 }

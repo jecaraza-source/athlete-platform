@@ -129,29 +129,8 @@ export default function DiagnosticTabs({
 
   return (
     <div className="mt-4">
-      {/* ── Print-only formal document header ────────────────────── */}
-      <div className="hidden print:block mb-6 pb-4 border-b-2 border-gray-900">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[8pt] font-bold uppercase tracking-widest text-gray-500">AO Deportes</p>
-            <h1 className="text-2xl font-bold text-gray-900 mt-1">Diagnóstico Inicial Integral</h1>
-          </div>
-          <div className="text-right text-[8pt] text-gray-500">
-            <p>Fecha de impresión:</p>
-            <p>{new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          </div>
-        </div>
-        <div className="mt-3 pt-3 border-t border-gray-200">
-          <p className="text-lg font-semibold text-gray-800">{athlete.first_name} {athlete.last_name}</p>
-          <p className="text-sm text-gray-600 mt-0.5">
-            Disciplina: <strong>{getDisciplineLabel(athlete.discipline)}</strong>
-            {' · '}{getDisabilityLabel(athlete.disability_status)}
-          </p>
-        </div>
-      </div>
-
-      {/* ── Header del atleta (pantalla) ────────────────────────── */}
-      <div className="mb-6 print:hidden">
+      {/* ── Header del atleta ──────────────────────────────────────── */}
+      <div className="mb-6">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
           <div>
             <h1 className="text-2xl font-bold text-emerald-700">Diagnóstico Inicial Integral</h1>
@@ -236,7 +215,7 @@ export default function DiagnosticTabs({
       </div>
 
       {/* ── Formulario activo ─────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6 print:border-0 print:shadow-none print:p-0">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
         {activeTab === 'medico' && (
           <>
             <MedicalForm
@@ -244,7 +223,7 @@ export default function DiagnosticTabs({
               sectionStatus={(sectionMap['medico']?.status as DiagnosticStatus) ?? 'pendiente'}
               existingData={evaluations.medico}
             />
-            <div className="print:hidden">{attachmentPanels['medico']}</div>
+            {attachmentPanels['medico']}
           </>
         )}
         {activeTab === 'nutricion' && (
@@ -254,7 +233,7 @@ export default function DiagnosticTabs({
               sectionStatus={(sectionMap['nutricion']?.status as DiagnosticStatus) ?? 'pendiente'}
               existingData={evaluations.nutricion}
             />
-            <div className="print:hidden">{attachmentPanels['nutricion']}</div>
+            {attachmentPanels['nutricion']}
           </>
         )}
         {activeTab === 'psicologia' && (
@@ -264,7 +243,7 @@ export default function DiagnosticTabs({
               sectionStatus={(sectionMap['psicologia']?.status as DiagnosticStatus) ?? 'pendiente'}
               existingData={evaluations.psicologia}
             />
-            <div className="print:hidden">{attachmentPanels['psicologia']}</div>
+            {attachmentPanels['psicologia']}
           </>
         )}
         {activeTab === 'entrenador' && (
@@ -274,7 +253,7 @@ export default function DiagnosticTabs({
               sectionStatus={(sectionMap['entrenador']?.status as DiagnosticStatus) ?? 'pendiente'}
               existingData={evaluations.entrenador}
             />
-            <div className="print:hidden">{attachmentPanels['entrenador']}</div>
+            {attachmentPanels['entrenador']}
           </>
         )}
         {activeTab === 'fisioterapia' && (
@@ -284,7 +263,7 @@ export default function DiagnosticTabs({
               sectionStatus={(sectionMap['fisioterapia']?.status as DiagnosticStatus) ?? 'pendiente'}
               existingData={evaluations.fisioterapia}
             />
-            <div className="print:hidden">{attachmentPanels['fisioterapia']}</div>
+            {attachmentPanels['fisioterapia']}
           </>
         )}
         {activeTab === 'resultado_integrado' && (

@@ -3,35 +3,6 @@
 import { useRef, useState, useTransition } from 'react';
 import { saveIntegratedResult } from './actions';
 import type { IntegratedResults } from '@/lib/types/diagnostic';
-import PrintableFormView, { type PrintSection } from '@/components/print/PrintableFormView';
-
-function buildIntegratedSections(d: IntegratedResults | null): PrintSection[] {
-  if (!d) return [];
-  return [
-    {
-      title: 'Resumen General',
-      fields: [
-        { label: 'Resumen general del diagnóstico inicial', value: d.overall_summary },
-      ],
-    },
-    {
-      title: 'Resúmenes por Disciplina',
-      fields: [
-        { label: 'Resumen del diagnóstico médico', value: d.medical_summary },
-        { label: 'Resumen del diagnóstico nutricional', value: d.nutritional_summary },
-        { label: 'Resumen del diagnóstico psicológico', value: d.psychological_summary },
-        { label: 'Perfil deportivo del atleta', value: d.sport_profile },
-        { label: 'Resumen del diagnóstico fisioterapéutico', value: d.physiotherapy_summary },
-      ],
-    },
-    {
-      title: 'Resultado Integrado Interdisciplinario Final',
-      fields: [
-        { label: 'Conclusión interdisciplinaria', value: d.interdisciplinary_result },
-      ],
-    },
-  ];
-}
 
 function Textarea({ label, name, defaultValue, placeholder, rows = 4 }: {
   label: string; name: string; defaultValue?: string | null; placeholder?: string; rows?: number;
@@ -71,8 +42,7 @@ export default function IntegratedResultForm({
 
   return (
     <div>
-      {/* Header — screen only */}
-      <div className="flex items-center justify-between mb-5 print:hidden">
+      <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-bold text-gray-800">Resultado Integrado Interdisciplinario</h2>
         {!sectionsComplete && (
           <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
@@ -81,9 +51,8 @@ export default function IntegratedResultForm({
         )}
       </div>
 
-      {/* System notices — screen only */}
       {!sectionsComplete && (
-        <div className="mb-6 rounded-md bg-amber-50 border border-amber-200 p-4 print:hidden">
+        <div className="mb-6 rounded-md bg-amber-50 border border-amber-200 p-4">
           <p className="text-sm text-amber-800">
             <strong>Nota:</strong> Se recomienda completar todos los rubros antes de generar el resultado integrado.
             Sin embargo, puedes guardar avances parciales en cualquier momento.
@@ -91,16 +60,16 @@ export default function IntegratedResultForm({
         </div>
       )}
 
-      {error   && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">{error}</p>}
-      {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700 print:hidden">{success}</p>}
+      {error   && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>}
 
       {d?.generated_at && (
-        <p className="text-xs text-gray-400 mb-4 print:hidden">
+        <p className="text-xs text-gray-400 mb-4">
           Última generación: {new Date(d.generated_at).toLocaleString('es-MX')}
         </p>
       )}
 
-      <form ref={formRef} className="space-y-4 print:hidden">
+      <form ref={formRef} className="space-y-4">
         <Textarea label="Resumen general del diagnóstico inicial" name="overall_summary"
           defaultValue={d?.overall_summary}
           placeholder="Síntesis del estado integral del atleta desde todas las especialidades…" rows={5} />
@@ -137,7 +106,7 @@ export default function IntegratedResultForm({
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-gray-100">
+        <div className="flex justify-end pt-4 border-t border-gray-100">
           <button
             type="button"
             disabled={isPending}
@@ -146,25 +115,8 @@ export default function IntegratedResultForm({
           >
             {isPending ? 'Guardando…' : 'Generar / Guardar resultado integrado'}
           </button>
-          {d && (
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="ml-auto flex items-center gap-1.5 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              Imprimir PDF
-            </button>
-          )}
         </div>
       </form>
-
-      <PrintableFormView
-        formTitle="Resultado Integrado Interdisciplinario — Diagnóstico Inicial"
-        sections={buildIntegratedSections(d)}
-      />
     </div>
   );
 }

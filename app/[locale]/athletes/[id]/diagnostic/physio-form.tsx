@@ -4,84 +4,6 @@ import { useRef, useState, useTransition } from 'react';
 import { savePhysioSection } from './actions';
 import type { DiagnosticStatus, PhysioEvaluation } from '@/lib/types/diagnostic';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/types/diagnostic';
-import PrintableFormView, { type PrintSection } from '@/components/print/PrintableFormView';
-
-function buildPhysioSections(d: PhysioEvaluation | null): PrintSection[] {
-  if (!d) return [];
-  return [
-    {
-      title: '1. Historia Clínica Fisioterapéutica',
-      fields: [
-        { label: 'Antecedentes deportivos', value: d.sport_antecedents },
-        { label: 'Lesiones previas', value: d.previous_injuries },
-        { label: 'Síntomas actuales', value: d.current_symptoms },
-        { label: 'Cargas de entrenamiento', value: d.training_loads },
-        { label: 'Factores médicos relevantes', value: d.relevant_medical_factors },
-      ],
-    },
-    {
-      title: '2. Evaluación Postural',
-      fields: [
-        { label: 'Vista anterior', value: d.postural_anterior },
-        { label: 'Vista lateral', value: d.postural_lateral },
-        { label: 'Vista posterior', value: d.postural_posterior },
-      ],
-    },
-    {
-      title: '3. Análisis de Movilidad Articular y Fuerza',
-      fields: [
-        { label: 'Rango de movimiento de las articulaciones', value: d.joint_range_of_motion },
-        { label: 'Pruebas de fuerza muscular', value: d.strength_tests },
-        { label: 'Capacidad contráctil', value: d.contractile_capacity },
-        { label: 'Rendimiento de grupos musculares', value: d.muscle_group_performance },
-      ],
-    },
-    {
-      title: '4. Diagnóstico Funcional Individual',
-      fields: [
-        { label: 'Desbalances musculares', value: d.muscle_imbalances },
-        { label: 'Limitaciones articulares', value: d.joint_limitations },
-        { label: 'Alteraciones biomecánicas', value: d.biomechanical_alterations },
-        { label: 'Riesgo de lesión', value: d.injury_risk },
-        { label: 'Diagnóstico funcional integrado', value: d.functional_diagnosis },
-      ],
-    },
-    {
-      title: '5. Intervención por Disciplina',
-      fields: [
-        { label: 'Plan de intervención fisioterapéutica específica para la disciplina', value: d.discipline_intervention },
-      ],
-    },
-    {
-      title: '6. Plan de Rehabilitación Individual',
-      fields: [
-        { label: 'Terapia manual', value: d.manual_therapy },
-        { label: 'Fortalecimiento específico', value: d.specific_strengthening },
-        { label: 'Reeducación neuromuscular', value: d.neuromuscular_reeducation },
-        { label: 'Ejercicios de movilidad', value: d.mobility_exercises },
-        { label: 'Prevención de recaídas', value: d.relapse_prevention },
-      ],
-    },
-    {
-      title: '7. Métodos de Rehabilitación',
-      fields: [
-        { label: 'Liberación miofascial', value: d.myofascial_release },
-        { label: 'Movilización articular', value: d.joint_mobilization },
-        { label: 'Masaje deportivo', value: d.sports_massage },
-        { label: 'TENS (Electroestimulación transcutánea)', value: d.tens_electrotherapy },
-        { label: 'Ultrasonido terapéutico', value: d.therapeutic_ultrasound },
-        { label: 'Electroestimulación muscular', value: d.muscle_electrostimulation },
-        { label: 'Ejercicio terapéutico (fortalecimiento, estabilización, control neuromuscular, readaptación deportiva)', value: d.therapeutic_exercise },
-      ],
-    },
-    {
-      title: 'Observaciones Generales',
-      fields: [
-        { label: 'Observaciones', value: d.observations },
-      ],
-    },
-  ];
-}
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -124,16 +46,16 @@ export default function PhysioForm({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5 print:hidden">
+      <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-bold text-gray-800">Rubro Fisioterapia</h2>
         <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${STATUS_COLORS[sectionStatus]}`}>
           {STATUS_LABELS[sectionStatus]}
         </span>
       </div>
-      {error   && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">{error}</p>}
-      {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700 print:hidden">{success}</p>}
+      {error   && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>}
 
-      <form ref={formRef} className="print:hidden">
+      <form ref={formRef}>
         <SectionTitle>1. Historia Clínica Fisioterapéutica</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Textarea label="Antecedentes deportivos" name="sport_antecedents" defaultValue={d?.sport_antecedents} placeholder="Historial deportivo relevante…" />
@@ -233,11 +155,6 @@ export default function PhysioForm({
           )}
         </div>
       </form>
-
-      <PrintableFormView
-        formTitle="Evaluación Fisioterapéutica — Diagnóstico Inicial"
-        sections={buildPhysioSections(d)}
-      />
     </div>
   );
 }

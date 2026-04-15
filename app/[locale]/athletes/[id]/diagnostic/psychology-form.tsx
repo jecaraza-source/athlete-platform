@@ -4,65 +4,6 @@ import { useRef, useState, useTransition } from 'react';
 import { savePsychologySection } from './actions';
 import type { DiagnosticStatus, PsychologyEvaluation } from '@/lib/types/diagnostic';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/types/diagnostic';
-import PrintableFormView, { type PrintSection } from '@/components/print/PrintableFormView';
-
-function buildPsychologySections(d: PsychologyEvaluation | null): PrintSection[] {
-  if (!d) return [];
-  return [
-    {
-      title: '1. Historia Clínica Psicológica',
-      fields: [
-        { label: 'Entrevista psicológica deportiva', value: d.sport_psychological_interview },
-        { label: 'Inventario de ansiedad competitiva (CSAI-2 u otro)', value: d.competitive_anxiety_inventory },
-        { label: 'Escala de Motivación Deportiva', value: d.sport_motivation_scale },
-        { label: 'Escala de Resiliencia Connor-Davidson (CD-RISC)', value: d.resilience_scale },
-      ],
-    },
-    {
-      title: '2. Diagnóstico Psicológico',
-      fields: [
-        { label: 'Capacidad de regulación emocional', value: d.emotional_regulation },
-        { label: 'Motivación interna (impulso interno)', value: d.internal_motivation },
-        { label: 'Motivación externa (impulso externo)', value: d.external_motivation },
-        { label: 'Tolerancia a la presión', value: d.pressure_tolerance },
-        { label: 'Concentración', value: d.concentration },
-        { label: 'Integración diagnóstica', value: d.diagnostic_integration },
-      ],
-    },
-    {
-      title: '3. Plan de Intervención Psicológica',
-      fields: [
-        { label: 'Visualización', value: d.visualization },
-        { label: 'Autodiálogo', value: d.self_dialogue },
-        { label: 'Control de respiración', value: d.breathing_control },
-        { label: 'Establecimiento de metas', value: d.goal_setting },
-      ],
-    },
-    {
-      title: '4. Entrenamiento Psicológico',
-      fields: [
-        { label: 'Entrenamiento de la concentración', value: d.concentration_training },
-        { label: 'Seguimiento de metas', value: d.goal_follow_up },
-        { label: 'Ejercicios prácticos (dinámicas, simulaciones, prácticas)', value: d.practical_exercises },
-        { label: 'Retroalimentación psicológica continua', value: d.psychological_feedback },
-      ],
-    },
-    {
-      title: '5. Seguimiento y Evaluación',
-      fields: [
-        { label: 'Evaluación cuantitativa del estado psicológico', value: d.quantitative_psychological_state },
-        { label: 'Evaluación cuantitativa del desempeño psicológico', value: d.quantitative_performance },
-        { label: 'Análisis del impacto en el rendimiento deportivo', value: d.sport_performance_impact },
-      ],
-    },
-    {
-      title: 'Observaciones Generales',
-      fields: [
-        { label: 'Observaciones', value: d.observations },
-      ],
-    },
-  ];
-}
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -105,16 +46,16 @@ export default function PsychologyForm({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5 print:hidden">
+      <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-bold text-gray-800">Rubro Psicología</h2>
         <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${STATUS_COLORS[sectionStatus]}`}>
           {STATUS_LABELS[sectionStatus]}
         </span>
       </div>
-      {error   && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">{error}</p>}
-      {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700 print:hidden">{success}</p>}
+      {error   && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>}
 
-      <form ref={formRef} className="print:hidden">
+      <form ref={formRef}>
         <SectionTitle>1. Historia Clínica Psicológica</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Textarea label="Entrevista psicológica deportiva" name="sport_psychological_interview" defaultValue={d?.sport_psychological_interview}
@@ -190,11 +131,6 @@ export default function PsychologyForm({
           )}
         </div>
       </form>
-
-      <PrintableFormView
-        formTitle="Evaluación Psicológica — Diagnóstico Inicial"
-        sections={buildPsychologySections(d)}
-      />
     </div>
   );
 }
