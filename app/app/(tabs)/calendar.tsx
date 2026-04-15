@@ -6,8 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, PRIMARY } from '@/constants/theme';
 import { useAuthStore } from '@/store';
-import { getAthleteByProfileId } from '@/services/athletes';
-import { listEventsInRange, listEventsForAthlete, countEventsInRange, type CalendarEvent } from '@/services/calendar';
+import { listEventsInRange, type CalendarEvent } from '@/services/calendar';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -111,7 +110,7 @@ export default function CalendarScreen() {
   const colors = Colors[scheme];
   const today = new Date();
 
-  const { profile, isAthlete, isInitialized } = useAuthStore();
+  const { profile, isInitialized } = useAuthStore();
 
   const [year, setYear]   = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -120,11 +119,7 @@ export default function CalendarScreen() {
   const [events, setEvents]         = useState<CalendarEvent[]>([]);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [athleteId, setAthleteId]   = useState<string | null>(null);
   const [reloadKey, setReloadKey]   = useState(0);
-  // Debug counters — remove after confirming events load correctly
-  const [dbCount, setDbCount]       = useState<number | null>(null);
-  const [debugRole, setDebugRole]   = useState('');
 
   // Set of YYYY-MM-DD strings that have at least one event
   const eventDays = new Set(events.map((e) => e.start_at.slice(0, 10)));
@@ -139,7 +134,6 @@ export default function CalendarScreen() {
   // the cached athleteId is set, or the user pulls to refresh.
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    // Wait until auth is fully resolved so role checks are reliable
     if (!isInitialized || !profile) {
       setLoading(false);
       return;
@@ -151,38 +145,9 @@ export default function CalendarScreen() {
       setLoading(true);
       try {
         const [startISO, endISO] = rangeForMonth(year, month);
-
-        // DEBUG: count raw events in DB and log role info
-        const totalInDb = await countEventsInRange(startISO, endISO);
-        const roleLabel = isAthlete() ? 'atleta' : 'staff/admin';
-        if (!cancelled) {
-          setDbCount(totalInDb);
-          setDebugRole(roleLabel);
-        }
-        console.warn(`[calendar] range: ${startISO.slice(0,10)} → ${endISO.slice(0,10)} | DB total: ${totalInDb} | role: ${roleLabel}`);
-
-        let data: CalendarEvent[];
-
-        if (isAthlete()) {
-          // ── Athlete: show only events they are a participant of ──────────
-          let aId = athleteId;
-          if (!aId) {
-            const athleteRow = await getAthleteByProfileId(profile.id);
-            aId = athleteRow?.id ?? null;
-            if (!cancelled) setAthleteId(aId);
-          }
-          if (!aId) {
-            // No linked athlete record — show empty calendar
-            if (!cancelled) setEvents([]);
-            return;
-          }
-          data = await listEventsForAthlete(aId, startISO, endISO);
-        } else {
-          // ── Staff / admin / any other role: show ALL events in range ─────
-          // This is the safe fallback — even unknown roles see the calendar.
-          data = await listEventsInRange(startISO, endISO);
-        }
-
+        // All authenticated users see all events.
+        // event_participants is used for attendance tracking, not visibility.
+        const data = await listEventsInRange(startISO, endISO);
         if (!cancelled) setEvents(data);
       } catch (e) {
         console.warn('[calendar] load error', e);
@@ -196,7 +161,7 @@ export default function CalendarScreen() {
     })();
 
     return () => { cancelled = true; };
-  }, [year, month, profile?.id, isInitialized, athleteId, reloadKey]);
+  }, [year, month, profile?.id, isInitialized, reloadKey]);
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear((y) => y - 1); }
@@ -234,23 +199,6 @@ export default function CalendarScreen() {
         />
       }
     >
-      {/* DEBUG banner — shows DB count + role so we can diagnose missing events */}
-      {dbCount !== null && (
-        <View style={[
-          styles.debugBanner,
-          { backgroundColor: dbCount === 0 ? '#fee2e2' : '#dcfce7' },
-        ]}>
-          <Text style={[
-            styles.debugText,
-            { color: dbCount === 0 ? '#dc2626' : '#15803d' },
-          ]}>
-            {dbCount === 0
-              ? `⚠ 0 eventos en DB este mes (role: ${debugRole})`
-              : `✓ ${dbCount} evento(s) en DB | cargados: ${events.length} | ${debugRole}`}
-          </Text>
-        </View>
-      )}
-
       {/* Month navigator */}
       <View style={styles.nav}>
         <TouchableOpacity onPress={prevMonth} style={styles.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -379,9 +327,4 @@ const styles = StyleSheet.create({
   eventDesc: { fontSize: 13, lineHeight: 18 },
   participantsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
   participantsText: { fontSize: 11, flex: 1 },
-  debugBanner: {
-    marginHorizontal: 12, marginTop: 8, borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 6,
-  },
-  debugText: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
 });
