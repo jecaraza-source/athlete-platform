@@ -51,6 +51,8 @@ function detectLocale(request: NextRequest): Locale {
  */
 const PUBLIC_PATHS: string[] = [
   '/login',
+  '/login/forgot-password',
+  '/auth/confirm', // Supabase password-reset callback — user arrives unauthenticated with a ?code=
 ];
 
 /**

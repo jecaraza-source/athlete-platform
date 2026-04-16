@@ -301,6 +301,68 @@ export async function getAllPermissions(): Promise<Permission[]> {
   return data ?? [];
 }
 
+// ---------------------------------------------------------------------------
+// Staff / profile helpers for follow-up and admin pages
+// ---------------------------------------------------------------------------
+
+type ProfileStub = { id: string; first_name: string; last_name: string };
+
+/**
+ * Returns profiles that are assigned at least one of the given role codes,
+ * using the RBAC user_roles table.
+ *
+ * Falls back to querying the legacy `profiles.role` column (using
+ * `legacyCodes` if provided, otherwise `rbacCodes`) when no RBAC assignments
+ * are found — this keeps things working for installs where user_roles hasn't
+ * been fully populated yet.
+ *
+ * Results are deduplicated (a profile with multiple matching roles appears once).
+ */
+export async function getProfilesByRoleCodes(
+  rbacCodes: string[],
+  legacyCodes?: string[],
+): Promise<ProfileStub[]> {
+  if (rbacCodes.length === 0) return [];
+
+  // 1. Look up the integer role IDs for the given canonical codes.
+  const { data: roleRows } = await supabaseAdmin
+    .from('roles')
+    .select('id')
+    .in('code', rbacCodes);
+
+  const roleIds = (roleRows ?? []).map((r: { id: number }) => r.id);
+
+  // 2. Find all profile_ids assigned to those roles.
+  if (roleIds.length > 0) {
+    const { data: urRows } = await supabaseAdmin
+      .from('user_roles')
+      .select('profile_id')
+      .in('role_id', roleIds);
+
+    const profileIds = [...new Set((urRows ?? []).map((r: { profile_id: string }) => r.profile_id))];
+
+    if (profileIds.length > 0) {
+      const { data } = await supabaseAdmin
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', profileIds)
+        .order('last_name');
+      return (data ?? []) as ProfileStub[];
+    }
+  }
+
+  // 3. Fallback: use the legacy profiles.role column.
+  //    Use legacyCodes if specified (old role names differ from RBAC codes),
+  //    otherwise fall back to the same rbacCodes.
+  const fallback = legacyCodes ?? rbacCodes;
+  const { data } = await supabaseAdmin
+    .from('profiles')
+    .select('id, first_name, last_name')
+    .in('role', fallback)
+    .order('last_name');
+  return (data ?? []) as ProfileStub[];
+}
+
 export async function getRoleWithPermissions(roleId: string) {
   const { data: role } = await supabaseAdmin
     .from('roles')

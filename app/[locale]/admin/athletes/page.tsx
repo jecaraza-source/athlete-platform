@@ -2,6 +2,7 @@ import Link from 'next/link';
 import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getTranslations } from 'next-intl/server';
+import { getProfilesByRoleCodes } from '@/lib/rbac/server';
 import NewStaffForm from '../staff/new-staff-form';
 import StaffCard from '../staff/staff-card';
 import type { Profile } from '../staff/staff-card';
@@ -9,23 +10,34 @@ import type { Profile } from '../staff/staff-card';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminAthletesPage() {
-  const fullResult = await supabaseAdmin
-    .from('profiles')
-    .select('id, first_name, last_name, role, email, phone, specialty')
-    .eq('role', 'athlete')
-    .order('last_name', { ascending: true });
+  // Primary: RBAC-based query (user_roles → roles.code = 'athlete').
+  // Falls back to legacy profiles.role = 'athlete' if no RBAC assignments found.
+  const rbacAthletes = await getProfilesByRoleCodes(['athlete']);
 
-  const hasExtendedColumns = !fullResult.error?.message?.includes('does not exist');
+  // Enrich with extended columns (email, phone, specialty) when available.
+  // Start with an empty typed array; it will be populated by the query below.
+  let athletes: Profile[] = [];
+  let error: { message: string } | null = null;
+  let hasExtendedColumns = true;
 
-  const { data, error } = hasExtendedColumns
-    ? fullResult
-    : await supabaseAdmin
-        .from('profiles')
-        .select('id, first_name, last_name')
-        .eq('role', 'athlete')
-        .order('last_name', { ascending: true });
+  if (rbacAthletes.length > 0) {
+    const ids = rbacAthletes.map((p) => p.id);
+    const { data: extended, error: extErr } = await supabaseAdmin
+      .from('profiles')
+      .select('id, first_name, last_name, role, email, phone, specialty')
+      .in('id', ids)
+      .order('last_name', { ascending: true });
 
-  const athletes = (data ?? []) as Profile[];
+    hasExtendedColumns = !extErr?.message?.includes('does not exist');
+    error = extErr ?? null;
+
+    if (!extErr && extended) {
+      athletes = extended as Profile[];
+    } else {
+      // Extended columns unavailable — fall back to stub fields only
+      athletes = rbacAthletes as unknown as Profile[];
+    }
+  }
 
   const t = await getTranslations('admin');
   const tc = await getTranslations('common');

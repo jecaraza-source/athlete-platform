@@ -1,7 +1,7 @@
 import BackButton from '@/components/back-button';
 import { getTranslations } from 'next-intl/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requirePermission } from '@/lib/rbac/server';
+import { requirePermission, getProfilesByRoleCodes } from '@/lib/rbac/server';
 import NewCaseForm from './new-case-form';
 import NewPhysioSessionForm from './new-session-form';
 import AthleteFilter from '../nutrition/athlete-filter';
@@ -52,11 +52,13 @@ export default async function PhysioPage({
 
   if (selectedAthleteId) casesQuery = casesQuery.eq('athlete_id', selectedAthleteId);
 
-  const [{ data: casesData, error }, { data: athletesData }, { data: profilesData }, { data: injuriesData }] =
+  const [{ data: casesData, error }, { data: athletesData }, physiosData, { data: injuriesData }] =
     await Promise.all([
       casesQuery,
       supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name'),
-      supabaseAdmin.from('profiles').select('id, first_name, last_name').eq('role', 'physio').order('last_name'),
+      // RBAC-aware: new system uses 'staff' for all specialists.
+      // Falls back to legacy profiles.role = 'physio'.
+      getProfilesByRoleCodes(['staff'], ['physio']),
       supabaseAdmin.from('injuries').select('id, injury_type, athlete_id'),
     ]);
 
@@ -67,7 +69,7 @@ export default async function PhysioPage({
     ...rawCases.filter((c) => c.status === 'closed'),
   ];
   const athletes = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
-  const physios = (profilesData ?? []) as { id: string; first_name: string; last_name: string }[];
+  const physios = physiosData;
   const injuries = (injuriesData ?? []) as { id: string; injury_type: string; athlete_id: string }[];
 
   const caseOptions = cases.filter((c) => c.status !== 'closed').map((c) => ({

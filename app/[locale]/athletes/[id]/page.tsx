@@ -159,7 +159,8 @@ export default async function AthleteDetailPage({
 
   const sessions   = (trainingSessions ?? []) as { id: string; title: string; session_date: string; location: string | null }[];
   const plans      = (nutritionPlans ?? []) as { id: string; title: string; start_date: string; end_date: string | null; status: string }[];
-  const cases      = (physioCases ?? []) as unknown as { id: string; status: string; opened_at: string; injuries: { injury_type: string } | null }[];
+  // injuries is a 1:N join — Supabase always returns an array, even for belongs-to relations.
+  const cases      = (physioCases ?? []) as unknown as { id: string; status: string; opened_at: string; injuries: { injury_type: string }[] | null }[];
   const psychCases = (psychologyCases ?? []) as unknown as { id: string; status: string; opened_at: string; summary: string | null }[];
   const events     = (eventParticipants ?? []) as unknown as { id: string; notes: string | null; events: { id: string; title: string; event_type: string; start_at: string; status: string } | null }[];
 
@@ -329,7 +330,7 @@ export default async function AthleteDetailPage({
             <div className="space-y-2">
               {cases.map((c) => (
                 <div key={c.id} className="text-sm">
-                  <p className="font-medium">{c.injuries?.injury_type ?? 'Case'}</p>
+                  <p className="font-medium">{c.injuries?.[0]?.injury_type ?? 'Case'}</p>
                   <p className="text-gray-500 capitalize">{c.status} · {new Date(c.opened_at).toLocaleDateString()}</p>
                 </div>
               ))}
