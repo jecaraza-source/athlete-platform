@@ -10,6 +10,7 @@ import { TicketCard } from '@/components/tickets/ticket-card';
 import { Loading } from '@/components/ui/loading';
 import { EmptyView } from '@/components/ui/empty-view';
 import { listTickets } from '@/services/tickets';
+import { useAuthStore } from '@/store';
 import type { TicketWithProfiles, TicketStatus } from '@/types';
 
 const STATUS_FILTERS: { label: string; value: TicketStatus | undefined }[] = [
@@ -23,6 +24,7 @@ export default function TicketsScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
   const router = useRouter();
+  const { profile, isAthlete } = useAuthStore();
 
   const [tickets, setTickets] = useState<TicketWithProfiles[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +33,11 @@ export default function TicketsScreen() {
 
   const load = useCallback(async () => {
     try {
-      const data = await listTickets({ status: statusFilter });
+      const data = await listTickets({
+        status:    statusFilter,
+        // Athletes only see tickets they created; staff see all
+        createdBy: isAthlete() ? (profile?.id ?? undefined) : undefined,
+      });
       setTickets(data);
     } catch {
       setTickets([]);
@@ -39,7 +45,7 @@ export default function TicketsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, isAthlete, profile?.id]);
 
   useEffect(() => { load(); }, [load]);
 

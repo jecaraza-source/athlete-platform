@@ -2,9 +2,12 @@ import { supabase } from '@/lib/supabase';
 import type { Ticket, TicketWithProfiles, CommentWithAuthor, TicketStatus, TicketPriority } from '@/types';
 
 export type TicketFilters = {
-  status?: TicketStatus;
-  priority?: TicketPriority;
-  search?: string;
+  status?:    TicketStatus;
+  priority?:  TicketPriority;
+  search?:    string;
+  /** When set, only returns tickets whose created_by matches this profile ID.
+   *  Used for athletes who should only see their own tickets. */
+  createdBy?: string;
 };
 
 /** List tickets with optional filters. */
@@ -18,6 +21,10 @@ export async function listTickets(filters?: TicketFilters): Promise<TicketWithPr
     `)
     .order('created_at', { ascending: false });
 
+  if (filters?.createdBy) {
+    // Athletes see only their own tickets
+    query = query.eq('created_by', filters.createdBy);
+  }
   if (filters?.status) {
     query = query.eq('status', filters.status);
   }

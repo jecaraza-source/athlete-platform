@@ -37,27 +37,38 @@ export default function CreateTicketScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
 
-  // Load assignable staff on mount
+  // Load assignable staff on mount.
+  // Uses profiles directly — readable thanks to migration 019 RLS policy
+  // that exposes profiles of users with non-athlete roles.
   useEffect(() => {
     (async () => {
       try {
         const { data } = await supabase
-          .from('user_roles')
-          .select('profile:profiles!user_roles_profile_id_fkey(id, first_name, last_name), role:roles!user_roles_role_id_fkey(code)')
-          .neq('role.code', 'athlete');
-        const seen = new Set<string>();
-        const staff: StaffProfile[] = [];
-        // Supabase returns joined rows as arrays; extract first element.
-        type RawRow = { profile: StaffProfile[]; role: { code: string }[] };
-        (data as RawRow[] ?? []).forEach((row) => {
-          const p = Array.isArray(row.profile) ? row.profile[0] : row.profile;
-          const r = Array.isArray(row.role) ? row.role[0] : row.role;
-          if (p && (r as { code: string } | null)?.code !== 'athlete' && !seen.has(p.id)) {
-            seen.add(p.id);
-            staff.push(p);
-          }
-        });
-        staff.sort((a, b) => a.last_name.localeCompare(b.last_name));
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in(
+            'id',
+            // Sub-select: profile_ids with a staff-level role
+            // (Supabase JS v2 does not support nested selects inline;
+            //  we use a two-step approach via RPC or direct filter).
+            // Since migration 019 allows reading these profiles, we query
+            // them via user_roles joined profile_id and roles code filter.
+            (await supabase
+              .from('user_roles')
+              .select('profile_id, role:roles!user_roles_role_id_fkey(code)')
+            ).data
+              ?.filter((r: { profile_id: string; role: { code: string }[] | { code: string } }) => {
+                const code = Array.isArray(r.role) ? r.role[0]?.code : (r.role as { code: string })?.code;
+                return code && code !== 'athlete';
+              })
+              .map((r: { profile_id: string }) => r.profile_id)
+              .filter(Boolean) ?? []
+          )
+          .order('last_name', { ascending: true });
+
+        const staff: StaffProfile[] = (data ?? []).filter(
+          (p): p is StaffProfile => !!p?.id,
+        );
         setStaffList(staff);
       } catch (e) {
         console.warn('[ticket] load staff error', e);
@@ -86,9 +97,9 @@ export default function CreateTicketScreen() {
         description:       description.trim(),
         priority,
         created_by:        profile.id,
-        // requester_user_id must be auth.uid() (Supabase auth UUID), NOT
-        // profiles.id — the RLS policy compares it against auth.uid().
-        requester_user_id: session?.user?.id,
+        // requester_user_id FK → profiles.id (migration 009).
+        // Must be profile.id (NOT session.user.id which is auth.uid()).
+        requester_user_id: profile.id,
         assigned_to:       assignee?.id,
       });
       router.back();
