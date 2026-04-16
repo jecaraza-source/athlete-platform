@@ -57,8 +57,6 @@ export default function LoginScreen() {
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={[styles.brandName, { color: PRIMARY }]}>AO Deportes</Text>
-          <Text style={[styles.brandDomain, { color: colors.icon }]}>.com</Text>
           <Text style={[styles.subtitle, { color: colors.icon }]}>
             Inicia sesión para continuar
           </Text>
@@ -119,9 +117,7 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   header: { alignItems: 'center', marginBottom: 40 },
   logo: { width: 110, height: 110, marginBottom: 12 },
-  brandName: { fontSize: 32, fontWeight: '800', letterSpacing: -0.5 },
-  brandDomain: { fontSize: 16, fontWeight: '500', marginBottom: 6, marginTop: -2 },
-  subtitle: { fontSize: 14 },
+  subtitle: { fontSize: 14, marginBottom: 4 },
   form: {},
   errorBox: {
     backgroundColor: '#fee2e2', borderRadius: 8, padding: 12, marginBottom: 14,

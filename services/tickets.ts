@@ -16,8 +16,8 @@ export async function listTickets(filters?: TicketFilters): Promise<TicketWithPr
     .from('tickets')
     .select(`
       *,
-      created_by_profile:profiles!tickets_created_by_fkey(id, first_name, last_name, email),
-      assigned_to_profile:profiles!tickets_assigned_to_fkey(id, first_name, last_name, email)
+      created_by_profile:profiles!created_by(id, first_name, last_name, email),
+      assigned_to_profile:profiles!assigned_to(id, first_name, last_name, email)
     `)
     .order('created_at', { ascending: false });
 
@@ -46,8 +46,8 @@ export async function getTicket(id: string): Promise<TicketWithProfiles | null> 
     .from('tickets')
     .select(`
       *,
-      created_by_profile:profiles!tickets_created_by_fkey(id, first_name, last_name, email),
-      assigned_to_profile:profiles!tickets_assigned_to_fkey(id, first_name, last_name, email)
+      created_by_profile:profiles!created_by(id, first_name, last_name, email),
+      assigned_to_profile:profiles!assigned_to(id, first_name, last_name, email)
     `)
     .eq('id', id)
     .maybeSingle();
