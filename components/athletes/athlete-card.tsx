@@ -26,7 +26,7 @@ type AthleteCardProps = {
 export function AthleteCard({ athlete, onPress }: AthleteCardProps) {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
-  const sc = STATUS_COLORS[athlete.status ?? ''] ?? STATUS_COLORS.inactivo;
+  const sc = STATUS_COLORS[athlete.status ?? ''] ?? STATUS_COLORS.inactive;
   const initials = `${athlete.first_name[0] ?? ''}${athlete.last_name[0] ?? ''}`.toUpperCase();
 
   return (
