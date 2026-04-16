@@ -18,9 +18,12 @@
 
 import { supabase } from '@/lib/supabase';
 
-// The deployed web app URL.  Override via EXPO_PUBLIC_WEB_URL for local dev.
+// The deployed web app URL (Vercel).
+// NOTE: www.aodeporte.com is a Squarespace marketing site and does NOT serve
+// the Next.js app. The stable Vercel alias for the athlete platform is below.
+// Override via EXPO_PUBLIC_WEB_URL in .env.local for local development.
 const WEB_URL =
-  (process.env.EXPO_PUBLIC_WEB_URL ?? 'https://www.aodeporte.com').replace(/\/$/, '');
+  (process.env.EXPO_PUBLIC_WEB_URL ?? 'https://athlete-platform-blush.vercel.app').replace(/\/$/, '');
 
 // ---------------------------------------------------------------------------
 // uploadMobileAvatar
