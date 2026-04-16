@@ -37,20 +37,15 @@ export default function CreateTicketScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
 
-  // Load assignable staff on mount.
-  // Queries profiles WHERE role IS NOT NULL AND role != 'athlete'.
-  // Uses the legacy profiles.role field since admin/staff users may not have
-  // entries in user_roles (they were created before the RBAC migration).
-  // Requires the 'Legacy non-athlete profiles readable' RLS policy
-  // (migration 019b in Supabase SQL editor).
+  // Load all profiles on mount and filter non-athletes client-side.
+  // RLS: "Authenticated users can read profiles" (USING true) must be applied
+  // in Supabase — run the SQL provided in the setup guide.
   useEffect(() => {
     (async () => {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, first_name, last_name')
-          .not('role', 'is', null)
-          .neq('role', 'athlete')
+          .select('id, first_name, last_name, role')
           .order('last_name', { ascending: true });
 
         if (error) {
@@ -58,7 +53,12 @@ export default function CreateTicketScreen() {
           return;
         }
 
-        setStaffList((data ?? []).filter((p): p is StaffProfile => !!p?.id));
+        // Keep only non-athlete profiles (staff, admin, coach, etc.)
+        const staff = (data ?? [])
+          .filter((p) => p.id && p.role !== 'athlete')
+          .map(({ id, first_name, last_name }) => ({ id, first_name, last_name })) as StaffProfile[];
+
+        setStaffList(staff);
       } catch (e) {
         console.warn('[ticket] load staff error', e);
       }
