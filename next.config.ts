@@ -10,6 +10,16 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '52mb',
     },
   },
+  images: {
+    remotePatterns: [
+      {
+        // Allow avatar images served from any Supabase project's storage
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
 };
 
 export default withNextIntl(nextConfig);

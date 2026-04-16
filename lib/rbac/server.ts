@@ -80,7 +80,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   // 1. Resolve the profile row
   const { data: profileRow } = await supabaseAdmin
     .from('profiles')
-    .select('id, first_name, last_name, email, role')
+    .select('id, first_name, last_name, email, role, avatar_url')
     .eq('auth_user_id', authUser.id)
     .maybeSingle();
 

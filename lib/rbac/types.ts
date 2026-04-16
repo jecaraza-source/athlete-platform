@@ -107,6 +107,9 @@ export type ProfileSummary = {
   role: string | null;         // legacy column, kept for display
   /** Supabase Auth user UUID — present when fetched for admin pages. */
   auth_user_id?: string | null;
+  /** Public URL of the user's avatar in the `avatars` storage bucket.
+   *  Added by migration 022. Undefined/null when no photo has been uploaded. */
+  avatar_url?: string | null;
 };
 
 /** A profile enriched with its RBAC role assignments. */

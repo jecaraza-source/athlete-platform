@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireAuthenticated } from '@/lib/rbac/server';
 import { getTranslations } from 'next-intl/server';
+import { AvatarUploader } from '@/components/avatar/avatar-uploader';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,27 +14,44 @@ export default async function PreferenciasPage() {
       <h1 className="text-2xl font-bold text-gray-800 mb-1">{t('title')}</h1>
       <p className="text-sm text-gray-500 mb-8">{t('description')}</p>
 
-      {/* Profile summary */}
-      <div className="rounded-lg border border-gray-200 p-5 mb-6 flex items-center gap-4">
-        <div className="h-12 w-12 rounded-full bg-rose-100 flex items-center justify-center text-rose-700 font-bold text-lg shrink-0">
-          {user.profile?.first_name?.[0]?.toUpperCase() ?? '?'}
-        </div>
-        <div className="min-w-0">
-          <p className="font-semibold text-gray-800">
-            {user.profile
-              ? `${user.profile.first_name} ${user.profile.last_name}`
-              : user.authUserId}
+      {/* Profile summary + avatar upload */}
+      <div className="rounded-lg border border-gray-200 p-5 mb-6">
+        {/* Avatar section */}
+        <div className="mb-5 pb-5 border-b border-gray-100">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            {t('avatar.title')}
           </p>
-          <p className="text-sm text-gray-500 truncate">{user.profile?.email ?? '—'}</p>
-          {user.roles.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {user.roles.map((r) => (
-                <span key={r.id} className="rounded-full bg-rose-50 px-2 py-0.5 text-xs text-rose-700 font-medium">
-                  {r.name ?? r.code}
-                </span>
-              ))}
-            </div>
-          )}
+          <AvatarUploader
+            currentUrl={user.profile?.avatar_url}
+            initials={
+              [
+                user.profile?.first_name?.[0] ?? '',
+                user.profile?.last_name?.[0]  ?? '',
+              ].join('').toUpperCase() || '?'
+            }
+            size="md"
+          />
+        </div>
+
+        {/* Identity info */}
+        <div className="flex items-center gap-4">
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-800">
+              {user.profile
+                ? `${user.profile.first_name} ${user.profile.last_name}`
+                : user.authUserId}
+            </p>
+            <p className="text-sm text-gray-500 truncate">{user.profile?.email ?? '—'}</p>
+            {user.roles.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {user.roles.map((r) => (
+                  <span key={r.id} className="rounded-full bg-rose-50 px-2 py-0.5 text-xs text-rose-700 font-medium">
+                    {r.name ?? r.code}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

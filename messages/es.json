@@ -509,6 +509,13 @@
   "preferences": {
     "title": "Preferencias",
     "description": "Configura tu cuenta y cómo quieres recibir notificaciones.",
+    "avatar": {
+      "title": "Foto de perfil",
+      "change": "Cambiar foto",
+      "delete": "Eliminar foto",
+      "uploading": "Subiendo…",
+      "formatHint": "JPEG, PNG, WebP o GIF · máx 5 MB"
+    },
     "notifications": {
       "title": "Notificaciones",
       "description": "Controla qué canales recibes: email y push."
