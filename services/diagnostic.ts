@@ -1,6 +1,45 @@
 import { supabase } from '@/lib/supabase';
 import type { AthleteInitialDiagnostic, AthleteSection } from '@/types';
 
+// ---------------------------------------------------------------------------
+// Individual plans
+// ---------------------------------------------------------------------------
+
+export type PlanType =
+  | 'medico'
+  | 'alimentario'
+  | 'psicologico'
+  | 'entrenamiento'
+  | 'rehabilitacion';
+
+export type IndividualPlan = {
+  id:           string;
+  diagnostic_id: string;
+  athlete_id:   string;
+  plan_type:    PlanType;
+  content:      string | null;
+  created_at:   string;
+  updated_at:   string;
+};
+
+/** Get all individual plans for an athlete. */
+export async function getIndividualPlans(athleteId: string): Promise<IndividualPlan[]> {
+  const { data, error } = await supabase
+    .from('athlete_individual_plans')
+    .select('id, diagnostic_id, athlete_id, plan_type, content, created_at, updated_at')
+    .eq('athlete_id', athleteId)
+    .order('plan_type', { ascending: true });
+  if (error) {
+    console.warn('[diagnostic] getIndividualPlans error:', error.message);
+    return [];
+  }
+  return (data ?? []) as IndividualPlan[];
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostic
+// ---------------------------------------------------------------------------
+
 /** Get the latest diagnostic for an athlete. */
 export async function getDiagnostic(athleteId: string): Promise<AthleteInitialDiagnostic | null> {
   const { data, error } = await supabase

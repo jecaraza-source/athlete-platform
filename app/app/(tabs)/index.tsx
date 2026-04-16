@@ -174,6 +174,38 @@ export default function DashboardScreen() {
             )}
           </>
         )}
+        {/* Plan & Progress — athletes only */}
+        {isAthlete() && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 8 }]}>Mi espacio</Text>
+            <View style={styles.quickRow}>
+              <TouchableOpacity
+                onPress={() => router.push('/app/plan' as never)}
+                style={[styles.quickCard, { backgroundColor: scheme === 'dark' ? '#1e2022' : '#eff6ff' }]}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.quickIcon, { backgroundColor: '#dbeafe' }]}>
+                  <Ionicons name="clipboard-outline" size={20} color="#1d4ed8" />
+                </View>
+                <Text style={[styles.quickTitle, { color: colors.text }]}>Mis Planes</Text>
+                <Text style={[styles.quickSub, { color: colors.icon }]}>Médico · Nutrición · Psico</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => router.push('/app/progress' as never)}
+                style={[styles.quickCard, { backgroundColor: scheme === 'dark' ? '#1e2022' : '#f0fdf4' }]}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.quickIcon, { backgroundColor: '#dcfce7' }]}>
+                  <Ionicons name="trending-up-outline" size={20} color="#15803d" />
+                </View>
+                <Text style={[styles.quickTitle, { color: colors.text }]}>Mi Progreso</Text>
+                <Text style={[styles.quickSub, { color: colors.icon }]}>Sesiones · Diagnóstico</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
         {/* Protocols quick access — visible to all roles */}
         <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 8 }]}>Protocolos</Text>
         <TouchableOpacity
@@ -225,6 +257,20 @@ const styles = StyleSheet.create({
   sections: { gap: 8 },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionName: { fontSize: 13 },
+
+  // Quick access cards (Plan + Progress)
+  quickRow:  { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  quickCard: {
+    flex: 1, borderRadius: 12, padding: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
+  },
+  quickIcon: {
+    width: 40, height: 40, borderRadius: 10,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 8,
+  },
+  quickTitle: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
+  quickSub:   { fontSize: 10, lineHeight: 14 },
 
   // Protocols
   protocolCard: {
