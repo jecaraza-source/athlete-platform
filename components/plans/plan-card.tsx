@@ -6,6 +6,11 @@ import { deletePlan, togglePlanPublished, type Plan } from '@/lib/plans/actions'
 type Props = {
   plan:      Plan;
   signedUrl: string | null;
+  /**
+   * When true, hides admin-only actions (publish toggle, delete).
+   * Use for athletes who can only VIEW plans, not manage them.
+   */
+  readOnly?: boolean;
 };
 
 function formatSize(bytes: number | null): string {
@@ -14,7 +19,7 @@ function formatSize(bytes: number | null): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function PlanCard({ plan, signedUrl }: Props) {
+export function PlanCard({ plan, signedUrl, readOnly = false }: Props) {
   const [isPending, start] = useTransition();
   const [error, setError]  = useState<string | null>(null);
   const [published, setPublished] = useState(plan.is_published);
@@ -102,6 +107,7 @@ export function PlanCard({ plan, signedUrl }: Props) {
 
       {/* Actions */}
       <div className="border-t border-gray-100 px-4 py-2 flex items-center justify-between gap-2">
+        {/* PDF link — visible to everyone */}
         <div className="flex items-center gap-2">
           {signedUrl && (
             <a
@@ -115,31 +121,34 @@ export function PlanCard({ plan, signedUrl }: Props) {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Publish toggle */}
-          <button
-            type="button"
-            onClick={handleTogglePublish}
-            disabled={isPending}
-            className={`text-xs rounded-md border px-2 py-1 transition-colors disabled:opacity-50 ${
-              published
-                ? 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'
-            }`}
-          >
-            {isPending ? '…' : published ? 'Despublicar' : '📱 Publicar en app'}
-          </button>
+        {/* Admin-only actions — hidden in readOnly mode */}
+        {!readOnly && (
+          <div className="flex items-center gap-2">
+            {/* Publish toggle */}
+            <button
+              type="button"
+              onClick={handleTogglePublish}
+              disabled={isPending}
+              className={`text-xs rounded-md border px-2 py-1 transition-colors disabled:opacity-50 ${
+                published
+                  ? 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                  : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'
+              }`}
+            >
+              {isPending ? '…' : published ? 'Despublicar' : '📱 Publicar en app'}
+            </button>
 
-          {/* Delete */}
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={isPending}
-            className="text-xs rounded-md border border-red-200 text-red-600 px-2 py-1 hover:bg-red-50 transition-colors disabled:opacity-50"
-          >
-            Eliminar
-          </button>
-        </div>
+            {/* Delete */}
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isPending}
+              className="text-xs rounded-md border border-red-200 text-red-600 px-2 py-1 hover:bg-red-50 transition-colors disabled:opacity-50"
+            >
+              Eliminar
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

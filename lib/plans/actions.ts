@@ -91,6 +91,67 @@ export async function getPlansByType(type: PlanType): Promise<Plan[]> {
   return (data ?? []) as Plan[];
 }
 
+/**
+ * Returns published plans assigned to the currently authenticated athlete.
+ *
+ * Resolves the athlete record via:
+ *   1. athletes.profile_id = currentUser.profile.id  (explicit admin link)
+ *   2. athletes.email = currentUser.profile.email     (email-based link, migration 018)
+ *
+ * Only returns plans where is_published = true and type matches.
+ * Returns [] if the user has no linked athlete record.
+ */
+export async function getMyPlansForAthlete(type: PlanType): Promise<Plan[]> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.profile) return [];
+
+  const { id: profileId, email } = currentUser.profile;
+
+  // 1. Resolve athlete record (profile_id first, email fallback)
+  const orClause = email
+    ? `profile_id.eq.${profileId},email.eq.${email}`
+    : `profile_id.eq.${profileId}`;
+
+  const { data: athleteRow } = await supabaseAdmin
+    .from('athletes')
+    .select('id')
+    .or(orClause)
+    .maybeSingle();
+
+  if (!athleteRow) return [];
+
+  // 2. Find plan IDs assigned to this athlete
+  const { data: assignedRows } = await supabaseAdmin
+    .from('athlete_plans')
+    .select('plan_id')
+    .eq('athlete_id', athleteRow.id);
+
+  const planIds = (assignedRows ?? []).map((r: { plan_id: string }) => r.plan_id);
+  if (planIds.length === 0) return [];
+
+  // 3. Fetch those plans (published only, matching type)
+  const { data, error } = await supabaseAdmin
+    .from('plans')
+    .select(`
+      *,
+      athlete_plans (
+        athlete_id,
+        assignment_mode,
+        athletes ( first_name, last_name )
+      )
+    `)
+    .in('id', planIds)
+    .eq('type', type)
+    .eq('is_published', true)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[plans] getMyPlansForAthlete:', error.message);
+    return [];
+  }
+  return (data ?? []) as Plan[];
+}
+
 /** Creates a signed URL (valid 1 hour) for a plan PDF. */
 export async function getPlanSignedUrl(filePath: string): Promise<string | null> {
   if (!filePath) return null;

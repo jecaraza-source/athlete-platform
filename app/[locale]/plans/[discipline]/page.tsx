@@ -5,6 +5,7 @@ import {
   getPlansByType,
   getPlanSignedUrl,
   getActiveAthletes,
+  getMyPlansForAthlete,
   type PlanType,
 } from '@/lib/plans/actions';
 import { PlanForm } from '@/components/plans/plan-form';
@@ -59,7 +60,7 @@ export default async function PlansDisciplinePage({
 }: {
   params: Promise<{ discipline: string }>;
 }) {
-  await requireAuthenticated();
+  const currentUser = await requireAuthenticated();
 
   const { discipline } = await params;
 
@@ -70,10 +71,13 @@ export default async function PlansDisciplinePage({
   const type = discipline as PlanType;
   const meta = DISCIPLINES[type];
 
-  // Parallel data fetches
+  // Determine role: athletes get a read-only, filtered view of their own plans
+  const isAthlete = currentUser.roles.some((r) => r.code === 'athlete');
+
+  // Parallel data fetches — athletes only see their own published plans
   const [plans, athletes] = await Promise.all([
-    getPlansByType(type),
-    getActiveAthletes(),
+    isAthlete ? getMyPlansForAthlete(type) : getPlansByType(type),
+    isAthlete ? Promise.resolve([])        : getActiveAthletes(),
   ]);
 
   // Generate signed URLs for plans that have a file
@@ -95,12 +99,19 @@ export default async function PlansDisciplinePage({
         <p className="text-sm text-gray-500 mt-1">{meta.description}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+      {/*
+       * Layout:
+       *   Athletes  → 1 column, read-only plan list (no create form)
+       *   Staff/Admin → 2 columns: plan list + create form
+       */}
+      <div className={`grid gap-8 items-start ${
+        isAthlete ? 'grid-cols-1 max-w-xl' : 'grid-cols-1 lg:grid-cols-2'
+      }`}>
 
-        {/* ── LEFT: Mis Planes ──────────────────────────────────────────── */}
+        {/* ── Plan list ───────────────────────────────────────── */}
         <section>
           <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <span>Mis Planes</span>
+            <span>{isAthlete ? 'Mis planes asignados' : 'Planes creados'}</span>
             {plans.length > 0 && (
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 font-normal">
                 {plans.length}
@@ -110,10 +121,16 @@ export default async function PlansDisciplinePage({
 
           {plans.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-200 py-12 text-center">
-              <p className="text-sm text-gray-400 font-medium">Sin planes aún</p>
-              <p className="text-xs text-gray-400 mt-1">
-                Crea el primero usando el formulario de la derecha.
+              <p className="text-sm text-gray-400 font-medium">
+                {isAthlete
+                  ? 'Tu equipo aún no ha publicado planes para ti.'
+                  : 'Sin planes aún'}
               </p>
+              {!isAthlete && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Crea el primero usando el formulario de la derecha.
+                </p>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
@@ -122,21 +139,24 @@ export default async function PlansDisciplinePage({
                   key={plan.id}
                   plan={plan}
                   signedUrl={signedUrls[plan.id] ?? null}
+                  readOnly={isAthlete}
                 />
               ))}
             </div>
           )}
         </section>
 
-        {/* ── RIGHT: New Plan Form ──────────────────────────────────────── */}
-        <section>
-          <h2 className="text-base font-semibold text-gray-800 mb-4">
-            Nuevo Plan
-          </h2>
-          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <PlanForm type={type} athletes={athletes} />
-          </div>
-        </section>
+        {/* ── Create form — staff / admin only ─────────────────── */}
+        {!isAthlete && (
+          <section>
+            <h2 className="text-base font-semibold text-gray-800 mb-4">
+              Nuevo Plan
+            </h2>
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <PlanForm type={type} athletes={athletes} />
+            </div>
+          </section>
+        )}
 
       </div>
     </main>
