@@ -4,9 +4,12 @@ import { Link, usePathname } from '@/i18n/navigation';
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 
-// Hrefs of nav items that are hidden from the 'athlete' role.
-// These pages are staff/admin-only: athlete management and follow-up modules.
+// Hrefs hidden from the 'athlete' role (staff/admin-only pages).
 const STAFF_ONLY_HREFS = new Set(['/athletes', '/follow-up']);
+
+// Hrefs hidden from non-athletes (athlete-specific pages).
+// Staff/admin use the full admin panel equivalents instead.
+const ATHLETE_ONLY_HREFS = new Set(['/tickets']);
 
 const mainLinks = [
   {
@@ -44,6 +47,14 @@ const mainLinks = [
     key: 'plans',
     inactive: 'bg-indigo-50  text-indigo-600  hover:bg-indigo-100  hover:text-indigo-800',
     active:   'bg-indigo-100 text-indigo-900',
+  },
+  // ―― Athlete-only link: Mis Tickets ―――――――――――――――――――――――――――――――――――――
+  // Staff/admin access tickets via the Communications > /admin/tickets route.
+  {
+    href: '/tickets' as const,
+    key: 'tickets',
+    inactive: 'bg-teal-50  text-teal-600  hover:bg-teal-100  hover:text-teal-800',
+    active:   'bg-teal-100 text-teal-900',
   },
 ];
 
@@ -106,6 +117,8 @@ export default function NavLinks({
         {mainLinks.map((link) => {
           // Staff-only items are hidden from athletes
           if (isAthlete && STAFF_ONLY_HREFS.has(link.href)) return null;
+          // Athlete-only items are hidden from staff/admin
+          if (!isAthlete && ATHLETE_ONLY_HREFS.has(link.href)) return null;
           return (
             <Link
               key={link.href}
