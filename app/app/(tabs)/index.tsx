@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, useColorScheme, RefreshControl,
-  TouchableOpacity,
+  TouchableOpacity, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store';
@@ -84,16 +84,45 @@ export default function DashboardScreen() {
     ? StatusColors[diagnostic.overall_status] ?? StatusColors.pendiente
     : null;
 
+  const avatarUrl    = profile?.avatar_url ?? null;
+  const initials     = fullName()
+    .split(' ')
+    .map((w) => w[0] ?? '')
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || '?';
+
   return (
     <View style={[styles.safe, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.container}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Header */}
+        {/* Header: avatar + greeting + name + role badge */}
         <View style={styles.header}>
-          <Text style={[styles.greeting, { color: colors.icon }]}>Bienvenido</Text>
-          <Text style={[styles.name, { color: colors.text }]}>{fullName() || 'Usuario'}</Text>
+          <View style={styles.headerRow}>
+            {/* Avatar circle */}
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={styles.headerAvatar}
+              />
+            ) : (
+              <View style={[styles.headerAvatar, { backgroundColor: PRIMARY, justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={styles.headerAvatarText}>{initials}</Text>
+              </View>
+            )}
+
+            {/* Text info */}
+            <View style={styles.headerInfo}>
+              <Text style={[styles.greeting, { color: colors.icon }]}>Bienvenido</Text>
+              <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+                {fullName() || 'Usuario'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Role badge */}
           <View style={[styles.roleTag, { backgroundColor: PRIMARY + '18' }]}>
             <Text style={[styles.roleText, { color: PRIMARY }]}>{roleLabel}</Text>
           </View>
@@ -246,8 +275,13 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: 'transparent' },
   container: { padding: 20, paddingBottom: 40 },
   header: { marginBottom: 24 },
+  // Header row: avatar + text side by side
+  headerRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  headerAvatar: { width: 52, height: 52, borderRadius: 26, overflow: 'hidden' },
+  headerAvatarText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  headerInfo: { flex: 1 },
   greeting: { fontSize: 13, marginBottom: 2 },
-  name: { fontSize: 22, fontWeight: '700', marginBottom: 8 },
+  name: { fontSize: 20, fontWeight: '700' },
   roleTag: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   roleText: { fontSize: 12, fontWeight: '600' },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 12 },
