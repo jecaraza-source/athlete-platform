@@ -10,14 +10,15 @@ export type TicketFilters = {
   createdBy?: string;
 };
 
-/** List tickets with optional filters.
- * Fetches tickets WITHOUT the profiles join to avoid RLS-related row exclusions.
- * The TicketCard handles null profiles gracefully (shows 'Sin asignar').
- */
+/** List tickets with optional filters. */
 export async function listTickets(filters?: TicketFilters): Promise<TicketWithProfiles[]> {
   let query = supabase
     .from('tickets')
-    .select('*')
+    .select(`
+      *,
+      created_by_profile:profiles!created_by(id, first_name, last_name, email),
+      assigned_to_profile:profiles!assigned_to(id, first_name, last_name, email)
+    `)
     .order('created_at', { ascending: false });
 
   if (filters?.createdBy) {
@@ -39,12 +40,7 @@ export async function listTickets(filters?: TicketFilters): Promise<TicketWithPr
     console.warn('[tickets] listTickets error:', error.message, error.code);
     throw error;
   }
-  // Cast to TicketWithProfiles — profiles are null in list view, loaded in detail
-  return (data ?? []).map((row) => ({
-    ...row,
-    created_by_profile:  null,
-    assigned_to_profile: null,
-  })) as TicketWithProfiles[];
+  return (data ?? []) as TicketWithProfiles[];
 }
 
 /** Get a single ticket with full details. */
