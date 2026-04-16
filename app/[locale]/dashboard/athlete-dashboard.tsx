@@ -10,6 +10,7 @@
  * 'athlete' role.  All other roles see the existing KPI dashboard.
  */
 
+import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import {
@@ -40,15 +41,15 @@ const SECTION_STYLES: Record<
 };
 
 // ---------------------------------------------------------------------------
-// Quick-access cards (Mi espacio)
+// Quick-access cards (Mi espacio) — titles/descs resolved from i18n at render
 // ---------------------------------------------------------------------------
 
-const QUICK_CARDS = [
+const QUICK_CARD_DEFS = [
   {
     href:        '/plans'     as const,
     emoji:       '📋',
-    title:       'Mis Planes',
-    desc:        'Médico · Nutrición · Psicología',
+    titleKey:    'plansTitle'   as const,
+    descKey:     'plansDesc'    as const,
     card:        'border-blue-200  bg-blue-50  hover:bg-blue-100',
     titleColor:  'text-blue-800',
     descColor:   'text-blue-600',
@@ -56,8 +57,8 @@ const QUICK_CARDS = [
   {
     href:        '/tickets'   as const,
     emoji:       '🎫',
-    title:       'Mis Tickets',
-    desc:        'Solicitudes al equipo técnico',
+    titleKey:    'ticketsTitle' as const,
+    descKey:     'ticketsDesc'  as const,
     card:        'border-teal-200  bg-teal-50  hover:bg-teal-100',
     titleColor:  'text-teal-800',
     descColor:   'text-teal-600',
@@ -65,8 +66,8 @@ const QUICK_CARDS = [
   {
     href:        '/calendar'  as const,
     emoji:       '📅',
-    title:       'Calendario',
-    desc:        'Próximos eventos y competencias',
+    titleKey:    'calendarTitle' as const,
+    descKey:     'calendarDesc'  as const,
     card:        'border-sky-200   bg-sky-50   hover:bg-sky-100',
     titleColor:  'text-sky-800',
     descColor:   'text-sky-600',
@@ -74,8 +75,8 @@ const QUICK_CARDS = [
   {
     href:        '/protocols' as const,
     emoji:       '📄',
-    title:       'Protocolos',
-    desc:        'Guías operativas del equipo',
+    titleKey:    'protocolsTitle' as const,
+    descKey:     'protocolsDesc'  as const,
     card:        'border-violet-200 bg-violet-50 hover:bg-violet-100',
     titleColor:  'text-violet-800',
     descColor:   'text-violet-600',
@@ -89,6 +90,7 @@ const QUICK_CARDS = [
 type Props = { user: CurrentUser };
 
 export default async function AthleteDashboard({ user }: Props) {
+  const t = await getTranslations('athleteDashboard');
   const profileId = user.profile?.id ?? '';
   const email     = user.profile?.email ?? null;
 
@@ -138,7 +140,7 @@ export default async function AthleteDashboard({ user }: Props) {
   const fullName =
     user.profile
       ? `${user.profile.first_name} ${user.profile.last_name}`.trim()
-      : 'Atleta';
+      : t('roleTag');
 
   const diagStatus = (diagnostic?.overall_status ?? 'pendiente') as DiagnosticStatus;
   const diagPct    = diagnostic?.completion_pct ?? 0;
@@ -155,7 +157,7 @@ export default async function AthleteDashboard({ user }: Props) {
 
       {/* ── Welcome header ────────────────────────────────────────────────── */}
       <div className="mb-8">
-        <p className="text-sm text-gray-400 mb-0.5">Bienvenido</p>
+        <p className="text-sm text-gray-400 mb-0.5">{t('welcome')}</p>
         <h1 className="text-3xl font-bold text-gray-900">{fullName}</h1>
 
         {athlete?.discipline && (
@@ -165,21 +167,21 @@ export default async function AthleteDashboard({ user }: Props) {
         )}
 
         <span className="inline-flex items-center mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
-          Atleta
+          {t('roleTag')}
         </span>
       </div>
 
       {/* ── Mi Diagnóstico Inicial ────────────────────────────────────────── */}
       <section className="mb-8">
         <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">
-          Mi Diagnóstico Inicial
+          {t('diagnosticTitle')}
         </h2>
 
         {diagnostic ? (
           <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             {/* Overall status + progress */}
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-gray-700">Estado general</span>
+              <span className="text-sm font-semibold text-gray-700">{t('diagnosticOverall')}</span>
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[diagStatus]}`}
               >
@@ -191,7 +193,7 @@ export default async function AthleteDashboard({ user }: Props) {
             {/* Progress bar */}
             <div className="mb-4">
               <div className="flex justify-between text-xs text-gray-400 mb-1">
-                <span>Avance total</span>
+                <span>{t('diagnosticProgress')}</span>
                 <span className="font-semibold text-indigo-700">{diagPct}%</span>
               </div>
               <div className="w-full h-2.5 rounded-full bg-gray-100 overflow-hidden">
@@ -229,10 +231,10 @@ export default async function AthleteDashboard({ user }: Props) {
         ) : (
           <div className="rounded-xl border border-dashed border-gray-200 py-10 text-center bg-gray-50">
             <p className="text-sm font-medium text-gray-400">
-              Aún no tienes un diagnóstico inicial registrado.
+              {t('diagnosticEmpty')}
             </p>
             <p className="text-xs text-gray-400 mt-1">
-              Tu equipo técnico lo registrará próximamente.
+              {t('diagnosticEmptyDesc')}
             </p>
           </div>
         )}
@@ -241,18 +243,18 @@ export default async function AthleteDashboard({ user }: Props) {
       {/* ── Mi espacio — quick-access grid ────────────────────────────────── */}
       <section>
         <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">
-          Mi espacio
+          {t('mySpace')}
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {QUICK_CARDS.map((c) => (
+          {QUICK_CARD_DEFS.map((c) => (
             <Link
               key={c.href}
               href={c.href}
               className={`rounded-xl border p-5 transition-colors ${c.card}`}
             >
               <div className="text-2xl mb-2">{c.emoji}</div>
-              <h3 className={`text-sm font-bold mb-0.5 ${c.titleColor}`}>{c.title}</h3>
-              <p className={`text-xs leading-snug ${c.descColor}`}>{c.desc}</p>
+              <h3 className={`text-sm font-bold mb-0.5 ${c.titleColor}`}>{t(c.titleKey)}</h3>
+              <p className={`text-xs leading-snug ${c.descColor}`}>{t(c.descKey)}</p>
             </Link>
           ))}
         </div>

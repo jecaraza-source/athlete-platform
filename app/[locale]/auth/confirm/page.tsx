@@ -19,6 +19,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase';
 
 type Step = 'loading' | 'form' | 'success' | 'error';
@@ -26,6 +27,7 @@ type Step = 'loading' | 'form' | 'success' | 'error';
 export default function AuthConfirmPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useTranslations('auth');
 
   const [step, setStep] = useState<Step>('loading');
   const [pageError, setPageError] = useState<string | null>(null);
@@ -39,20 +41,14 @@ export default function AuthConfirmPage() {
     const code = searchParams.get('code');
 
     if (!code) {
-      setPageError(
-        'El enlace de recuperación es inválido o ha expirado. ' +
-        'Solicita uno nuevo desde la página de inicio de sesión.'
-      );
+      setPageError('invalidLinkExpired');
       setStep('error');
       return;
     }
 
     supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
       if (error) {
-        setPageError(
-          'El enlace ya fue utilizado o ha expirado. ' +
-          'Por favor solicita un nuevo enlace de recuperación.'
-        );
+        setPageError('invalidLinkUsed');
         setStep('error');
       } else {
         setStep('form');
@@ -64,15 +60,15 @@ export default function AuthConfirmPage() {
 
   function validate(): boolean {
     if (!password.trim()) {
-      setFormError('La contraseña no puede estar vacía.');
+      setFormError(t('passwordRequired'));
       return false;
     }
     if (password.length < 6) {
-      setFormError('La contraseña debe tener al menos 6 caracteres.');
+      setFormError(t('passwordTooShort'));
       return false;
     }
     if (password !== confirm) {
-      setFormError('Las contraseñas no coinciden.');
+      setFormError(t('passwordMismatch'));
       return false;
     }
     return true;
@@ -94,37 +90,39 @@ export default function AuthConfirmPage() {
     });
   }
 
-  // ── Loading ──────────────────────────────────────────────────────────────
+  // ── Loading ───────────────────────────────────────────────────────────────────────
   if (step === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-sm text-gray-500 animate-pulse">Verificando enlace…</p>
+        <p className="text-sm text-gray-500 animate-pulse">{t('verifyingLink')}</p>
       </div>
     );
   }
 
-  // ── Error ────────────────────────────────────────────────────────────────
+  // ── Error ───────────────────────────────────────────────────────────────────────
   if (step === 'error') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="w-full max-w-sm">
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold text-gray-900">Enlace inválido</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t('invalidLinkTitle')}</h1>
             <p className="mt-1 text-sm text-gray-500">AO Deportes</p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm text-center space-y-4">
-            <p className="text-sm text-red-600">{pageError}</p>
+            <p className="text-sm text-red-600">
+              {pageError === 'invalidLinkUsed' ? t('invalidLinkUsed') : t('invalidLinkExpired')}
+            </p>
             <button
               onClick={() => router.push('/login/forgot-password')}
               className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
             >
-              Solicitar nuevo enlace
+              {t('requestNewLink')}
             </button>
             <button
               onClick={() => router.push('/login')}
               className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              Volver al inicio de sesión
+              {t('backToLogin')}
             </button>
           </div>
         </div>
@@ -132,7 +130,7 @@ export default function AuthConfirmPage() {
     );
   }
 
-  // ── Success ──────────────────────────────────────────────────────────────
+  // ── Success ───────────────────────────────────────────────────────────────────────
   if (step === 'success') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -143,8 +141,8 @@ export default function AuthConfirmPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </span>
-            <p className="text-sm font-semibold text-gray-800">Contraseña actualizada</p>
-            <p className="text-xs text-gray-500">Redirigiendo al dashboard…</p>
+            <p className="text-sm font-semibold text-gray-800">{t('passwordUpdatedTitle')}</p>
+            <p className="text-xs text-gray-500">{t('passwordUpdatedDesc')}</p>
           </div>
         </div>
       </div>
@@ -156,7 +154,7 @@ export default function AuthConfirmPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Nueva contraseña</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('newPasswordTitle')}</h1>
           <p className="mt-1 text-sm text-gray-500">AO Deportes</p>
         </div>
 
@@ -173,14 +171,14 @@ export default function AuthConfirmPage() {
                 htmlFor="password"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Nueva contraseña
+                {t('newPasswordLabel')}
               </label>
               <input
                 id="password"
                 type="password"
                 autoComplete="new-password"
                 required
-                placeholder="Mínimo 6 caracteres"
+                placeholder={t('newPasswordPlaceholder')}
                 value={password}
                 onChange={(e) => { setFormError(null); setPassword(e.target.value); }}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -192,14 +190,14 @@ export default function AuthConfirmPage() {
                 htmlFor="confirm"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Confirmar contraseña
+                {t('confirmPasswordLabel')}
               </label>
               <input
                 id="confirm"
                 type="password"
                 autoComplete="new-password"
                 required
-                placeholder="Repite la contraseña"
+                placeholder={t('confirmPasswordPlaceholder')}
                 value={confirm}
                 onChange={(e) => { setFormError(null); setConfirm(e.target.value); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
@@ -212,7 +210,7 @@ export default function AuthConfirmPage() {
               disabled={isPending}
               className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
             >
-              {isPending ? 'Guardando…' : 'Guardar nueva contraseña'}
+              {isPending ? t('savingPassword') : t('savePassword')}
             </button>
           </div>
 
@@ -221,7 +219,7 @@ export default function AuthConfirmPage() {
               onClick={() => router.push('/login')}
               className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
             >
-              ← Volver al inicio de sesión
+              ← {t('backToLogin')}
             </button>
           </div>
         </div>

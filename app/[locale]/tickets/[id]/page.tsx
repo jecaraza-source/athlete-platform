@@ -1,5 +1,6 @@
 import { notFound, redirect }                    from 'next/navigation';
 import BackButton                                 from '@/components/back-button';
+import { getTranslations }                        from 'next-intl/server';
 import { requireAuthenticated }                   from '@/lib/rbac/server';
 import { supabaseAdmin }                          from '@/lib/supabase-admin';
 import type { TicketStatus, TicketPriority }      from '@/lib/tickets/types';
@@ -47,9 +48,10 @@ export default async function MyTicketDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const [user, { id }] = await Promise.all([
+  const [user, { id }, t] = await Promise.all([
     requireAuthenticated(),
     params,
+    getTranslations('athleteTickets'),
   ]);
 
   // Fetch ticket + assignee profile
@@ -81,7 +83,7 @@ export default async function MyTicketDetailPage({
 
   return (
     <main className="p-8 max-w-3xl">
-      <BackButton href="/tickets" label="Volver a Mis Tickets" />
+      <BackButton href="/tickets" label={t('backToTickets')} />
 
       {/* Header */}
       <div className="mt-6 mb-6">
@@ -116,22 +118,22 @@ export default async function MyTicketDetailPage({
         {/* Description */}
         <div>
           <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            Descripción
+            {t('descriptionSection')}
           </h2>
           {ticket.description ? (
             <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
               {ticket.description}
             </p>
           ) : (
-            <p className="text-sm text-gray-400 italic">Sin descripción adicional.</p>
+            <p className="text-sm text-gray-400 italic">{t('noDescription')}</p>
           )}
         </div>
 
         {/* Assignee */}
         {assignee && (
           <div className="border-t border-gray-100 pt-4">
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Atendido por
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              {t('assignedTo')}
             </h2>
             <p className="text-sm text-gray-700">
               {assignee.first_name} {assignee.last_name}
@@ -142,20 +144,19 @@ export default async function MyTicketDetailPage({
         {/* Status info banner */}
         {(status === 'resolved' || status === 'closed') && (
           <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            ✓ Tu ticket ha sido {status === 'resolved' ? 'resuelto' : 'cerrado'}.
-            Si necesitas más ayuda puedes abrir uno nuevo.
+            ✓ {t('statusBannerDone', { status: status === 'resolved' ? t('resolved') : t('closed') })}
           </div>
         )}
 
         {status === 'open' && (
           <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-            Tu ticket está en la cola y será atendido pronto.
+            {t('statusBannerOpen')}
           </div>
         )}
 
         {status === 'in_progress' && (
           <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-700">
-            El equipo técnico está trabajando en tu solicitud.
+            {t('statusBannerInProgress')}
           </div>
         )}
       </div>

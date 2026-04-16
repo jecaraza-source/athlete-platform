@@ -92,7 +92,7 @@ export default async function TrainingPage({
                 <p className="text-sm text-gray-600 mt-1">
                   {session.athletes
                     ? `${session.athletes.first_name} ${session.athletes.last_name}`
-                    : 'Unknown athlete'}
+                    : tc('unknownAthlete')}
                 </p>
               </div>
               <div className="text-sm text-gray-600">
@@ -103,7 +103,7 @@ export default async function TrainingPage({
             {/* Inline edit form — shows read view by default */}
             <div className="mt-4 border-t border-gray-100 pt-3">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                Session details
+                {t('sessionDetailsLabel')}
               </p>
               <EditSessionForm session={session} />
               <div className="mt-2 flex justify-end">

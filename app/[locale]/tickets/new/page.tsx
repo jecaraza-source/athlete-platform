@@ -2,19 +2,23 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { useRouter }                         from 'next/navigation';
+import { useTranslations }                  from 'next-intl';
 import { createMyTicket }                    from '../actions';
 import BackButton                            from '@/components/back-button';
 
-const PRIORITY_OPTIONS = [
-  { value: 'low',    label: 'Baja — cosmético o inconveniencia menor' },
-  { value: 'medium', label: 'Media — afecta mi flujo de trabajo' },
-  { value: 'high',   label: 'Alta — bloquea una función importante' },
-  { value: 'urgent', label: 'Urgente — requiere atención inmediata' },
-];
+// Priority options are resolved inside the component using t()
 
 export default function NewTicketPage() {
   const router = useRouter();
+  const t = useTranslations('athleteTickets');
   const formRef = useRef<HTMLFormElement>(null);
+
+  const PRIORITY_OPTIONS = [
+    { value: 'low',    label: t('priorityLow') },
+    { value: 'medium', label: t('priorityMedium') },
+    { value: 'high',   label: t('priorityHigh') },
+    { value: 'urgent', label: t('priorityUrgent') },
+  ];
 
   const [error, setError]   = useState<string | null>(null);
   const [isPending, start]  = useTransition();
@@ -33,12 +37,10 @@ export default function NewTicketPage() {
 
   return (
     <main className="p-8 max-w-2xl">
-      <BackButton href="/tickets" label="Volver a Mis Tickets" />
+      <BackButton href="/tickets" label={t('backToTickets')} />
 
-      <h1 className="text-2xl font-bold text-teal-700 mt-4 mb-2">Nuevo Ticket</h1>
-      <p className="text-sm text-gray-500 mb-8">
-        Describe tu solicitud o reporte y el equipo técnico lo atenderá a la brevedad.
-      </p>
+      <h1 className="text-2xl font-bold text-teal-700 mt-4 mb-2">{t('newTitle')}</h1>
+      <p className="text-sm text-gray-500 mb-8">{t('newDesc')}</p>
 
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         {error && (
@@ -52,14 +54,14 @@ export default function NewTicketPage() {
           {/* Título */}
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-              Título <span className="text-red-500">*</span>
+              {t('titleLabel')} <span className="text-red-500">{t('titleRequired')}</span>
             </label>
             <input
               id="title"
               name="title"
               type="text"
               required
-              placeholder="Describe brevemente el problema o solicitud"
+              placeholder={t('titlePlaceholder')}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
             />
           </div>
@@ -67,13 +69,13 @@ export default function NewTicketPage() {
           {/* Descripción */}
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-              Descripción <span className="text-gray-400 font-normal">(opcional)</span>
+              {t('descriptionLabel')} <span className="text-gray-400 font-normal">{t('descriptionOptional')}</span>
             </label>
             <textarea
               id="description"
               name="description"
               rows={5}
-              placeholder="Detalla lo que ocurrió, cuándo sucedió, qué esperabas que pasara…"
+              placeholder={t('descriptionPlaceholder')}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-y focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
             />
           </div>
@@ -81,7 +83,7 @@ export default function NewTicketPage() {
           {/* Prioridad */}
           <div>
             <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-1">
-              Prioridad
+              {t('priorityLabel')}
             </label>
             <select
               id="priority"
@@ -102,14 +104,14 @@ export default function NewTicketPage() {
               disabled={isPending}
               className="rounded-lg bg-teal-600 px-5 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50 transition-colors"
             >
-              {isPending ? 'Enviando…' : 'Enviar ticket'}
+              {isPending ? t('submitting') : t('submit')}
             </button>
             <button
               type="button"
               onClick={() => router.back()}
               className="rounded-lg border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              Cancelar
+              {t('cancel')}
             </button>
           </div>
 

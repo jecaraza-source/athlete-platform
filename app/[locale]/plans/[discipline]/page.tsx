@@ -1,5 +1,6 @@
 import { notFound }        from 'next/navigation';
 import BackButton          from '@/components/back-button';
+import { getTranslations } from 'next-intl/server';
 import { requireAuthenticated } from '@/lib/rbac/server';
 import {
   getPlansByType,
@@ -75,9 +76,11 @@ export default async function PlansDisciplinePage({
   const isAthlete = currentUser.roles.some((r) => r.code === 'athlete');
 
   // Parallel data fetches — athletes only see their own published plans
-  const [plans, athletes] = await Promise.all([
+  const [plans, athletes, tp, tc] = await Promise.all([
     isAthlete ? getMyPlansForAthlete(type) : getPlansByType(type),
     isAthlete ? Promise.resolve([])        : getActiveAthletes(),
+    getTranslations('plans'),
+    getTranslations('common'),
   ]);
 
   // Generate signed URLs for plans that have a file
@@ -92,7 +95,7 @@ export default async function PlansDisciplinePage({
 
   return (
     <main className="p-8 max-w-6xl">
-      <BackButton href="/plans" label="Volver a Planes" />
+      <BackButton href="/plans" label={tp('backToPlans')} />
 
       <div className={`mt-4 mb-6 pl-4 border-l-4 ${meta.border}`}>
         <h1 className={`text-2xl font-bold ${meta.accent}`}>{meta.label}</h1>
@@ -111,7 +114,7 @@ export default async function PlansDisciplinePage({
         {/* ── Plan list ───────────────────────────────────────── */}
         <section>
           <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <span>{isAthlete ? 'Mis planes asignados' : 'Planes creados'}</span>
+            <span>{isAthlete ? tp('myPlansTitle') : tp('staffPlansTitle')}</span>
             {plans.length > 0 && (
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 font-normal">
                 {plans.length}
@@ -122,13 +125,11 @@ export default async function PlansDisciplinePage({
           {plans.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-200 py-12 text-center">
               <p className="text-sm text-gray-400 font-medium">
-                {isAthlete
-                  ? 'Tu equipo aún no ha publicado planes para ti.'
-                  : 'Sin planes aún'}
+                {isAthlete ? tp('athleteEmpty') : tp('staffEmpty')}
               </p>
               {!isAthlete && (
                 <p className="text-xs text-gray-400 mt-1">
-                  Crea el primero usando el formulario de la derecha.
+                  {tp('staffEmptyHint')}
                 </p>
               )}
             </div>
@@ -150,7 +151,7 @@ export default async function PlansDisciplinePage({
         {!isAthlete && (
           <section>
             <h2 className="text-base font-semibold text-gray-800 mb-4">
-              Nuevo Plan
+              {tp('newPlanTitle')}
             </h2>
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
               <PlanForm type={type} athletes={athletes} />

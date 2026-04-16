@@ -1,5 +1,6 @@
 import Link           from 'next/link';
 import BackButton     from '@/components/back-button';
+import { getTranslations } from 'next-intl/server';
 import { requireAuthenticated } from '@/lib/rbac/server';
 import { supabaseAdmin }         from '@/lib/supabase-admin';
 import type { TicketStatus, TicketPriority } from '@/lib/tickets/types';
@@ -44,6 +45,8 @@ const PRIORITY_COLORS: Record<TicketPriority, string> = {
 
 export default async function MyTicketsPage() {
   const user = await requireAuthenticated();
+  const t    = await getTranslations('athleteTickets');
+  const tc   = await getTranslations('common');
 
   // Fetch only tickets created by this user
   const { data: tickets, error } = await supabaseAdmin
@@ -54,35 +57,31 @@ export default async function MyTicketsPage() {
 
   return (
     <main className="p-8 max-w-4xl">
-      <BackButton href="/dashboard" label="Volver al Dashboard" />
+      <BackButton href="/dashboard" label={tc('backToDashboard')} />
 
       <div className="flex items-start justify-between mt-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-teal-700">Mis Tickets</h1>
-          <p className="text-gray-500 mt-1 text-sm">
-            Solicitudes y reportes que has enviado al equipo técnico.
-          </p>
+          <h1 className="text-3xl font-bold text-teal-700">{t('title')}</h1>
+          <p className="text-gray-500 mt-1 text-sm">{t('description')}</p>
         </div>
         <Link
           href="/tickets/new"
           className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
         >
-          + Nuevo ticket
+          {t('newTicket')}
         </Link>
       </div>
 
       {error && (
         <div className="mb-6 rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          Error al cargar tickets: {error.message}
+          {t('errorLoading')} {error.message}
         </div>
       )}
 
       {!error && (!tickets || tickets.length === 0) ? (
         <div className="rounded-xl border border-dashed border-gray-200 py-16 text-center">
-          <p className="text-sm font-medium text-gray-500">Sin tickets todavía</p>
-          <p className="text-xs text-gray-400 mt-1">
-            Crea tu primera solicitud con el botón de arriba.
-          </p>
+          <p className="text-sm font-medium text-gray-500">{t('empty')}</p>
+          <p className="text-xs text-gray-400 mt-1">{t('emptyDesc')}</p>
         </div>
       ) : (
         <div className="space-y-3">

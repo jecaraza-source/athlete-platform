@@ -90,10 +90,10 @@ export default function LoginPage() {
 
           <div className="mt-4 text-center">
             <button
-              onClick={() => router.push('/login/forgot-password')}
+            onClick={() => router.push('/login/forgot-password')}
               className="text-sm text-indigo-500 hover:text-indigo-700 hover:underline"
             >
-              ¿Olvidaste tu contraseña?
+              {t('forgotPassword')}
             </button>
           </div>
         </div>

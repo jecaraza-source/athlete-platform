@@ -330,7 +330,7 @@ export default async function AthleteDetailPage({
             <div className="space-y-2">
               {cases.map((c) => (
                 <div key={c.id} className="text-sm">
-                  <p className="font-medium">{c.injuries?.[0]?.injury_type ?? 'Case'}</p>
+                  <p className="font-medium">{c.injuries?.[0]?.injury_type ?? ta('injuryCase')}</p>
                   <p className="text-gray-500 capitalize">{c.status} · {new Date(c.opened_at).toLocaleDateString()}</p>
                 </div>
               ))}
@@ -347,7 +347,7 @@ export default async function AthleteDetailPage({
             <div className="space-y-2">
               {psychCases.map((c) => (
                 <div key={c.id} className="text-sm">
-                  <p className="font-medium capitalize">{c.status} case</p>
+                  <p className="font-medium">{ta('psychologyCaseLabel')}</p>
                   <p className="text-gray-500">{new Date(c.opened_at).toLocaleDateString()}</p>
                   {c.summary && <p className="text-gray-500 truncate">{c.summary}</p>}
                 </div>

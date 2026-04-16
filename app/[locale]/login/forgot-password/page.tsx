@@ -2,10 +2,12 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { requestPasswordReset } from './actions';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
+  const t = useTranslations('auth');
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError]   = useState<string | null>(null);
   const [sent, setSent]     = useState(false);
@@ -29,7 +31,7 @@ export default function ForgotPasswordPage() {
 
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Recuperar contraseña</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('resetTitle')}</h1>
           <p className="mt-1 text-sm text-gray-500">AO Deportes</p>
         </div>
 
@@ -45,24 +47,23 @@ export default function ForgotPasswordPage() {
                 </span>
               </div>
               <p className="text-sm font-medium text-gray-800">
-                Correo enviado
+                {t('resetSuccessTitle')}
               </p>
               <p className="text-sm text-gray-500">
-                Si existe una cuenta con ese correo, recibirás un enlace para
-                restablecer tu contraseña. Revisa también la carpeta de spam.
+                {t('resetSuccessDesc')} {t('resetSuccessSpam')}
               </p>
               <button
                 onClick={() => router.push('/login')}
                 className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Volver al inicio de sesión
+                {t('backToLogin')}
               </button>
             </div>
           ) : (
             /* Estado: formulario */
             <>
               <p className="text-sm text-gray-500 mb-5">
-                Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.
+                {t('resetDescription')}
               </p>
 
               {error && (
@@ -77,7 +78,7 @@ export default function ForgotPasswordPage() {
                     htmlFor="email"
                     className="block text-sm font-medium text-gray-700 mb-1"
                   >
-                    Correo electrónico
+                    {t('email')}
                   </label>
                   <input
                     id="email"
@@ -95,16 +96,16 @@ export default function ForgotPasswordPage() {
                   disabled={isPending}
                   className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                 >
-                  {isPending ? 'Enviando…' : 'Enviar enlace'}
+                  {isPending ? t('resetSending') : t('resetButton')}
                 </button>
               </form>
 
               <div className="mt-4 text-center">
                 <button
-                  onClick={() => router.push('/login')}
+                onClick={() => router.push('/login')}
                   className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
                 >
-                  ← Volver al inicio de sesión
+                  ← {t('backToLogin')}
                 </button>
               </div>
             </>
