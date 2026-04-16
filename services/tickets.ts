@@ -10,19 +10,18 @@ export type TicketFilters = {
   createdBy?: string;
 };
 
-/** List tickets with optional filters. */
+/** List tickets with optional filters.
+ * Fetches tickets WITHOUT the profiles join to avoid RLS-related row exclusions.
+ * The TicketCard handles null profiles gracefully (shows 'Sin asignar').
+ */
 export async function listTickets(filters?: TicketFilters): Promise<TicketWithProfiles[]> {
   let query = supabase
     .from('tickets')
-    .select(`
-      *,
-      created_by_profile:profiles!created_by(id, first_name, last_name, email),
-      assigned_to_profile:profiles!assigned_to(id, first_name, last_name, email)
-    `)
+    .select('*')
     .order('created_at', { ascending: false });
 
   if (filters?.createdBy) {
-    // Athletes see only their own tickets
+    // Athletes only see their own tickets
     query = query.eq('created_by', filters.createdBy);
   }
   if (filters?.status) {
@@ -36,8 +35,16 @@ export async function listTickets(filters?: TicketFilters): Promise<TicketWithPr
   }
 
   const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []) as TicketWithProfiles[];
+  if (error) {
+    console.warn('[tickets] listTickets error:', error.message, error.code);
+    throw error;
+  }
+  // Cast to TicketWithProfiles — profiles are null in list view, loaded in detail
+  return (data ?? []).map((row) => ({
+    ...row,
+    created_by_profile:  null,
+    assigned_to_profile: null,
+  })) as TicketWithProfiles[];
 }
 
 /** Get a single ticket with full details. */
