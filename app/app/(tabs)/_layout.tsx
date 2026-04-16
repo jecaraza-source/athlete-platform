@@ -23,7 +23,7 @@ export default function TabsLayout() {
   const permissions = useAuthStore((s) => s.permissions);
   const roles       = useAuthStore((s) => s.roles);
   const showAthletes = permissions.has('view_athletes');
-  const showTraining = roles.some((r) => r.code === 'athlete');
+  const showTraining  = roles.some((r) => r.code === 'athlete');
 
   return (
     <Tabs
@@ -49,6 +49,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Inicio',
+          headerTitle: '',        // Hide text — logo icon (headerLeft) is enough
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -129,7 +130,7 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* Hide legacy screens from tab bar */}
+      {/* Plan screen — hidden from tab bar, accessible from Home dashboard */}
       <Tabs.Screen name="plan" options={{ href: null }} />
       <Tabs.Screen name="progress" options={{ href: null }} />
     </Tabs>
