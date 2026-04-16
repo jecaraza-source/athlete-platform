@@ -23,35 +23,32 @@ const BUCKET = 'avatars';
 /**
  * Uploads a profile photo for the current user.
  *
+ * Accepts a raw base64 string from expo-image-picker's { base64: true }
+ * option. This completely avoids file URI access issues on Android
+ * (which block XHR / fetch reads of local file:// and content:// URIs).
+ *
+ * Conversion: base64 → Uint8Array via atob() (available in Hermes).
+ * Supabase storage upload receives the Uint8Array (an ArrayBufferView),
+ * which the React Native fetch polyfill handles natively.
+ *
  * Returns { url, error }:
  *   url   – stable public URL on success, null on failure
  *   error – human-readable error message (empty string on success)
- *
- * Why XHR instead of fetch()?
- *   On Android, local file:// / content:// URIs returned by
- *   expo-image-picker can have status 0 (non-ok) in fetch() even when
- *   the body is perfectly valid. XHR with responseType='blob' works
- *   reliably on both platforms.
- *
- * Why Blob instead of ArrayBuffer?
- *   Supabase JS v2 internally calls fetch() to upload. Passing a Blob
- *   directly is more reliably handled by the RN fetch polyfill than
- *   passing a raw ArrayBuffer.
  */
 export async function uploadMobileAvatar(
-  localUri:   string,
+  base64Data: string,  // raw base64 string from expo-image-picker
   authUserId: string,
   profileId:  string,
 ): Promise<{ url: string | null; error: string }> {
   try {
-    // 1. Read the local image as a Uint8Array via XHR
-    //    (avoids response.ok=false for local URIs on Android,
-    //     and avoids "Network request failed" when using RN Blobs in fetch)
-    const bytes = await readFileAsUint8Array(localUri);
+    // 1. Decode base64 → Uint8Array (atob is global in Hermes / React Native)
+    const binaryStr = atob(base64Data);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
 
-    // 2. Upload to storage (upsert overwrites any existing photo)
-    //    Uint8Array is an ArrayBufferView — handled natively by the
-    //    React Native fetch polyfill without throwing.
+    // 2. Upload to storage (upsert = true replaces existing avatar)
     const path = `${authUserId}/avatar.jpg`;
     const { error: uploadErr } = await supabase.storage
       .from(BUCKET)
@@ -91,42 +88,7 @@ export async function uploadMobileAvatar(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Reads a local file URI (file:// or content://) as a Uint8Array
- * using XMLHttpRequest with responseType 'arraybuffer'.
- *
- * Why Uint8Array (not Blob)?
- *   When a React Native XHR Blob is passed as the body of fetch(),
- *   the RN fetch polyfill cannot serialize it correctly and throws
- *   "Network request failed". Passing a Uint8Array (an ArrayBufferView)
- *   is handled natively and avoids this issue.
- *
- * Why XHR instead of fetch()?
- *   On Android, local file:// / content:// URIs from expo-image-picker
- *   can return status 0 in fetch(), making response.ok == false even
- *   though the data is valid. XHR is more reliable for local URIs.
- */
-function readFileAsUint8Array(uri: string): Promise<Uint8Array> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.responseType = 'arraybuffer';
-    xhr.onload = () => {
-      if (xhr.response) {
-        resolve(new Uint8Array(xhr.response as ArrayBuffer));
-      } else {
-        reject(new Error('No se pudo leer el archivo (XHR sin respuesta)'));
-      }
-    };
-    xhr.onerror = () => reject(new Error('No se pudo leer el archivo de imagen'));
-    xhr.ontimeout = () => reject(new Error('Tiempo de espera agotado al leer la imagen'));
-    xhr.open('GET', uri, true);
-    xhr.send(null);
-  });
-}
+// (no internal helpers needed — base64 decoding uses the global atob())
 
 /**
  * Translates common Supabase storage error messages into Spanish.

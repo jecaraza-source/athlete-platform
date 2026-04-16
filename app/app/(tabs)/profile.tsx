@@ -98,18 +98,24 @@ export default function ProfileScreen() {
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],   // square crop
-      quality: 0.7,      // compress to ~70% quality
+      quality: 0.7,     // compress to ~70% quality
+      base64: true,     // include base64 data to avoid file URI access issues on Android
     });
 
-    if (pickerResult.canceled || !pickerResult.assets?.[0]?.uri) return;
+    if (pickerResult.canceled || !pickerResult.assets?.[0]) return;
 
-    const localUri = pickerResult.assets[0].uri;
+    const asset = pickerResult.assets[0];
 
-    // Optimistic UI: show the local image immediately
-    setAvatarUrl(localUri);
+    if (!asset.base64) {
+      Alert.alert('Error', 'No se pudo obtener los datos de la imagen.');
+      return;
+    }
+
+    // Optimistic UI: show the local preview immediately
+    setAvatarUrl(asset.uri);
     setUploading(true);
 
-    const uploadResult = await uploadMobileAvatar(localUri, authUserId, profileId);
+    const uploadResult = await uploadMobileAvatar(asset.base64, authUserId, profileId);
     setUploading(false);
 
     if (uploadResult.url) {
