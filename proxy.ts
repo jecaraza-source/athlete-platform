@@ -57,12 +57,15 @@ const PUBLIC_PATHS: string[] = [
 
 /**
  * Path prefixes that are always public regardless of auth state.
- * - /api/auth   — Supabase auth callbacks
- * - /api/cron/  — Vercel Cron jobs (secured via CRON_SECRET header in each handler)
+ * - /api/auth    — Supabase auth callbacks
+ * - /api/cron/   — Vercel Cron jobs (secured via CRON_SECRET header in each handler)
+ * - /api/avatar/ — Avatar upload from mobile (uses Authorization: Bearer, not cookies;
+ *                  JWT validation is done inside the route handler itself)
  */
 const PUBLIC_PREFIXES: string[] = [
   '/api/auth',
   '/api/cron/',
+  '/api/avatar/',
 ];
 
 function isPublicPath(strippedPathname: string): boolean {
