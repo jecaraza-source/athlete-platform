@@ -29,7 +29,13 @@ vi.mock('react', async (importOriginal) => {
   };
 });
 
-// 2. Make redirect() throw a detectable error so control flow stops exactly
+// 2. Mock next-intl/server so getLocale() is available in the Node test
+//    environment. Returns 'en' — the same default as the app's i18n config.
+vi.mock('next-intl/server', () => ({
+  getLocale: vi.fn().mockResolvedValue('en'),
+}));
+
+// 3. Make redirect() throw a detectable error so control flow stops exactly
 //    as it does in production (Next.js redirect() throws internally).
 vi.mock('next/navigation', () => ({
   redirect: vi.fn((url: string) => {
@@ -163,7 +169,7 @@ describe('requireAuthenticated', () => {
   it('redirects to /login when the user is anonymous', async () => {
     setupAuthMock(vi.mocked(createSupabaseServerClient), SCENARIOS.anonymous);
     const url = await captureRedirect(() => requireAuthenticated());
-    expect(url).toBe('/login');
+    expect(url).toBe('/en/login');
   });
 
   it('returns the CurrentUser when a session exists', async () => {
@@ -183,7 +189,7 @@ describe('requirePermission', () => {
   it('redirects to /login when the user is anonymous', async () => {
     setupAuthMock(vi.mocked(createSupabaseServerClient), SCENARIOS.anonymous);
     const url = await captureRedirect(() => requirePermission('view_athletes'));
-    expect(url).toBe('/login');
+    expect(url).toBe('/en/login');
   });
 
   it('redirects to /dashboard when the user lacks the permission', async () => {
@@ -191,7 +197,7 @@ describe('requirePermission', () => {
     setupSupabaseAdminMock(vi.mocked(supabaseAdmin) as { from: ReturnType<typeof vi.fn> }, SCENARIOS.athlete);
     // athlete only has view_calendar; view_athletes is denied
     const url = await captureRedirect(() => requirePermission('view_athletes'));
-    expect(url).toBe('/dashboard');
+    expect(url).toBe('/en/dashboard');
   });
 
   it('does not redirect when the user has the required permission', async () => {
@@ -218,7 +224,7 @@ describe('requirePermission', () => {
     setupAuthMock(vi.mocked(createSupabaseServerClient), SCENARIOS.athlete);
     setupSupabaseAdminMock(vi.mocked(supabaseAdmin) as { from: ReturnType<typeof vi.fn> }, SCENARIOS.athlete);
     const url = await captureRedirect(() => requirePermission('manage_calendar'));
-    expect(url).toBe('/dashboard');
+    expect(url).toBe('/en/dashboard');
 
     vi.clearAllMocks();
 
@@ -237,21 +243,21 @@ describe('requireAdminAccess', () => {
   it('redirects to /login when the user is anonymous', async () => {
     setupAuthMock(vi.mocked(createSupabaseServerClient), SCENARIOS.anonymous);
     const url = await captureRedirect(() => requireAdminAccess());
-    expect(url).toBe('/login');
+    expect(url).toBe('/en/login');
   });
 
   it('redirects to /dashboard for a non-admin user (athlete)', async () => {
     setupAuthMock(vi.mocked(createSupabaseServerClient), SCENARIOS.athlete);
     setupSupabaseAdminMock(vi.mocked(supabaseAdmin) as { from: ReturnType<typeof vi.fn> }, SCENARIOS.athlete);
     const url = await captureRedirect(() => requireAdminAccess());
-    expect(url).toBe('/dashboard');
+    expect(url).toBe('/en/dashboard');
   });
 
   it('redirects to /dashboard for a non-admin user (coach)', async () => {
     setupAuthMock(vi.mocked(createSupabaseServerClient), SCENARIOS.coach);
     setupSupabaseAdminMock(vi.mocked(supabaseAdmin) as { from: ReturnType<typeof vi.fn> }, SCENARIOS.coach);
     const url = await captureRedirect(() => requireAdminAccess());
-    expect(url).toBe('/dashboard');
+    expect(url).toBe('/en/dashboard');
   });
 
   it('returns the CurrentUser for an admin', async () => {

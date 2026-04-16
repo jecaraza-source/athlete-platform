@@ -37,5 +37,6 @@ export async function signOut() {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
   revalidatePath('/', 'layout');
+  // Use a relative path — the middleware (proxy.ts) adds the locale prefix.
   redirect('/login');
 }

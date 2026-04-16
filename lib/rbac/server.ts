@@ -26,9 +26,14 @@
 
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
+import { getLocale } from 'next-intl/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import type { CurrentUser, Permission, ProfileSummary, Role } from './types';
+
+/** Build a locale-prefixed path, e.g. loginPath() → '/en/login'. */
+async function loginPath()     { return `/${await getLocale()}/login`; }
+async function dashboardPath() { return `/${await getLocale()}/dashboard`; }
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -156,7 +161,7 @@ export async function hasRole(...roleCodes: string[]): Promise<boolean> {
  */
 export async function requireAuthenticated(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) redirect(await loginPath());
   return user;
 }
 
@@ -168,9 +173,9 @@ export async function requireAuthenticated(): Promise<CurrentUser> {
  */
 export async function requirePermission(permission: string): Promise<void> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) redirect(await loginPath());
   if (isSuperAdmin(user)) return;
-  if (!user.permissions.has(permission)) redirect('/dashboard');
+  if (!user.permissions.has(permission)) redirect(await dashboardPath());
 }
 
 /**
@@ -181,12 +186,12 @@ export async function requirePermission(permission: string): Promise<void> {
  */
 export async function requireAdminAccess(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) redirect(await loginPath());
   // 'program_director' is the admin-equivalent role in the existing DB schema
   const isAdmin = user.roles.some((r) =>
     ['super_admin', 'admin', 'program_director'].includes(r.code)
   );
-  if (!isAdmin) redirect('/dashboard');
+  if (!isAdmin) redirect(await dashboardPath());
   return user;
 }
 

@@ -1,6 +1,6 @@
 // =============================================================================
 // app/api/cron/process-ticket-automation/route.ts
-// Vercel Cron handler — runs every 5 minutes.
+// Vercel Cron handler — runs daily at 08:00 UTC (see vercel.json).
 //
 // Two phases:
 //   Phase 1a  ticket_overdue rules     — finds tickets past due_date, sends email
@@ -11,17 +11,14 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { processTicketAutomation }   from '@/lib/notifications/ticket-email-service';
+import { processTicketAutomation } from '@/lib/notifications/ticket-email-service';
+import { requireCronAuth }         from '@/lib/cron/auth';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const authHeader = req.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = requireCronAuth(req);
+  if (denied) return denied;
 
   try {
     const result = await processTicketAutomation();

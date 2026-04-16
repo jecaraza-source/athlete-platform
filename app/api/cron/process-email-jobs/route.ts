@@ -1,6 +1,6 @@
 // =============================================================================
 // app/api/cron/process-email-jobs/route.ts
-// Vercel Cron handler — runs every minute.
+// Vercel Cron handler — runs daily at 06:00 UTC (see vercel.json).
 //
 // Step 1: processScheduledEmailCampaigns()
 //   Finds due scheduled campaigns, resolves their audience, and inserts
@@ -13,16 +13,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processPendingEmailJobs }        from '@/lib/notifications/email-service';
 import { processScheduledEmailCampaigns } from '@/lib/notifications/scheduler';
+import { requireCronAuth }               from '@/lib/cron/auth';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const authHeader = req.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = requireCronAuth(req);
+  if (denied) return denied;
 
   try {
     // 1. Campaign → jobs
