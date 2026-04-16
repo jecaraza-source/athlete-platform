@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, FlatList, TextInput, StyleSheet, useColorScheme,
-  Text, RefreshControl, TouchableOpacity,
+  Text, RefreshControl, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -12,6 +12,8 @@ import { EmptyView } from '@/components/ui/empty-view';
 import { listAthletes } from '@/services/athletes';
 import type { Athlete, AthleteStatus } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+
+const PAGE_SIZE = 30;
 
 // Labels are in Spanish; values match the DB schema (English).
 const STATUS_FILTERS: { label: string; value: AthleteStatus | undefined }[] = [
@@ -27,27 +29,55 @@ export default function AthletesScreen() {
   const colors = Colors[scheme];
   const router = useRouter();
 
-  const [athletes, setAthletes] = useState<Athlete[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [athletes, setAthletes]     = useState<Athlete[]>([]);
+  const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch] = useState('');
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore]       = useState(true);
+  const [search, setSearch]         = useState('');
   const [statusFilter, setStatusFilter] = useState<AthleteStatus | undefined>(undefined);
+  const pageRef = useRef(0);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (reset = false) => {
+    const page = reset ? 0 : pageRef.current;
     try {
-      const data = await listAthletes({ search: search || undefined, status: statusFilter });
-      setAthletes(data);
+      const data = await listAthletes({
+        search: search || undefined,
+        status: statusFilter,
+        page,
+        pageSize: PAGE_SIZE,
+      });
+      setAthletes((prev) => reset ? data : [...prev, ...data]);
+      setHasMore(data.length === PAGE_SIZE);
+      pageRef.current = page + 1;
     } catch {
-      setAthletes([]);
+      if (reset) setAthletes([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   }, [search, statusFilter]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    setLoading(true);
+    pageRef.current = 0;
+    setHasMore(true);
+    load(true);
+  }, [load]);
 
-  const onRefresh = () => { setRefreshing(true); load(); };
+  const onRefresh = () => {
+    setRefreshing(true);
+    pageRef.current = 0;
+    setHasMore(true);
+    load(true);
+  };
+
+  const onLoadMore = () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    load(false);
+  };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
@@ -112,6 +142,19 @@ export default function AthletesScreen() {
               subtitle="Intenta cambiar los filtros o la búsqueda"
             />
           }
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator color={PRIMARY} style={styles.footerSpinner} />
+            ) : hasMore && athletes.length >= PAGE_SIZE ? (
+              <TouchableOpacity
+                style={[styles.loadMore, { borderColor: PRIMARY }]}
+                onPress={onLoadMore}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.loadMoreText, { color: PRIMARY }]}>Cargar más atletas</Text>
+              </TouchableOpacity>
+            ) : null
+          }
         />
       )}
     </SafeAreaView>
@@ -134,4 +177,11 @@ const styles = StyleSheet.create({
   },
   filterText: { fontSize: 12, fontWeight: '500' },
   list: { paddingHorizontal: 16, paddingBottom: 30 },
+  footerSpinner: { marginVertical: 16 },
+  loadMore: {
+    marginHorizontal: 16, marginVertical: 12,
+    borderWidth: 1, borderRadius: 10,
+    paddingVertical: 12, alignItems: 'center',
+  },
+  loadMoreText: { fontSize: 14, fontWeight: '600' },
 });

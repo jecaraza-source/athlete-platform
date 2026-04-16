@@ -5,14 +5,22 @@ export type AthleteFilters = {
   status?: AthleteStatus;
   discipline?: string;
   search?: string;
+  /** Zero-based page index (default 0). */
+  page?: number;
+  /** Rows per page (default 30). */
+  pageSize?: number;
 };
 
-/** List athletes with optional filters. */
+/** List athletes with optional filters and pagination. */
 export async function listAthletes(filters?: AthleteFilters): Promise<Athlete[]> {
+  const pageSize = filters?.pageSize ?? 30;
+  const page     = filters?.page     ?? 0;
+
   let query = supabase
     .from('athletes')
     .select('*')
-    .order('last_name', { ascending: true });
+    .order('last_name', { ascending: true })
+    .range(page * pageSize, (page + 1) * pageSize - 1);
 
   if (filters?.status) {
     query = query.eq('status', filters.status);

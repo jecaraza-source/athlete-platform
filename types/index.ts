@@ -1,7 +1,26 @@
 // =============================================================================
 // types/index.ts — Domain types for the mobile app
-// Ported from apps/web/lib/rbac/types.ts, tickets/types.ts, types/diagnostic.ts,
-// notifications/types.ts
+//
+// SOURCE OF TRUTH: packages/shared/src/types.ts (canonical shared types)
+//                  apps/web/lib/rbac/types.ts    (web-specific extensions)
+//
+// SYNC POLICY
+// -----------
+// This file is a MANUALLY MAINTAINED copy. It is kept separate because
+// apps/mobile has its own git repository and cannot easily consume the local
+// packages/shared package without an npm workspace setup.
+//
+// When you add or change types in the files listed above, also update this
+// file. Sections that must stay in sync:
+//
+//   1. PERMISSION_NAMES — must match apps/web/lib/rbac/types.ts exactly.
+//   2. SYSTEM_ROLES     — must match packages/shared/src/types.ts exactly.
+//   3. AthleteStatus / DiagnosticStatus / TicketStatus / TicketPriority
+//      labels and value sets — must match packages/shared/src/types.ts.
+//
+// FUTURE: When mobile and web are moved into a true npm workspace monorepo,
+// replace this file with:
+//   export * from '@athlete-platform/shared';
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -39,11 +58,21 @@ export const SYSTEM_ROLES = ['super_admin', 'admin', 'coach', 'staff', 'athlete'
 export type SystemRoleName = (typeof SYSTEM_ROLES)[number];
 
 export const PERMISSION_NAMES = [
+  // Athletes
   'view_athletes', 'create_athletes', 'edit_athletes', 'delete_athletes',
+  // Calendar
   'view_calendar', 'manage_calendar',
+  // Administration
   'manage_users', 'manage_roles', 'manage_permissions',
+  // Tickets (migration 005)
   'view_tickets', 'create_tickets', 'edit_tickets', 'assign_tickets',
   'comment_tickets', 'close_tickets',
+  // Notifications (migration 010) — kept in sync with apps/web/lib/rbac/types.ts
+  'manage_email_campaigns',
+  'manage_push_campaigns',
+  'manage_notification_templates',
+  'manage_ticket_emails',
+  'view_notification_logs',
 ] as const;
 export type PermissionName = (typeof PERMISSION_NAMES)[number];
 
@@ -85,13 +114,28 @@ export type Athlete = {
   athlete_code: string | null;
   first_name: string;
   last_name: string;
-  email: string | null;
-  phone: string | null;
-  birth_date: string | null;
-  nationality: string | null;
-  gender: string | null;
-  disability_status: 'con_discapacidad' | 'sin_discapacidad' | null;
+  // Campos de identidad
+  date_of_birth: string | null;          // DB column: date_of_birth
+  sex: string | null;                    // DB column: sex
+  email: string | null;                  // added by migration 018
+  // Datos físicos (migration 000)
+  height_cm: number | null;
+  weight_kg: number | null;
+  dominant_side: string | null;
+  school_or_club: string | null;
+  // Disciplina y discapacidad (migration 011)
   discipline: string | null;
+  disability_status: 'con_discapacidad' | 'sin_discapacidad' | null;
+  // Tutor
+  guardian_name: string | null;
+  guardian_phone: string | null;
+  guardian_email: string | null;
+  // Contacto de emergencia
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  // Notas médicas
+  medical_notes_summary: string | null;
+  // Estado y metadatos
   status: AthleteStatus | null;
   profile_id: string | null;
   created_at: string;
@@ -245,4 +289,6 @@ export type PushJob = {
   processed_at: string | null;
   attempt_count: number;
   created_at: string;
+  /** Set by the mobile app when the user reads the notification (migration 024). */
+  read_at: string | null;
 };

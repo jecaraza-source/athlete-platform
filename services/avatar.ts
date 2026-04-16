@@ -102,10 +102,17 @@ export async function deleteMobileAvatar(
   profileId:   string,
 ): Promise<boolean> {
   try {
+    // Verify session before updating
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    // The .eq('auth_user_id', user.id) ensures only the owner can clear their
+    // own avatar; the UPDATE is a no-op if profileId belongs to someone else.
     const { error } = await supabase
       .from('profiles')
       .update({ avatar_url: null })
-      .eq('id', profileId);
+      .eq('id', profileId)
+      .eq('auth_user_id', user.id); // ownership guard
 
     if (error) {
       console.warn('[avatar] delete error:', error.message);

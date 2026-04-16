@@ -12,6 +12,12 @@ type AuthState = {
   profile: ProfileSummary | null;
   roles: Role[];
   permissions: Set<string>;
+  /**
+   * Resolved `athletes.id` for athlete-role users.
+   * Populated by loadUserData(); null for staff or while loading.
+   * Use this instead of running the email/profile-id lookup on every screen.
+   */
+  athleteId: string | null;
   isLoading: boolean;
   isInitialized: boolean;
 
@@ -39,6 +45,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   profile: null,
   roles: [],
   permissions: new Set(),
+  athleteId: null,
   isLoading: false,
   isInitialized: false,
 
@@ -89,7 +96,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
       }
 
-      set({ profile: profile ?? null, roles, permissions, isLoading: false, isInitialized: true });
+      // 4. For athlete-role users: resolve their athletes.id once so every
+      //    screen can read it from the store instead of re-querying each time.
+      let athleteId: string | null = null;
+      const hasAthleteRole = roles.some((r) => r.code === 'athlete');
+      if (hasAthleteRole && profile) {
+        // Primary: match by login email (set in admin → Atletas → Email de acceso móvil)
+        if (profile.email) {
+          const { data: byEmail } = await supabase
+            .from('athletes')
+            .select('id')
+            .eq('email', profile.email)
+            .maybeSingle();
+          athleteId = byEmail?.id ?? null;
+        }
+        // Fallback: match by explicit profile_id link
+        if (!athleteId) {
+          const { data: byProfileId } = await supabase
+            .from('athletes')
+            .select('id')
+            .eq('profile_id', profile.id)
+            .maybeSingle();
+          athleteId = byProfileId?.id ?? null;
+        }
+      }
+
+      set({ profile: profile ?? null, roles, permissions, athleteId, isLoading: false, isInitialized: true });
     } catch {
       set({ isLoading: false, isInitialized: true });
     }
@@ -106,6 +138,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       profile: null,
       roles: [],
       permissions: new Set(),
+      athleteId: null,
       isLoading: false,
       isInitialized: true, // must be true so the auth redirect guard can fire
     }),
@@ -115,11 +148,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isStaff: () => {
     const { roles } = get();
     return roles.some((r) =>
-      ['super_admin', 'admin', 'coach', 'staff'].includes(r.code)
+      ['super_admin', 'admin', 'coach', 'staff', 'program_director'].includes(r.code)
     );
   },
   isAthlete: () => get().roles.some((r) => r.code === 'athlete'),
-  isAdmin: () => get().roles.some((r) => ['super_admin', 'admin'].includes(r.code)),
+  isAdmin: () =>
+    get().roles.some((r) =>
+      ['super_admin', 'admin', 'program_director'].includes(r.code)
+    ),
   fullName: () => {
     const p = get().profile;
     if (!p) return '';

@@ -11,6 +11,7 @@ import { Loading } from '@/components/ui/loading';
 import { EmptyView } from '@/components/ui/empty-view';
 import { listTickets } from '@/services/tickets';
 import { useAuthStore } from '@/store';
+import { useRealtimeTickets } from '@/hooks/use-realtime';
 import type { TicketWithProfiles, TicketStatus } from '@/types';
 
 const STATUS_FILTERS: { label: string; value: TicketStatus | undefined }[] = [
@@ -24,7 +25,8 @@ export default function TicketsScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
   const router = useRouter();
-  const { profile, isAthlete, roles } = useAuthStore();
+  const profile = useAuthStore((s) => s.profile);
+  const isAthleteUser = useAuthStore((s) => s.roles.some((r) => r.code === 'athlete'));
 
   const [tickets, setTickets] = useState<TicketWithProfiles[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ export default function TicketsScreen() {
       const data = await listTickets({
         status:    statusFilter,
         // Athletes only see tickets they created; staff see all
-        createdBy: isAthlete() ? (profile?.id ?? undefined) : undefined,
+        createdBy: isAthleteUser ? (profile?.id ?? undefined) : undefined,
       });
       setTickets(data);
     } catch (e) {
@@ -46,11 +48,12 @@ export default function TicketsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  // roles.length is the reactive signal: when roles load after mount the callback
-  // is recreated and the effect re-runs, applying the correct isAthlete() value.
-  }, [statusFilter, profile?.id, roles.length]);
+  }, [statusFilter, profile?.id, isAthleteUser]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Auto-refresh the list when any ticket changes (realtime)
+  useRealtimeTickets(load);
 
   const onRefresh = () => { setRefreshing(true); load(); };
 

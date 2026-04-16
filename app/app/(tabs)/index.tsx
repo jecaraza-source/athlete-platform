@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Loading } from '@/components/ui/loading';
 import { Badge } from '@/components/ui/badge';
 import { Ionicons } from '@expo/vector-icons';
-import { countAthletes, getAthleteByEmail, getAthleteByProfileId } from '@/services/athletes';
+import { countAthletes } from '@/services/athletes';
 import { countOpenTickets } from '@/services/tickets';
 import { getDiagnostic, getDiagnosticSections } from '@/services/diagnostic';
 import type { AthleteInitialDiagnostic, AthleteSection } from '@/types';
@@ -20,7 +20,7 @@ export default function DashboardScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
   const router = useRouter();
-  const { profile, isStaff, isAthlete, fullName, roles, isInitialized } = useAuthStore();
+  const { profile, isStaff, isAthlete, fullName, roles, isInitialized, athleteId } = useAuthStore();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,19 +42,12 @@ export default function DashboardScreen() {
         ]);
         setAthleteCount(counts);
         setOpenTickets(tickets);
-      } else if (isAthlete() && profile) {
-        // Primary: email. Fallback: profile_id.
-        const email = profile.email;
-        const athlete = email
-          ? (await getAthleteByEmail(email)) ?? (await getAthleteByProfileId(profile.id))
-          : await getAthleteByProfileId(profile.id);
-          if (athlete) {
-          const diag = await getDiagnostic(athlete.id);
-          setDiagnostic(diag);
-          if (diag) {
-            const secs = await getDiagnosticSections(diag.id);
-            setSections(secs);
-          }
+    } else if (isAthlete() && athleteId) {
+        const diag = await getDiagnostic(athleteId);
+        setDiagnostic(diag);
+        if (diag) {
+          const secs = await getDiagnosticSections(diag.id);
+          setSections(secs);
         }
       }
     } catch (e) {
@@ -65,15 +58,13 @@ export default function DashboardScreen() {
     }
   }
 
-  // Re-run when auth store finishes initializing or the user's profile changes.
-  // This ensures the dashboard reflects the correct role (staff/athlete) even
-  // when roles load after the component first mounts.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Re-run when auth store finishes initializing, the user's profile changes,
+  // or the athleteId is resolved (athlete-role users).
   useEffect(() => {
     if (!isInitialized) return;
     loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInitialized, profile?.id]);
+  }, [isInitialized, profile?.id, athleteId]);
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 

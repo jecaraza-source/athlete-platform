@@ -8,7 +8,6 @@ import { Colors, PRIMARY } from '@/constants/theme';
 import { Loading } from '@/components/ui/loading';
 import { EmptyView } from '@/components/ui/empty-view';
 import { useAuthStore } from '@/store';
-import { getAthleteByEmail, getAthleteByProfileId } from '@/services/athletes';
 import { listTrainingSessions, type TrainingSession } from '@/services/training';
 import { getDiagnostic, getDiagnosticSections } from '@/services/diagnostic';
 import type { AthleteInitialDiagnostic, AthleteSection } from '@/types';
@@ -86,33 +85,21 @@ function SessionRow({ session }: { session: TrainingSession }) {
 export default function ProgressScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
-  const { profile, isAthlete } = useAuthStore();
+  const { isAthlete } = useAuthStore();
+  const athleteId = useAuthStore((s) => s.athleteId);
 
   const [sessions, setSessions]     = useState<TrainingSession[]>([]);
   const [diagnostic, setDiagnostic] = useState<AthleteInitialDiagnostic | null>(null);
   const [sections, setSections]     = useState<AthleteSection[]>([]);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [athleteId, setAthleteId]   = useState<string | null>(null);
 
   async function load(refresh = false) {
-    if (!profile) { setLoading(false); return; }
+    if (!athleteId) { setLoading(false); return; }
     try {
-      // Email-first athlete lookup
-      let aId = athleteId;
-      if (!aId) {
-        const email = profile.email;
-        const row = email
-          ? (await getAthleteByEmail(email)) ?? (await getAthleteByProfileId(profile.id))
-          : await getAthleteByProfileId(profile.id);
-        aId = row?.id ?? null;
-        setAthleteId(aId);
-      }
-      if (!aId) { setLoading(false); return; }
-
       const [sessionData, diagData] = await Promise.all([
-        listTrainingSessions(aId),
-        getDiagnostic(aId),
+        listTrainingSessions(athleteId),
+        getDiagnostic(athleteId),
       ]);
 
       setSessions(sessionData);
@@ -131,7 +118,7 @@ export default function ProgressScreen() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [profile?.id]);
+  useEffect(() => { load(); }, [athleteId]);
 
   const onRefresh = () => { setRefreshing(true); load(true); };
 

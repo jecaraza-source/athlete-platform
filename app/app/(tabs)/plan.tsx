@@ -124,6 +124,9 @@ export default function PlanScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
   const { profile, isAthlete } = useAuthStore();
+  // athleteId is resolved once by the auth store and used as an explicit
+  // filter in getPublishedPlansForAthlete (defense-in-depth vs RLS-only).
+  const athleteId = useAuthStore((s) => s.athleteId);
 
   const [plans, setPlans]               = useState<AssignedPlan[]>([]);
   const [loading, setLoading]           = useState(true);
@@ -132,7 +135,7 @@ export default function PlanScreen() {
   const load = useCallback(async (refresh = false) => {
     if (!profile) { setLoading(false); return; }
     try {
-      const data = await getPublishedPlansForAthlete();
+      const data = await getPublishedPlansForAthlete(athleteId);
       setPlans(data);
     } catch (e) {
       console.warn('[plan] load error', e);

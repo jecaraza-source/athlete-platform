@@ -29,11 +29,57 @@ export type AssignedPlan = {
 
 /**
  * Returns all published plans assigned to this athlete.
- * RLS on the `plans` table automatically restricts results to plans that are:
+ *
+ * Defense-in-depth strategy:
+ *   1. If `athleteId` is provided, explicitly filter through the `athlete_plans`
+ *      junction table — independent of RLS configuration.
+ *   2. Falls back to a plain query that relies entirely on RLS when no
+ *      `athleteId` is available (e.g. during initial load before auth resolves).
+ *
+ * RLS on `plans` further restricts results to:
  *   • is_published = true
- *   • have an athlete_plans row linking this athlete
+ *   • rows with an athlete_plans entry linking the current user
  */
-export async function getPublishedPlansForAthlete(): Promise<AssignedPlan[]> {
+export async function getPublishedPlansForAthlete(
+  athleteId?: string | null,
+): Promise<AssignedPlan[]> {
+  // ── Path 1: explicit athlete filter (preferred) ────────────────────────
+  if (athleteId) {
+    // Fetch plan IDs assigned to this specific athlete via the junction table.
+    // This is intentionally a separate query so the filter is database-enforced
+    // regardless of RLS policy state.
+    const { data: apRows, error: apError } = await supabase
+      .from('athlete_plans')
+      .select('plan_id')
+      .eq('athlete_id', athleteId);
+
+    if (apError) {
+      console.warn('[plans] getPublishedPlansForAthlete (athlete_plans):', apError.message);
+      // Fall through to RLS-only path below
+    } else {
+      const planIds = (apRows ?? []).map((r: { plan_id: string }) => r.plan_id);
+      if (planIds.length === 0) return [];
+
+      const { data, error } = await supabase
+        .from('plans')
+        .select('id, type, title, description, file_path, file_name, is_published, created_at, updated_at')
+        .in('id', planIds)
+        .eq('is_published', true)
+        .order('type', { ascending: true })
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        const isMissing =
+          error.message?.includes('plans') ||
+          error.message?.includes('schema cache');
+        if (!isMissing) console.warn('[plans] getPublishedPlansForAthlete:', error.message);
+        return [];
+      }
+      return (data ?? []) as AssignedPlan[];
+    }
+  }
+
+  // ── Path 2: RLS-only fallback (no athleteId available) ────────────────
   const { data, error } = await supabase
     .from('plans')
     .select('id, type, title, description, file_path, file_name, is_published, created_at, updated_at')
@@ -42,11 +88,10 @@ export async function getPublishedPlansForAthlete(): Promise<AssignedPlan[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    // Silently return empty if table doesn't exist yet (pre-migration)
     const isMissing =
       error.message?.includes('plans') ||
       error.message?.includes('schema cache');
-    if (!isMissing) console.warn('[plans] getPublishedPlansForAthlete:', error.message);
+    if (!isMissing) console.warn('[plans] getPublishedPlansForAthlete (rls-fallback):', error.message);
     return [];
   }
 

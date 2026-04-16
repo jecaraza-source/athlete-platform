@@ -1,10 +1,11 @@
 import { Image, TouchableOpacity, useColorScheme } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, PRIMARY } from '@/constants/theme';
 import { useAuthStore } from '@/store';
 import { countPendingNotifications } from '@/services/notifications';
+import { useRealtimeNotificationBadge } from '@/hooks/use-realtime';
 
 function LogoHeader() {
   return (
@@ -28,16 +29,22 @@ export default function TabsLayout() {
   const showAthletes = permissions.has('view_athletes');
   const showTraining  = roles.some((r) => r.code === 'athlete');
 
-  // Notification badge — counts push_jobs with status 'sent' for this profile.
-  // Undefined = no badge shown; a number ≥ 1 = badge visible.
+  // Notification badge — counts unread push_jobs (read_at IS NULL).
+  // Refreshed on mount, on profile change, and on every incoming Realtime event.
   const [notifBadge, setNotifBadge] = useState<number | undefined>(undefined);
 
-  useEffect(() => {
+  const refreshBadge = useCallback(() => {
     if (!profile?.id) { setNotifBadge(undefined); return; }
     countPendingNotifications(profile.id)
       .then((n) => setNotifBadge(n > 0 ? n : undefined))
       .catch(() => setNotifBadge(undefined));
   }, [profile?.id]);
+
+  // Initial load
+  useEffect(() => { refreshBadge(); }, [refreshBadge]);
+
+  // Live update: fires when a new push_job is delivered to this profile
+  useRealtimeNotificationBadge(refreshBadge);
 
   return (
     <Tabs

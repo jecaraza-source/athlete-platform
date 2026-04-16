@@ -26,6 +26,32 @@ export type CalendarEvent = {
 const FIELDS =
   'id, title, event_type, sport_id, start_at, end_at, status, description, created_by_profile_id';
 
+// ---------------------------------------------------------------------------
+// Mutations
+// ---------------------------------------------------------------------------
+
+export type NewCalendarEvent = {
+  title: string;
+  event_type: string;
+  start_at: string;         // ISO 8601 datetime
+  end_at?: string | null;
+  description?: string | null;
+  created_by_profile_id: string;
+};
+
+/** Create a new calendar event. Requires staff role (enforced by RLS). */
+export async function createCalendarEvent(
+  payload: NewCalendarEvent,
+): Promise<{ id: string }> {
+  const { data, error } = await supabase
+    .from('events')
+    .insert({ ...payload, status: 'scheduled' })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data as { id: string };
+}
+
 /**
  * Returns the total count of events in a date range.
  * Useful for debugging — confirms whether ANY events exist in the range.

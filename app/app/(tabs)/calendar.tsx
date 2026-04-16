@@ -4,10 +4,10 @@ import {
   StyleSheet, useColorScheme, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Colors, PRIMARY } from '@/constants/theme';
 import { useAuthStore } from '@/store';
 import { listEventsInRange, listEventsForAthlete, type CalendarEvent } from '@/services/calendar';
-import { getAthleteByEmail, getAthleteByProfileId } from '@/services/athletes';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -109,9 +109,15 @@ function EventCard({ event }: { event: CalendarEvent }) {
 export default function CalendarScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
+  const router = useRouter();
   const today = new Date();
 
-  const { profile, isAthlete, isInitialized } = useAuthStore();
+  const isInitialized = useAuthStore((s) => s.isInitialized);
+  const athleteId     = useAuthStore((s) => s.athleteId);
+  const isAthleteUser = useAuthStore((s) => s.roles.some((r) => r.code === 'athlete'));
+  const isStaffUser   = useAuthStore((s) =>
+    s.roles.some((r) => ['super_admin', 'admin', 'coach', 'staff', 'program_director'].includes(r.code))
+  );
 
   const [year, setYear]   = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -120,8 +126,6 @@ export default function CalendarScreen() {
   const [events, setEvents]         = useState<CalendarEvent[]>([]);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  // Cache the athlete's DB id so we don't re-query on every month change
-  const [athleteId, setAthleteId]   = useState<string | null>(null);
   const [reloadKey, setReloadKey]   = useState(0);
 
   // Set of YYYY-MM-DD strings that have at least one event
@@ -137,7 +141,7 @@ export default function CalendarScreen() {
   // the cached athleteId is set, or the user pulls to refresh.
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (!isInitialized || !profile) {
+    if (!isInitialized) {
       setLoading(false);
       return;
     }
@@ -150,27 +154,12 @@ export default function CalendarScreen() {
           const [startISO, endISO] = rangeForMonth(year, month);
           let data: CalendarEvent[];
 
-          if (isAthlete()) {
-            // Athlete: resolve their athletes.id once, then fetch only their events.
-            let aId = athleteId;
-            if (!aId) {
-              // Primary: match by email (admin sets athletes.email = login email)
-              const email = profile.email;
-              if (email) {
-                const byEmail = await getAthleteByEmail(email);
-                aId = byEmail?.id ?? null;
-              }
-              // Fallback: match by profile_id (legacy explicit link)
-              if (!aId) {
-                const byProfile = await getAthleteByProfileId(profile.id);
-                aId = byProfile?.id ?? null;
-              }
-              if (!cancelled) setAthleteId(aId);
-            }
-            if (aId) {
-              data = await listEventsForAthlete(aId, startISO, endISO);
+          if (isAthleteUser) {
+            // Athlete: use the athleteId resolved once by the auth store.
+            if (athleteId) {
+              data = await listEventsForAthlete(athleteId, startISO, endISO);
             } else {
-              // No athlete record found — show all events as fallback
+              // athleteId not yet resolved or no athlete record — show all as fallback
               data = await listEventsInRange(startISO, endISO);
             }
           } else {
@@ -191,7 +180,7 @@ export default function CalendarScreen() {
     })();
 
     return () => { cancelled = true; };
-  }, [year, month, profile?.id, isInitialized, athleteId, reloadKey]);
+  }, [year, month, isInitialized, isAthleteUser, athleteId, reloadKey]);
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear((y) => y - 1); }
@@ -220,8 +209,9 @@ export default function CalendarScreen() {
   for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
 
   return (
+    <View style={[styles.flex, { backgroundColor: colors.background }]}>
     <ScrollView
-      style={[styles.flex, { backgroundColor: colors.background }]}
+      style={styles.flex}
       refreshControl={
         <RefreshControl
         refreshing={refreshing}
@@ -310,6 +300,18 @@ export default function CalendarScreen() {
         )}
       </View>
     </ScrollView>
+
+    {/* FAB — visible only for staff */}
+    {isStaffUser && (
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: PRIMARY }]}
+        onPress={() => router.push('/app/calendar/create' as never)}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="add" size={26} color="#fff" />
+      </TouchableOpacity>
+    )}
+    </View>
   );
 }
 
@@ -319,6 +321,13 @@ export default function CalendarScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  fab: {
+    position: 'absolute', bottom: 24, right: 20,
+    width: 54, height: 54, borderRadius: 27,
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2, shadowRadius: 6, elevation: 6,
+  },
   nav: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8,

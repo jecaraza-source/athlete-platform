@@ -27,7 +27,12 @@ export default function ForgotPasswordScreen() {
     setError(null);
     setLoading(true);
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-      email.trim().toLowerCase()
+      email.trim().toLowerCase(),
+      {
+        // Deep link: the app handles this URL in (auth)/reset-password.tsx.
+        // The scheme 'aodeporte' is defined in app.json → expo.scheme.
+        redirectTo: 'aodeporte://app/(auth)/reset-password',
+      }
     );
     setLoading(false);
     if (resetError) {

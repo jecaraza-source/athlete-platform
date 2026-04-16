@@ -8,7 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, PRIMARY } from '@/constants/theme';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/store';
+import { supabase } from '@/lib/supabase';
 import { deactivateDeviceTokens } from '@/services/push';
 import {
   uploadMobileAvatar,
@@ -26,6 +28,42 @@ export default function ProfileScreen() {
     profile?.avatar_url ?? null
   );
   const [uploading, setUploading] = useState(false);
+
+  // ── Cambio de contraseña ──────────────────────────────────────────
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [newPassword,    setNewPassword]    = useState('');
+  const [confirmPwd,     setConfirmPwd]     = useState('');
+  const [pwdLoading,     setPwdLoading]     = useState(false);
+  const [pwdError,       setPwdError]       = useState<string | null>(null);
+  const [pwdSuccess,     setPwdSuccess]     = useState(false);
+
+  async function handleChangePassword() {
+    if (!newPassword || !confirmPwd) {
+      setPwdError('Completa ambos campos.');
+      return;
+    }
+    if (newPassword !== confirmPwd) {
+      setPwdError('Las contraseñas no coinciden.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPwdError('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    setPwdError(null);
+    setPwdLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setPwdLoading(false);
+    if (error) {
+      setPwdError(error.message);
+    } else {
+      setPwdSuccess(true);
+      setNewPassword('');
+      setConfirmPwd('');
+      // Colapsar después de 2 s
+      setTimeout(() => { setPwdSuccess(false); setShowPasswordForm(false); }, 2000);
+    }
+  }
 
   // ── Avatar change handler ─────────────────────────────────────────────
   async function handleChangePhoto() {
@@ -239,6 +277,71 @@ export default function ProfileScreen() {
           </Card>
         )}
 
+        {/* ── Cambiar contraseña ───────────────────────────────── */}
+        <Card style={styles.card}>
+          <TouchableOpacity
+            style={styles.pwdHeader}
+            onPress={() => {
+              setShowPasswordForm((v) => !v);
+              setPwdError(null);
+              setPwdSuccess(false);
+            }}
+            activeOpacity={0.75}
+          >
+            <View style={styles.pwdHeaderLeft}>
+              <Ionicons name="lock-closed-outline" size={18} color={PRIMARY} style={{ marginRight: 8 }} />
+              <Text style={[styles.pwdTitle, { color: colors.text }]}>Cambiar contraseña</Text>
+            </View>
+            <Ionicons
+              name={showPasswordForm ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={colors.icon}
+            />
+          </TouchableOpacity>
+
+          {showPasswordForm && (
+            <View style={styles.pwdForm}>
+              {pwdSuccess ? (
+                <View style={styles.pwdSuccess}>
+                  <Text style={styles.pwdSuccessText}>✓ Contraseña actualizada correctamente</Text>
+                </View>
+              ) : (
+                <>
+                  {pwdError && (
+                    <View style={styles.pwdError}>
+                      <Text style={styles.pwdErrorText}>{pwdError}</Text>
+                    </View>
+                  )}
+                  <Input
+                    label="Nueva contraseña"
+                    placeholder="Mínimo 8 caracteres"
+                    value={newPassword}
+                    onChangeText={(v) => { setNewPassword(v); setPwdError(null); }}
+                    secureTextEntry
+                    textContentType="newPassword"
+                  />
+                  <Input
+                    label="Confirmar contraseña"
+                    placeholder="Repite la contraseña"
+                    value={confirmPwd}
+                    onChangeText={(v) => { setConfirmPwd(v); setPwdError(null); }}
+                    secureTextEntry
+                    textContentType="newPassword"
+                    returnKeyType="go"
+                    onSubmitEditing={handleChangePassword}
+                  />
+                  <Button
+                    label="Guardar contraseña"
+                    onPress={handleChangePassword}
+                    loading={pwdLoading}
+                    style={{ marginTop: 4 }}
+                  />
+                </>
+              )}
+            </View>
+          )}
+        </Card>
+
         <Button
           label="Cerrar sesión"
           onPress={handleSignOut}
@@ -291,4 +394,19 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 13 },
   infoValue: { fontSize: 13, fontWeight: '500' },
   signOutBtn: { marginTop: 8 },
+  // Cambiar contraseña
+  pwdHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  pwdHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
+  pwdTitle: { fontSize: 14, fontWeight: '600' },
+  pwdForm: { marginTop: 14 },
+  pwdError: {
+    backgroundColor: '#fee2e2', borderRadius: 8, padding: 10, marginBottom: 12,
+  },
+  pwdErrorText: { color: '#dc2626', fontSize: 13 },
+  pwdSuccess: {
+    backgroundColor: '#dcfce7', borderRadius: 8, padding: 12, marginBottom: 4,
+  },
+  pwdSuccessText: { color: '#15803d', fontSize: 13, fontWeight: '600' },
 });

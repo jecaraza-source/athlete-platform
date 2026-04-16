@@ -14,6 +14,7 @@
 // =============================================================================
 
 import { supabase } from '@/lib/supabase';
+import type { ImagePickerAsset } from 'expo-image-picker';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -89,6 +90,83 @@ export async function getAttachmentSignedUrl(filePath: string): Promise<string |
     return null;
   }
   return data?.signedUrl ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Upload (from mobile image picker)
+// ---------------------------------------------------------------------------
+
+/**
+ * Uploads an image selected via expo-image-picker to the `athlete-files`
+ * Supabase Storage bucket and inserts a row in `athlete_attachments`.
+ *
+ * @param asset       - The ImagePickerAsset returned by launchImageLibraryAsync
+ * @param athleteId   - UUID of the athlete record
+ * @param moduleTag   - Module label stored in module_name (e.g. 'seguimiento')
+ * @param description - Optional description shown in the attachment list
+ *
+ * Returns { ok: true } on success or { ok: false, error: string } on failure.
+ */
+export async function uploadAthleteAttachment(
+  asset: ImagePickerAsset,
+  athleteId:   string,
+  moduleTag  = 'seguimiento',
+  description?: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!asset.base64) {
+    return { ok: false, error: 'No se obtuvieron datos de la imagen.' };
+  }
+
+  try {
+    // 1. Derive file metadata
+    const ext  = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const mime = asset.type === 'image' ? `image/${ext === 'jpg' ? 'jpeg' : ext}` : 'application/octet-stream';
+    const name = `${Date.now()}_${athleteId.slice(0, 8)}.${ext}`;
+    const path = `athletes/${athleteId}/${name}`;
+
+    // 2. Decode base64 → ArrayBuffer
+    const binaryStr = atob(asset.base64);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+    // 3. Upload to athlete-files bucket
+    const { error: uploadError } = await supabase.storage
+      .from('athlete-files')
+      .upload(path, bytes.buffer, { contentType: mime, upsert: false });
+
+    if (uploadError) {
+      console.warn('[attachments] upload error:', uploadError.message);
+      return { ok: false, error: uploadError.message };
+    }
+
+    // 4. Insert row in athlete_attachments
+    const { error: dbError } = await supabase
+      .from('athlete_attachments')
+      .insert({
+        athlete_id:           athleteId,
+        module_name:          moduleTag,
+        file_name_original:   name,
+        file_path:            path,
+        mime_type:            mime,
+        file_extension:       ext,
+        file_size:            asset.fileSize ?? null,
+        description:          description ?? null,
+        is_active:            true,
+      });
+
+    if (dbError) {
+      console.warn('[attachments] db insert error:', dbError.message);
+      // Best-effort cleanup: delete the orphaned storage file
+      await supabase.storage.from('athlete-files').remove([path]);
+      return { ok: false, error: dbError.message };
+    }
+
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn('[attachments] unexpected error:', msg);
+    return { ok: false, error: msg };
+  }
 }
 
 // ---------------------------------------------------------------------------

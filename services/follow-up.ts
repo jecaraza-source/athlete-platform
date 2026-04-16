@@ -3,12 +3,15 @@
 // Follow-up module queries for the mobile app.
 // Reads medical cases, nutrition plans, physio cases, and psychology cases.
 //
-// NOTE: These tables may not have explicit RLS SELECT policies for mobile yet.
-// If a query returns an empty array unexpectedly, apply a SELECT policy
-// similar to migration 014 (athletes) or 015 (push_jobs) for each table.
-// Suggested policy (example for medical_cases):
-//   CREATE POLICY "Authenticated users can read medical_cases"
-//     ON medical_cases FOR SELECT TO authenticated USING (true);
+// RLS policies: all tables queried here have SELECT policies for
+// authenticated users established in migrations 000 and 003:
+//   - training_sessions : migration 000
+//   - nutrition_plans   : migration 000
+//   - physio_cases      : migration 000
+//   - psychology_cases  : migration 000
+//   - medical_cases     : migration 003
+// These modules are read-only from mobile; CRUD is handled server-side via
+// supabaseAdmin on the web platform.
 // =============================================================================
 
 import { supabase } from '@/lib/supabase';

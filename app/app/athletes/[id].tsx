@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, useColorScheme,
-  TouchableOpacity,
+  TouchableOpacity, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,26 +11,77 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loading } from '@/components/ui/loading';
 import { getAthlete } from '@/services/athletes';
-import { getDiagnostic, getDiagnosticSections } from '@/services/diagnostic';
+import {
+  getDiagnostic, getDiagnosticSections, upsertDiagnostic, updateSectionStatus,
+} from '@/services/diagnostic';
 import { listTrainingSessions, type TrainingSession } from '@/services/training';
 import {
   listMedicalCases, listNutritionPlans, listPhysioCases, listPsychologyCases,
   type MedicalCase, type NutritionPlan, type PhysioCase, type PsychologyCase,
 } from '@/services/follow-up';
-import { listAthleteAttachments, type AthleteAttachment } from '@/services/attachments';
+import {
+  listAthleteAttachments, uploadAthleteAttachment, type AthleteAttachment,
+} from '@/services/attachments';
 import { AttachmentItem } from '@/components/attachments/attachment-item';
-import type { Athlete, AthleteInitialDiagnostic, AthleteSection } from '@/types';
+import { useAuthStore } from '@/store';
+import type { Athlete, AthleteInitialDiagnostic, AthleteSection, DiagnosticStatus, DiagnosticSectionKey } from '@/types';
 import { SECTION_LABELS, DIAGNOSTIC_STATUS_LABELS, SECTION_KEYS, ATHLETE_STATUS_LABELS } from '@/types';
 
-const INFO_ROWS: { label: string; key: keyof Athlete }[] = [
-  { label: 'Código', key: 'athlete_code' },
-  { label: 'Disciplina', key: 'discipline' },
-  { label: 'Fecha de nacimiento', key: 'birth_date' },
-  { label: 'Género', key: 'gender' },
-  { label: 'Nacionalidad', key: 'nationality' },
-  { label: 'Correo', key: 'email' },
-  { label: 'Teléfono', key: 'phone' },
-];
+// ── Helpers para mostrar valores legibles ───────────────────────────────────
+function labelSex(sex: string | null): string | null {
+  if (!sex) return null;
+  const map: Record<string, string> = {
+    male: 'Masculino', m: 'Masculino',
+    female: 'Femenino', f: 'Femenino',
+  };
+  return map[sex.toLowerCase()] ?? sex;
+}
+function labelSide(side: string | null): string | null {
+  if (!side) return null;
+  const map: Record<string, string> = {
+    right: 'Derecho', left: 'Izquierdo', both: 'Ambos',
+  };
+  return map[side.toLowerCase()] ?? side;
+}
+function labelDisability(d: string | null): string | null {
+  if (!d) return null;
+  return d === 'con_discapacidad' ? 'Con discapacidad' : 'Sin discapacidad';
+}
+
+type ThemeColors = { text: string; icon: string };
+
+// Fila de tabla clave–valor (reutilizable en todas las secciones)
+function InfoRow({
+  label, value, colors,
+}: {
+  label: string;
+  value: string | number | null | undefined;
+  colors: ThemeColors;
+}) {
+  if (value == null || value === '') return null;
+  return (
+    <View style={styles.infoRow}>
+      <Text style={[styles.infoLabel, { color: colors.icon }]}>{label}</Text>
+      <Text style={[styles.infoValue, { color: colors.text }]}>{String(value)}</Text>
+    </View>
+  );
+}
+
+// Bloque con título de sección + filas
+function InfoSection({
+  title, children, borderColor,
+}: {
+  title: string;
+  children: React.ReactNode;
+  borderColor: string;
+}) {
+  return (
+    <View style={[styles.infoSection, { borderLeftColor: borderColor }]}>
+      <Text style={[styles.infoSectionTitle, { color: borderColor }]}>{title}</Text>
+      {children}
+    </View>
+  );
+}
 
 export default function AthleteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -47,7 +98,87 @@ export default function AthleteDetailScreen() {
   const [physioCases, setPhysioCases] = useState<PhysioCase[]>([]);
   const [psychCases, setPsychCases] = useState<PsychologyCase[]>([]);
   const [attachments, setAttachments] = useState<AthleteAttachment[]>([]); 
+  const [uploadingDoc, setUploadingDoc] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'diagnostic' | 'seguimiento'>('info');
+
+  const isStaffUser = useAuthStore((s) =>
+    s.roles.some((r) => ['super_admin', 'admin', 'coach', 'staff', 'program_director'].includes(r.code))
+  );
+
+  // Track which section is being edited (null = none)
+  const [editingSection, setEditingSection] = useState<DiagnosticSectionKey | null>(null);
+  const [savingSection,  setSavingSection]  = useState(false);
+
+  async function handleSectionStatus(section: DiagnosticSectionKey, newStatus: DiagnosticStatus) {
+    if (!athlete) return;
+    setSavingSection(true);
+    try {
+      // Ensure a diagnostic record exists
+      let diag = diagnostic;
+      if (!diag) {
+        diag = await upsertDiagnostic(athlete.id);
+        if (diag) setDiagnostic(diag);
+      }
+      if (!diag) {
+        Alert.alert('Error', 'No se pudo crear el diagnóstico.');
+        return;
+      }
+
+      const ok = await updateSectionStatus(diag.id, athlete.id, section, newStatus);
+      if (ok) {
+        // Refresh diagnostic + sections
+        const [updatedDiag, updatedSecs] = await Promise.all([
+          getDiagnostic(athlete.id),
+          getDiagnosticSections(diag.id),
+        ]);
+        if (updatedDiag) setDiagnostic(updatedDiag);
+        setSections(updatedSecs);
+        setEditingSection(null);
+      } else {
+        Alert.alert('Error', 'No se pudo actualizar el estado.');
+      }
+    } finally {
+      setSavingSection(false);
+    }
+  }
+
+  async function handleAddImage() {
+    if (!athlete) return;
+    // Lazy-load expo-image-picker
+    let ImagePicker: typeof import('expo-image-picker');
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ImagePicker = require('expo-image-picker');
+    } catch {
+      Alert.alert('Error', 'expo-image-picker no está disponible.');
+      return;
+    }
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso necesario', 'Necesitamos acceso a tu galería para agregar imágenes.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+      base64: true,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    setUploadingDoc(true);
+    const { ok, error } = await uploadAthleteAttachment(result.assets[0], athlete.id, 'seguimiento');
+    setUploadingDoc(false);
+
+    if (ok) {
+      // Refresh attachments list
+      const updated = await listAthleteAttachments(athlete.id);
+      setAttachments(updated);
+    } else {
+      Alert.alert('Error al subir imagen', error ?? 'No se pudo subir la imagen.');
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -133,18 +264,77 @@ export default function AthleteDetailScreen() {
 
         {/* Info tab */}
         {activeTab === 'info' && (
-          <Card style={styles.card}>
-            {INFO_ROWS.map((row) => {
-              const val = athlete[row.key];
-              if (!val) return null;
-              return (
-                <View key={row.key} style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, { color: colors.icon }]}>{row.label}</Text>
-                  <Text style={[styles.infoValue, { color: colors.text }]}>{String(val)}</Text>
-                </View>
-              );
-            })}
-          </Card>
+          <>
+            {/* General */}
+            <Card style={styles.card}>
+              <InfoSection title="Información general" borderColor="#0a7ea4">
+                <InfoRow label="Código" value={athlete.athlete_code} colors={colors} />
+                <InfoRow label="Disciplina" value={athlete.discipline} colors={colors} />
+                <InfoRow label="Discapacidad" value={labelDisability(athlete.disability_status)} colors={colors} />
+                <InfoRow label="Correo" value={athlete.email} colors={colors} />
+              </InfoSection>
+            </Card>
+
+            {/* Datos personales */}
+            <Card style={styles.card}>
+              <InfoSection title="Datos personales" borderColor="#7c3aed">
+                <InfoRow label="Fecha de nacimiento" value={athlete.date_of_birth} colors={colors} />
+                <InfoRow label="Sexo" value={labelSex(athlete.sex)} colors={colors} />
+                <InfoRow label="Escuela / Club" value={athlete.school_or_club} colors={colors} />
+              </InfoSection>
+            </Card>
+
+            {/* Datos físicos */}
+            {(athlete.height_cm || athlete.weight_kg || athlete.dominant_side) && (
+              <Card style={styles.card}>
+                <InfoSection title="Datos físicos" borderColor="#15803d">
+                  <InfoRow
+                    label="Altura"
+                    value={athlete.height_cm ? `${athlete.height_cm} cm` : null}
+                    colors={colors}
+                  />
+                  <InfoRow
+                    label="Peso"
+                    value={athlete.weight_kg ? `${athlete.weight_kg} kg` : null}
+                    colors={colors}
+                  />
+                  <InfoRow label="Lado dominante" value={labelSide(athlete.dominant_side)} colors={colors} />
+                </InfoSection>
+              </Card>
+            )}
+
+            {/* Tutor */}
+            {(athlete.guardian_name || athlete.guardian_phone || athlete.guardian_email) && (
+              <Card style={styles.card}>
+                <InfoSection title="Tutor / Responsable" borderColor="#b45309">
+                  <InfoRow label="Nombre" value={athlete.guardian_name} colors={colors} />
+                  <InfoRow label="Teléfono" value={athlete.guardian_phone} colors={colors} />
+                  <InfoRow label="Correo" value={athlete.guardian_email} colors={colors} />
+                </InfoSection>
+              </Card>
+            )}
+
+            {/* Contacto de emergencia */}
+            {(athlete.emergency_contact_name || athlete.emergency_contact_phone) && (
+              <Card style={styles.card}>
+                <InfoSection title="Contacto de emergencia" borderColor="#dc2626">
+                  <InfoRow label="Nombre" value={athlete.emergency_contact_name} colors={colors} />
+                  <InfoRow label="Teléfono" value={athlete.emergency_contact_phone} colors={colors} />
+                </InfoSection>
+              </Card>
+            )}
+
+            {/* Notas médicas */}
+            {athlete.medical_notes_summary && (
+              <Card style={styles.card}>
+                <InfoSection title="Notas médicas" borderColor="#be123c">
+                  <Text style={[styles.notesText, { color: colors.text }]}>
+                    {athlete.medical_notes_summary}
+                  </Text>
+                </InfoSection>
+              </Card>
+            )}
+          </>
         )}
 
         {/* Seguimiento tab */}
@@ -306,9 +496,28 @@ export default function AthleteDetailScreen() {
               ))
             )}
             {/* Documentos adjuntos */}
-            <Text style={[styles.sectionsTitle, { color: colors.text, marginTop: 16 }]}>
-              Documentos ({attachments.length})
-            </Text>
+            <View style={styles.docHeader}>
+              <Text style={[styles.sectionsTitle, { color: colors.text }]}>
+                Documentos ({attachments.length})
+              </Text>
+              {isStaffUser && (
+                <TouchableOpacity
+                  onPress={handleAddImage}
+                  disabled={uploadingDoc}
+                  style={[styles.addDocBtn, { backgroundColor: PRIMARY + '18' }]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  {uploadingDoc ? (
+                    <ActivityIndicator size="small" color={PRIMARY} />
+                  ) : (
+                    <Ionicons name="image-outline" size={16} color={PRIMARY} />
+                  )}
+                  <Text style={[styles.addDocText, { color: PRIMARY }]}>
+                    {uploadingDoc ? 'Subiendo…' : 'Agregar imagen'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
             {attachments.length === 0 ? (
               <Card>
                 <Text style={{ color: colors.icon, fontSize: 14 }}>Sin documentos adjuntos.</Text>
@@ -354,8 +563,10 @@ export default function AthleteDetailScreen() {
                 {SECTION_KEYS.map((key) => {
                   const sec = sections.find((s: AthleteSection) => s.section === key);
                   const sc = SectionColors[key];
-                  const status = (sec?.status ?? 'pendiente') as keyof typeof StatusColors;
+                  const status = (sec?.status ?? 'pendiente') as DiagnosticStatus;
                   const statusC = StatusColors[status] ?? StatusColors.pendiente;
+                  const isEditing = editingSection === key;
+
                   return (
                     <Card key={key} style={{ ...styles.sectionCard, borderLeftColor: sc.border, borderLeftWidth: 4 }}>
                       <View style={styles.sectionRow}>
@@ -364,12 +575,57 @@ export default function AthleteDetailScreen() {
                             {SECTION_LABELS[key]}
                           </Text>
                         </View>
-                        <Badge
-                          label={DIAGNOSTIC_STATUS_LABELS[status as keyof typeof DIAGNOSTIC_STATUS_LABELS]}
-                          bg={statusC.bg}
-                          color={statusC.text}
-                        />
+                        <View style={styles.sectionRight}>
+                          <Badge
+                            label={DIAGNOSTIC_STATUS_LABELS[status]}
+                            bg={statusC.bg}
+                            color={statusC.text}
+                          />
+                          {isStaffUser && (
+                            <TouchableOpacity
+                              onPress={() => setEditingSection(isEditing ? null : key)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              style={{ marginLeft: 6 }}
+                            >
+                              <Ionicons
+                                name={isEditing ? 'chevron-up' : 'create-outline'}
+                                size={16}
+                                color={colors.icon}
+                              />
+                            </TouchableOpacity>
+                          )}
+                        </View>
                       </View>
+
+                      {/* Inline status selector (staff only) */}
+                      {isEditing && (
+                        <View style={styles.statusPicker}>
+                          {(['pendiente', 'en_proceso', 'completo', 'requiere_atencion'] as DiagnosticStatus[]).map((s) => {
+                            const c = StatusColors[s];
+                            return (
+                              <TouchableOpacity
+                                key={s}
+                                onPress={() => !savingSection && handleSectionStatus(key, s)}
+                                disabled={savingSection}
+                                style={[
+                                  styles.statusOption,
+                                  {
+                                    backgroundColor: status === s ? c.bg : (scheme === 'dark' ? '#374151' : '#f1f5f9'),
+                                    borderColor: status === s ? c.border : 'transparent',
+                                    borderWidth: status === s ? 1 : 0,
+                                    opacity: savingSection ? 0.5 : 1,
+                                  },
+                                ]}
+                              >
+                                <Text style={[styles.statusOptionText, { color: status === s ? c.text : colors.icon }]}>
+                                  {DIAGNOSTIC_STATUS_LABELS[s]}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      )}
+
                       {sec && (
                         <View style={styles.miniProgress}>
                           <View
@@ -425,8 +681,28 @@ const styles = StyleSheet.create({
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   sectionBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   sectionBadgeText: { fontSize: 13, fontWeight: '600' },
-  miniProgress: { height: 4, backgroundColor: '#e2e8f0', borderRadius: 2 },
+  sectionRight: { flexDirection: 'row', alignItems: 'center' },
+  statusPicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8, marginBottom: 4 },
+  statusOption: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  statusOptionText: { fontSize: 11, fontWeight: '600' },
+  miniProgress: { height: 4, backgroundColor: '#e2e8f0', borderRadius: 2, marginTop: 8 },
   miniProgressFill: { height: 4, borderRadius: 2 },
+  // Info sections (Información tab)
+  infoSection: {
+    borderLeftWidth: 3, paddingLeft: 12, marginBottom: 6,
+  },
+  infoSectionTitle: {
+    fontSize: 11, fontWeight: '700', textTransform: 'uppercase',
+    letterSpacing: 0.5, marginBottom: 10,
+  },
+  notesText: { fontSize: 13, lineHeight: 20 },
+  // Documentos upload button
+  docHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 8 },
+  addDocBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+  },
+  addDocText: { fontSize: 12, fontWeight: '600' },
   // Follow-up sections (Seguimiento tab)
   sessionCard: { marginBottom: 10 },
   sessionRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },

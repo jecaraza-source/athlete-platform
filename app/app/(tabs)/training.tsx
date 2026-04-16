@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Loading } from '@/components/ui/loading';
 import { EmptyView } from '@/components/ui/empty-view';
 import { useAuthStore } from '@/store';
-import { getAthleteByEmail, getAthleteByProfileId } from '@/services/athletes';
 import {
   listTrainingSessions,
   createTrainingSession,
@@ -231,7 +230,11 @@ function NewSessionForm({
     try {
       await createTrainingSession({
         athlete_id: athleteId,
-        coach_profile_id: profile.id,
+        // The Training tab is exclusively shown to athlete-role users
+        // (href: showTraining ? undefined : null in _layout.tsx).
+        // Athlete self-registered sessions have no coach — passing null avoids
+        // incorrectly attributing the athlete's own profile as a coach.
+        coach_profile_id: null,
         title: form.title.trim(),
         session_date: form.session_date,
         start_time: form.start_time || undefined,
@@ -335,35 +338,17 @@ function NewSessionForm({
 export default function TrainingScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
-  const { profile } = useAuthStore();
+  const athleteId = useAuthStore((s) => s.athleteId);
 
-  const [athleteId, setAthleteId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   async function loadData(refresh = false) {
-    if (!profile) { setLoading(false); return; }
+    if (!athleteId) { setLoading(false); return; }
     try {
-      // Resolve athlete ID from profile on first load.
-      // Primary: match by email (requires athletes.email set in admin).
-      // Fallback: match by profile_id (legacy explicit link).
-      let aId = athleteId;
-      if (!aId) {
-        const email = profile.email;
-        if (email) {
-          const byEmail = await getAthleteByEmail(email);
-          aId = byEmail?.id ?? null;
-        }
-        if (!aId) {
-          const byProfile = await getAthleteByProfileId(profile.id);
-          aId = byProfile?.id ?? null;
-        }
-        setAthleteId(aId);
-      }
-      if (!aId) { setLoading(false); return; }
-      const data = await listTrainingSessions(aId);
+      const data = await listTrainingSessions(athleteId);
       setSessions(data);
     } catch (e) {
       console.warn('[training] load error', e);
@@ -374,7 +359,7 @@ export default function TrainingScreen() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadData(); }, [profile?.id]);
+  useEffect(() => { loadData(); }, [athleteId]);
 
   const onRefresh = () => { setRefreshing(true); loadData(true); };
 

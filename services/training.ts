@@ -14,7 +14,12 @@ export type TrainingSession = {
 
 export type NewTrainingSession = {
   athlete_id: string;
-  coach_profile_id: string;
+  /**
+   * Profile ID of the staff member / coach who created the session.
+   * Null when the athlete registers their own session via the Training tab.
+   * Staff-created sessions always have this populated.
+   */
+  coach_profile_id?: string | null;
   session_date: string;
   title: string;
   location?: string;
