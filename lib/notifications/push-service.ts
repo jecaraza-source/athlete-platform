@@ -1,14 +1,19 @@
 // =============================================================================
 // lib/notifications/push-service.ts
 // Push notification campaign send service.
-// Server-only — uses supabaseAdmin + OneSignal adapter.
+// Server-only — uses supabaseAdmin + OneSignal adapter + Expo Push adapter.
+//
+// Provider routing:
+//   • Expo tokens   (ExponentPushToken[...]) → Expo Push API  (no server key needed)
+//   • OneSignal IDs (UUID format)             → OneSignal REST API
 // =============================================================================
 
-import { supabaseAdmin }      from '@/lib/supabase-admin';
-import { oneSignalAdapter }   from './providers/onesignal-adapter';
-import { resolveAudience }    from './audience';
-import { renderPushTemplate } from './template-utils';
-import type { PushCampaign, PushJob } from './types';
+import { supabaseAdmin }               from '@/lib/supabase-admin';
+import { oneSignalAdapter }            from './providers/onesignal-adapter';
+import { expoPushAdapter, isExpoToken } from './providers/expo-push-adapter';
+import { resolveAudience }             from './audience';
+import { renderPushTemplate }          from './template-utils';
+import type { PushCampaign, PushJob }  from './types';
 
 const BATCH_SIZE = 50;
 
@@ -53,13 +58,15 @@ export async function enqueuePushCampaign(
   const profileIds   = recipients.map((r) => r.profile_id);
   const scheduledAt  = campaign.scheduled_at ?? new Date().toISOString();
 
-  // Fetch active device tokens for the resolved profiles
+  // Fetch active device tokens for the resolved profiles.
+  // Include both onesignal_player_id (OneSignal) and device_token (Expo).
+  // Any token that has at least one identifier set is eligible.
   const { data: tokens, error: tokErr } = await supabaseAdmin
     .from('push_device_tokens')
-    .select('id, profile_id, onesignal_player_id')
+    .select('id, profile_id, onesignal_player_id, device_token')
     .in('profile_id', profileIds)
     .eq('is_active', true)
-    .not('onesignal_player_id', 'is', null);
+    .or('onesignal_player_id.not.is.null,device_token.not.is.null');
 
   if (tokErr || !tokens || tokens.length === 0) {
     return { enqueued: 0, error: null };
@@ -68,35 +75,44 @@ export async function enqueuePushCampaign(
   // Build a profile → recipient map for variable rendering
   const recipientMap = new Map(recipients.map((r) => [r.profile_id, r]));
 
-  const rows = tokens.map((tok) => {
-    const r = recipientMap.get(tok.profile_id);
-    const vars = {
-      first_name: r?.first_name ?? '',
-      last_name:  r?.last_name  ?? '',
-      ...campaign.variable_overrides,
-    };
+  const rows = tokens
+    .map((tok) => {
+      // Prefer the OneSignal player ID; fall back to the Expo device token.
+      const effectiveToken = tok.onesignal_player_id ?? tok.device_token;
+      if (!effectiveToken) return null; // should not happen given the query filter
 
-    const { title, message } = renderPushTemplate(
-      template.title,
-      template.message,
-      vars
-    );
+      const r = recipientMap.get(tok.profile_id);
+      const vars = {
+        first_name: r?.first_name ?? '',
+        last_name:  r?.last_name  ?? '',
+        ...campaign.variable_overrides,
+      };
 
-    return {
-      campaign_id:          campaign.id,
-      template_id:          template.id,
-      recipient_profile_id: tok.profile_id,
-      device_token_id:      tok.id,
-      onesignal_player_id:  tok.onesignal_player_id,
-      title,
-      message,
-      deep_link:            template.deep_link ?? null,
-      extra_data:           template.extra_data ?? {},
-      status:               'pending' as const,
-      idempotency_key:      `push_campaign:${campaign.id}:token:${tok.id}`,
-      scheduled_at:         scheduledAt,
-    };
-  });
+      const { title, message } = renderPushTemplate(
+        template.title,
+        template.message,
+        vars
+      );
+
+      return {
+        campaign_id:          campaign.id,
+        template_id:          template.id,
+        recipient_profile_id: tok.profile_id,
+        device_token_id:      tok.id,
+        // Store the effective token here so the job processor can send it.
+        // The column is named onesignal_player_id for historical reasons, but
+        // it now holds either a OneSignal UUID or an ExponentPushToken string.
+        onesignal_player_id:  effectiveToken,
+        title,
+        message,
+        deep_link:            template.deep_link ?? null,
+        extra_data:           template.extra_data ?? {},
+        status:               'pending' as const,
+        idempotency_key:      `push_campaign:${campaign.id}:token:${tok.id}`,
+        scheduled_at:         scheduledAt,
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null);
 
   const { error: insErr } = await supabaseAdmin
     .from('push_jobs')
@@ -140,10 +156,10 @@ export async function processPendingPushJobs(): Promise<{
 
   for (const job of jobs as PushJob[]) {
     if (!job.onesignal_player_id) {
-      // No player ID — mark as failed immediately
+      // No token at all — mark as failed immediately
       await supabaseAdmin
         .from('push_jobs')
-        .update({ status: 'failed', last_error: 'No onesignal_player_id available.' })
+        .update({ status: 'failed', last_error: 'No push token available.' })
         .eq('id', job.id);
       failed++;
       continue;
@@ -154,7 +170,14 @@ export async function processPendingPushJobs(): Promise<{
       .update({ status: 'processing' })
       .eq('id', job.id);
 
-    const result = await oneSignalAdapter.send({
+    // Route to the correct provider based on the token format:
+    //   • ExponentPushToken[...] → Expo Push API (no server-side key required)
+    //   • UUID-like string       → OneSignal REST API
+    const adapter = isExpoToken(job.onesignal_player_id)
+      ? expoPushAdapter
+      : oneSignalAdapter;
+
+    const result = await adapter.send({
       player_ids:      [job.onesignal_player_id],
       title:           job.title,
       message:         job.message,

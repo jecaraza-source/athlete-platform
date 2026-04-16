@@ -51,13 +51,18 @@ function detectLocale(request: NextRequest): Locale {
  */
 const PUBLIC_PATHS: string[] = [
   '/login',
+  '/login/forgot-password',
+  '/auth/confirm', // Supabase password-reset callback — user arrives unauthenticated with a ?code=
 ];
 
 /**
  * Path prefixes that are always public regardless of auth state.
+ * - /api/auth   — Supabase auth callbacks
+ * - /api/cron/  — Vercel Cron jobs (secured via CRON_SECRET header in each handler)
  */
 const PUBLIC_PREFIXES: string[] = [
   '/api/auth',
+  '/api/cron/',
 ];
 
 function isPublicPath(strippedPathname: string): boolean {

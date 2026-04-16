@@ -1,7 +1,7 @@
 import BackButton from '@/components/back-button';
 import { getTranslations } from 'next-intl/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requirePermission } from '@/lib/rbac/server';
+import { requirePermission, getProfilesByRoleCodes } from '@/lib/rbac/server';
 import NewCaseForm from './new-case-form';
 import NewSessionForm from './new-session-form';
 import EditSessionForm from './edit-session-form';
@@ -38,19 +38,21 @@ const statusColors: Record<string, string> = {
 export default async function PsychologyPage() {
   await requirePermission('view_athletes');
 
-  const [{ data: casesData, error }, { data: athletesData }, { data: profilesData }] =
+  const [{ data: casesData, error }, { data: athletesData }, psychologistsData] =
     await Promise.all([
       supabaseAdmin
         .from('psychology_cases')
         .select('id, athlete_id, status, opened_at, summary, athletes(first_name, last_name), profiles(first_name, last_name), psychology_sessions(id, session_date, mood_score, stress_score, topic_summary, recommendations, next_session_date)')
         .order('opened_at', { ascending: false }),
       supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name'),
-      supabaseAdmin.from('profiles').select('id, first_name, last_name').eq('role', 'psychologist').order('last_name'),
+      // RBAC-aware: new system uses 'staff' for all specialists.
+      // Falls back to legacy profiles.role = 'psychologist'.
+      getProfilesByRoleCodes(['staff'], ['psychologist']),
     ]);
 
   const cases = (casesData ?? []) as unknown as PsychologyCase[];
   const athletes = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
-  const psychologists = (profilesData ?? []) as { id: string; first_name: string; last_name: string }[];
+  const psychologists = psychologistsData;
 
   const caseOptions = cases.map((c) => ({
     id: c.id,

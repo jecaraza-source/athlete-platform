@@ -31,6 +31,7 @@ type AthleteDetail = {
   school_or_club: string | null;
   discipline: string | null;
   disability_status: string | null;
+  email: string | null;
   guardian_name: string | null;
   guardian_phone: string | null;
   guardian_email: string | null;
@@ -38,6 +39,7 @@ type AthleteDetail = {
   emergency_contact_phone: string | null;
   medical_notes_summary: string | null;
   status: string;
+  profile_id: string | null;
 };
 
 function SectionHeader({ title, href, viewAllLabel }: { title: string; href: string; viewAllLabel: string }) {
@@ -77,7 +79,7 @@ export default async function AthleteDetailPage({
   ] = await Promise.all([
     supabaseAdmin
       .from('athletes')
-      .select('id, athlete_code, first_name, last_name, date_of_birth, sex, height_cm, weight_kg, dominant_side, school_or_club, guardian_name, guardian_phone, guardian_email, emergency_contact_name, emergency_contact_phone, medical_notes_summary, status')
+      .select('id, athlete_code, first_name, last_name, date_of_birth, sex, height_cm, weight_kg, dominant_side, school_or_club, guardian_name, guardian_phone, guardian_email, emergency_contact_name, emergency_contact_phone, medical_notes_summary, status, profile_id, email')
       .eq('id', id)
       .single(),
     supabaseAdmin
@@ -149,13 +151,16 @@ export default async function AthleteDetailPage({
     ...(data as Omit<AthleteDetail, 'discipline' | 'disability_status'>),
     discipline:        (extData as Record<string, string> | null)?.discipline        ?? null,
     disability_status: (extData as Record<string, string> | null)?.disability_status ?? null,
+    profile_id:        (data as { profile_id?: string | null }).profile_id ?? null,
+    email:             (data as { email?: string | null }).email ?? null,
   };
   const diagnostic = diagRaw as { overall_status: string; completion_pct: number } | null;
   const sections   = sectionsRaw as { section: string; status: string }[] | null;
 
   const sessions   = (trainingSessions ?? []) as { id: string; title: string; session_date: string; location: string | null }[];
   const plans      = (nutritionPlans ?? []) as { id: string; title: string; start_date: string; end_date: string | null; status: string }[];
-  const cases      = (physioCases ?? []) as unknown as { id: string; status: string; opened_at: string; injuries: { injury_type: string } | null }[];
+  // injuries is a 1:N join — Supabase always returns an array, even for belongs-to relations.
+  const cases      = (physioCases ?? []) as unknown as { id: string; status: string; opened_at: string; injuries: { injury_type: string }[] | null }[];
   const psychCases = (psychologyCases ?? []) as unknown as { id: string; status: string; opened_at: string; summary: string | null }[];
   const events     = (eventParticipants ?? []) as unknown as { id: string; notes: string | null; events: { id: string; title: string; event_type: string; start_at: string; status: string } | null }[];
 
@@ -325,7 +330,7 @@ export default async function AthleteDetailPage({
             <div className="space-y-2">
               {cases.map((c) => (
                 <div key={c.id} className="text-sm">
-                  <p className="font-medium">{c.injuries?.injury_type ?? 'Case'}</p>
+                  <p className="font-medium">{c.injuries?.[0]?.injury_type ?? ta('injuryCase')}</p>
                   <p className="text-gray-500 capitalize">{c.status} · {new Date(c.opened_at).toLocaleDateString()}</p>
                 </div>
               ))}
@@ -342,7 +347,7 @@ export default async function AthleteDetailPage({
             <div className="space-y-2">
               {psychCases.map((c) => (
                 <div key={c.id} className="text-sm">
-                  <p className="font-medium capitalize">{c.status} case</p>
+                  <p className="font-medium">{ta('psychologyCaseLabel')}</p>
                   <p className="text-gray-500">{new Date(c.opened_at).toLocaleDateString()}</p>
                   {c.summary && <p className="text-gray-500 truncate">{c.summary}</p>}
                 </div>

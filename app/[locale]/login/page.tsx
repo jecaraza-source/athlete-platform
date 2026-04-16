@@ -2,11 +2,13 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { signIn } from './actions';
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const redirectTo = searchParams.get('redirectTo') ?? '/dashboard';
   const t = useTranslations('auth');
 
@@ -85,6 +87,15 @@ export default function LoginPage() {
               {isPending ? t('signingIn') : t('signIn')}
             </button>
           </form>
+
+          <div className="mt-4 text-center">
+            <button
+            onClick={() => router.push('/login/forgot-password')}
+              className="text-sm text-indigo-500 hover:text-indigo-700 hover:underline"
+            >
+              {t('forgotPassword')}
+            </button>
+          </div>
         </div>
       </div>
     </div>

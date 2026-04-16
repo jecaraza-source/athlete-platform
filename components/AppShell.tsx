@@ -8,8 +8,12 @@ import LanguageSwitcher from './language-switcher';
 export default async function AppShell({ children }: { children: ReactNode }) {
   const authUser = await getAuthUser();
 
-  // Determine admin-level access once, server-side, to drive sidebar visibility
-  const showAdmin = await hasRole('super_admin', 'admin', 'program_director');
+  // Determine role-level access once, server-side, to drive sidebar visibility.
+  // Both calls reuse the same memoized getCurrentUser() — only one DB round-trip.
+  const [showAdmin, isAthlete] = await Promise.all([
+    hasRole('super_admin', 'admin', 'program_director'),
+    hasRole('athlete'),
+  ]);
 
   return (
     <div className="min-h-screen flex bg-gray-50 text-gray-900">
@@ -29,7 +33,7 @@ export default async function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Navigation */}
-        <NavLinks showAdmin={showAdmin} />
+        <NavLinks showAdmin={showAdmin} isAthlete={isAthlete} />
 
         {/* Footer */}
         <div className="border-t border-gray-200">

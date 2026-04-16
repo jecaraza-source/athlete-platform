@@ -1,6 +1,6 @@
 import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requirePermission } from '@/lib/rbac/server';
+import { requirePermission, getProfilesByRoleCodes } from '@/lib/rbac/server';
 import { getTranslations } from 'next-intl/server';
 import NewSessionForm from './new-session-form';
 import EditSessionForm from './edit-session-form';
@@ -41,22 +41,20 @@ export default async function TrainingPage({
 
   if (selectedAthleteId) sessionsQuery = sessionsQuery.eq('athlete_id', selectedAthleteId);
 
-  const [{ data, error }, { data: athletesData }, { data: profilesData }] = await Promise.all([
+  const [{ data, error }, { data: athletesData }, coachesData] = await Promise.all([
     sessionsQuery,
     supabaseAdmin
       .from('athletes')
       .select('id, first_name, last_name')
       .order('last_name', { ascending: true }),
-    supabaseAdmin
-      .from('profiles')
-      .select('id, first_name, last_name')
-      .eq('role', 'coach')
-      .order('last_name', { ascending: true }),
+    // RBAC-aware: queries user_roles → roles(code='coach').
+    // Falls back to profiles.role = 'coach' if no RBAC assignments found.
+    getProfilesByRoleCodes(['coach']),
   ]);
 
   const sessions = (data ?? []) as unknown as TrainingSession[];
   const athletes = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
-  const coaches = (profilesData ?? []) as { id: string; first_name: string; last_name: string }[];
+  const coaches = coachesData;
 
   const t = await getTranslations('followUp.training');
   const tc = await getTranslations('common');
@@ -94,7 +92,7 @@ export default async function TrainingPage({
                 <p className="text-sm text-gray-600 mt-1">
                   {session.athletes
                     ? `${session.athletes.first_name} ${session.athletes.last_name}`
-                    : 'Unknown athlete'}
+                    : tc('unknownAthlete')}
                 </p>
               </div>
               <div className="text-sm text-gray-600">
@@ -105,7 +103,7 @@ export default async function TrainingPage({
             {/* Inline edit form — shows read view by default */}
             <div className="mt-4 border-t border-gray-100 pt-3">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                Session details
+                {t('sessionDetailsLabel')}
               </p>
               <EditSessionForm session={session} />
               <div className="mt-2 flex justify-end">

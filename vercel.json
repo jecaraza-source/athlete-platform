@@ -2,15 +2,15 @@
   "crons": [
     {
       "path": "/api/cron/process-email-jobs",
-      "schedule": "0 0 * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/process-push-jobs",
-      "schedule": "0 0 * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/process-ticket-automation",
-      "schedule": "0 0 * * *"
+      "schedule": "*/30 * * * *"
     }
   ]
 }
