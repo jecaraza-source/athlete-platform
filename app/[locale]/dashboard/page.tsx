@@ -1,6 +1,8 @@
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requireAuthenticated } from '@/lib/rbac/server';
+import AthleteDashboard from './athlete-dashboard';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,9 +51,16 @@ const cards: Card[] = [
 ];
 
 export default async function DashboardPage() {
+  const currentUser = await requireAuthenticated();
+
+  // Athletes get their own personalised dashboard
+  if (currentUser.roles.some((r) => r.code === 'athlete')) {
+    return <AthleteDashboard user={currentUser} />;
+  }
+
   const t = await getTranslations('dashboard');
 
-  // Fetch KPIs in parallel — all queries are resilient (errors → default value)
+  // Fetch KPIs in parallel
   const now      = new Date();
   const weekEnd  = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
