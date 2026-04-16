@@ -24,7 +24,7 @@ export default function TicketsScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
   const router = useRouter();
-  const { profile, isAthlete } = useAuthStore();
+  const { profile, isAthlete, roles } = useAuthStore();
 
   const [tickets, setTickets] = useState<TicketWithProfiles[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,9 +46,9 @@ export default function TicketsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  // isAthlete is a stable Zustand function ref — safe in deps
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, profile?.id]);
+  // roles.length is the reactive signal: when roles load after mount the callback
+  // is recreated and the effect re-runs, applying the correct isAthlete() value.
+  }, [statusFilter, profile?.id, roles.length]);
 
   useEffect(() => { load(); }, [load]);
 

@@ -14,9 +14,11 @@ import { getAthlete } from '@/services/athletes';
 import { getDiagnostic, getDiagnosticSections } from '@/services/diagnostic';
 import { listTrainingSessions, type TrainingSession } from '@/services/training';
 import {
-  listNutritionPlans, listPhysioCases, listPsychologyCases,
-  type NutritionPlan, type PhysioCase, type PsychologyCase,
+  listMedicalCases, listNutritionPlans, listPhysioCases, listPsychologyCases,
+  type MedicalCase, type NutritionPlan, type PhysioCase, type PsychologyCase,
 } from '@/services/follow-up';
+import { listAthleteAttachments, type AthleteAttachment } from '@/services/attachments';
+import { AttachmentItem } from '@/components/attachments/attachment-item';
 import type { Athlete, AthleteInitialDiagnostic, AthleteSection } from '@/types';
 import { SECTION_LABELS, DIAGNOSTIC_STATUS_LABELS, SECTION_KEYS, ATHLETE_STATUS_LABELS } from '@/types';
 
@@ -40,9 +42,11 @@ export default function AthleteDetailScreen() {
   const [diagnostic, setDiagnostic] = useState<AthleteInitialDiagnostic | null>(null);
   const [sections, setSections] = useState<AthleteSection[]>([]);
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([]);
+  const [medicalCases, setMedicalCases] = useState<MedicalCase[]>([]);
   const [nutritionPlans, setNutritionPlans] = useState<NutritionPlan[]>([]);
   const [physioCases, setPhysioCases] = useState<PhysioCase[]>([]);
   const [psychCases, setPsychCases] = useState<PsychologyCase[]>([]);
+  const [attachments, setAttachments] = useState<AthleteAttachment[]>([]); 
   const [activeTab, setActiveTab] = useState<'info' | 'diagnostic' | 'seguimiento'>('info');
 
   useEffect(() => {
@@ -51,18 +55,22 @@ export default function AthleteDetailScreen() {
         const a = await getAthlete(id);
         setAthlete(a);
         if (a) {
-          const [diag, sessions, plans, physio, psych] = await Promise.all([
+          const [diag, sessions, medical, plans, physio, psych, docs] = await Promise.all([
             getDiagnostic(a.id),
             listTrainingSessions(a.id),
+            listMedicalCases(a.id),
             listNutritionPlans(a.id),
             listPhysioCases(a.id),
             listPsychologyCases(a.id),
+            listAthleteAttachments(a.id),
           ]);
           setDiagnostic(diag);
           setTrainingSessions(sessions);
+          setMedicalCases(medical);
           setNutritionPlans(plans);
           setPhysioCases(physio);
           setPsychCases(psych);
+          setAttachments(docs);
           if (diag) {
             const secs = await getDiagnosticSections(diag.id);
             setSections(secs);
@@ -206,6 +214,40 @@ export default function AthleteDetailScreen() {
               ))
             )}
 
+            {/* Servicios Médicos */}
+            <Text style={[styles.sectionsTitle, { color: colors.text, marginTop: 16 }]}>
+              Servicios Médicos ({medicalCases.length})
+            </Text>
+            {medicalCases.length === 0 ? (
+              <Card><Text style={{ color: colors.icon, fontSize: 14 }}>Sin casos médicos.</Text></Card>
+            ) : (
+              medicalCases.map((c) => (
+                <Card key={c.id} style={styles.sessionCard}>
+                  <View style={styles.sessionRow}>
+                    <View style={[styles.sessionIcon, { backgroundColor: '#fff1f2' }]}>
+                      <Ionicons name="medical-outline" size={16} color="#be123c" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.sessionTitle, { color: colors.text }]} numberOfLines={1}>
+                        {c.condition ?? 'Caso médico'}
+                      </Text>
+                      <Text style={[styles.sessionDate, { color: colors.icon }]}>
+                        Abierto {new Date(c.opened_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </Text>
+                      {c.notes && (
+                        <Text style={[styles.sessionNotes, { color: colors.icon }]} numberOfLines={2}>
+                          {c.notes}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={[styles.statusTag, { backgroundColor: '#fff1f2' }]}>
+                      <Text style={{ fontSize: 10, color: '#be123c', fontWeight: '600' }}>{c.status}</Text>
+                    </View>
+                  </View>
+                </Card>
+              ))
+            )}
+
             {/* Fisioterapia */}
             <Text style={[styles.sectionsTitle, { color: colors.text, marginTop: 16 }]}>
               Fisioterapia ({physioCases.length})
@@ -262,6 +304,21 @@ export default function AthleteDetailScreen() {
                   </View>
                 </Card>
               ))
+            )}
+            {/* Documentos adjuntos */}
+            <Text style={[styles.sectionsTitle, { color: colors.text, marginTop: 16 }]}>
+              Documentos ({attachments.length})
+            </Text>
+            {attachments.length === 0 ? (
+              <Card>
+                <Text style={{ color: colors.icon, fontSize: 14 }}>Sin documentos adjuntos.</Text>
+              </Card>
+            ) : (
+              <View style={{ gap: 8 }}>
+                {attachments.map((att) => (
+                  <AttachmentItem key={att.id} attachment={att} />
+                ))}
+              </View>
             )}
           </>
         )}

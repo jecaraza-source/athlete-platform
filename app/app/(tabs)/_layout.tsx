@@ -1,8 +1,10 @@
 import { Image, TouchableOpacity, useColorScheme } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
+import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, PRIMARY } from '@/constants/theme';
 import { useAuthStore } from '@/store';
+import { countPendingNotifications } from '@/services/notifications';
 
 function LogoHeader() {
   return (
@@ -22,8 +24,20 @@ export default function TabsLayout() {
   // component re-renders when loadUserData() populates permissions/roles.
   const permissions = useAuthStore((s) => s.permissions);
   const roles       = useAuthStore((s) => s.roles);
+  const profile     = useAuthStore((s) => s.profile);
   const showAthletes = permissions.has('view_athletes');
   const showTraining  = roles.some((r) => r.code === 'athlete');
+
+  // Notification badge — counts push_jobs with status 'sent' for this profile.
+  // Undefined = no badge shown; a number ≥ 1 = badge visible.
+  const [notifBadge, setNotifBadge] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (!profile?.id) { setNotifBadge(undefined); return; }
+    countPendingNotifications(profile.id)
+      .then((n) => setNotifBadge(n > 0 ? n : undefined))
+      .catch(() => setNotifBadge(undefined));
+  }, [profile?.id]);
 
   return (
     <Tabs
@@ -92,18 +106,10 @@ export default function TabsLayout() {
         name="notifications"
         options={{
           title: 'Alertas',
+          tabBarBadge: notifBadge,
+          tabBarBadgeStyle: { fontSize: 10, minWidth: 16, height: 16 },
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="notifications-outline" size={size} color={color} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Perfil',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />
@@ -126,6 +132,16 @@ export default function TabsLayout() {
           title: 'Calendario',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="calendar-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Perfil',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />

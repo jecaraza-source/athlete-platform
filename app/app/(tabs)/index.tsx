@@ -20,7 +20,7 @@ export default function DashboardScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
   const router = useRouter();
-  const { profile, isStaff, isAthlete, fullName, roles } = useAuthStore();
+  const { profile, isStaff, isAthlete, fullName, roles, isInitialized } = useAuthStore();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -65,8 +65,15 @@ export default function DashboardScreen() {
     }
   }
 
+  // Re-run when auth store finishes initializing or the user's profile changes.
+  // This ensures the dashboard reflects the correct role (staff/athlete) even
+  // when roles load after the component first mounts.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    if (!isInitialized) return;
+    loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInitialized, profile?.id]);
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 

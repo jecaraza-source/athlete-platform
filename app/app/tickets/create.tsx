@@ -37,12 +37,32 @@ export default function CreateTicketScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
 
-  // Load all profiles on mount and filter non-athletes client-side.
-  // RLS: "Authenticated users can read profiles" (USING true) must be applied
-  // in Supabase — run the SQL provided in the setup guide.
+  // Load staff profiles on mount.
+  // Strategy:
+  //   1. Fetch profile IDs that have the 'athlete' role via RBAC (user_roles → roles).
+  //   2. Fetch all profiles and exclude those athlete IDs.
+  //   3. Also exclude profiles whose legacy `role` column equals 'athlete'
+  //      (backward compat for installs not fully migrated to RBAC).
   useEffect(() => {
     (async () => {
       try {
+        // Step 1 — identify athlete profile IDs via RBAC
+        const { data: roleRow } = await supabase
+          .from('roles')
+          .select('id')
+          .eq('code', 'athlete')
+          .maybeSingle();
+
+        const athleteProfileIds = new Set<string>();
+        if (roleRow?.id !== undefined) {
+          const { data: urRows } = await supabase
+            .from('user_roles')
+            .select('profile_id')
+            .eq('role_id', roleRow.id);
+          (urRows ?? []).forEach((r: { profile_id: string }) => athleteProfileIds.add(r.profile_id));
+        }
+
+        // Step 2 — fetch all profiles
         const { data, error } = await supabase
           .from('profiles')
           .select('id, first_name, last_name, role')
@@ -53,9 +73,14 @@ export default function CreateTicketScreen() {
           return;
         }
 
-        // Keep only non-athlete profiles (staff, admin, coach, etc.)
+        // Step 3 — exclude athletes (by RBAC id set OR legacy role column)
         const staff = (data ?? [])
-          .filter((p) => p.id && p.role !== 'athlete')
+          .filter(
+            (p) =>
+              p.id &&
+              !athleteProfileIds.has(p.id) &&
+              p.role !== 'athlete',
+          )
           .map(({ id, first_name, last_name }) => ({ id, first_name, last_name })) as StaffProfile[];
 
         setStaffList(staff);
