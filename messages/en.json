@@ -44,6 +44,7 @@
     "calendar": "Calendar",
     "followUp": "Follow-up",
     "protocols": "Protocols",
+    "plans": "Plans",
     "communications": "Communications",
     "tickets": "Tickets",
     "notifications": "Notifications",
@@ -186,6 +187,30 @@
     "psychology": {
       "label": "Psychology",
       "description": "Mental performance frameworks, stress management, and wellbeing protocols."
+    }
+  },
+  "plans": {
+    "title": "Plans",
+    "description": "Personalized plans by discipline: medical, nutrition, psychology, training, and rehabilitation.",
+    "medical": {
+      "label": "Medical Plan",
+      "description": "Medical care, examinations and health follow-up plans per athlete."
+    },
+    "nutrition": {
+      "label": "Nutrition Plan",
+      "description": "Personalized dietary and nutritional plans for each athlete."
+    },
+    "psychology": {
+      "label": "Psychological Plan",
+      "description": "Mental wellbeing and psychological performance programmes."
+    },
+    "training": {
+      "label": "Training Plan",
+      "description": "Workload, periodisation and physical development programmes."
+    },
+    "rehabilitation": {
+      "label": "Rehabilitation Plan",
+      "description": "Recovery and post-injury readaptation protocols."
     }
   },
   "admin": {

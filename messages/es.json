@@ -44,6 +44,7 @@
     "calendar": "Calendario",
     "followUp": "Seguimiento",
     "protocols": "Protocolos",
+    "plans": "Planes",
     "communications": "Comunicaciones",
     "tickets": "Tickets",
     "notifications": "Notificaciones",
@@ -186,6 +187,30 @@
     "psychology": {
       "label": "Psicología",
       "description": "Marcos de rendimiento mental, gestión del estrés y protocolos de bienestar."
+    }
+  },
+  "plans": {
+    "title": "Planes",
+    "description": "Planes personalizados por disciplina: médico, alimentario, psicológico, entrenamiento y rehabilitación.",
+    "medical": {
+      "label": "Plan Médico",
+      "description": "Planes de atención, exámenes y seguimiento médico por atleta."
+    },
+    "nutrition": {
+      "label": "Plan Alimentario",
+      "description": "Planes dietéticos y nutricionales personalizados para cada atleta."
+    },
+    "psychology": {
+      "label": "Plan Psicológico",
+      "description": "Programas de bienestar mental y rendimiento psicológico."
+    },
+    "training": {
+      "label": "Plan de Entrenamiento",
+      "description": "Programas de carga, periodización y desarrollo físico."
+    },
+    "rehabilitation": {
+      "label": "Plan de Rehabilitación",
+      "description": "Protocolos de recuperación y readaptación post-lesión."
     }
   },
   "admin": {
