@@ -21,39 +21,49 @@ const BUCKET = 'avatars';
 // ---------------------------------------------------------------------------
 
 /**
- * Uploads a JPEG image to the avatars bucket for the current user.
+ * Uploads a profile photo for the current user.
  *
- * @param localUri    - Local file URI from expo-image-picker (file:// or content://)
- * @param authUserId  - Supabase auth.uid() — becomes the folder name in storage
- * @param profileId   - profiles.id — used to update profiles.avatar_url
- * @returns The public avatar URL on success, null on failure
+ * Returns { url, error }:
+ *   url   – stable public URL on success, null on failure
+ *   error – human-readable error message (empty string on success)
+ *
+ * Why XHR instead of fetch()?
+ *   On Android, local file:// / content:// URIs returned by
+ *   expo-image-picker can have status 0 (non-ok) in fetch() even when
+ *   the body is perfectly valid. XHR with responseType='blob' works
+ *   reliably on both platforms.
+ *
+ * Why Blob instead of ArrayBuffer?
+ *   Supabase JS v2 internally calls fetch() to upload. Passing a Blob
+ *   directly is more reliably handled by the RN fetch polyfill than
+ *   passing a raw ArrayBuffer.
  */
 export async function uploadMobileAvatar(
   localUri:   string,
   authUserId: string,
   profileId:  string,
-): Promise<string | null> {
+): Promise<{ url: string | null; error: string }> {
   try {
-    // 1. Fetch the image as an ArrayBuffer from the local URI
-    const response = await fetch(localUri);
-    if (!response.ok) return null;
-    const arrayBuffer = await response.arrayBuffer();
+    // 1. Read the local image as a Blob via XHR
+    //    (avoids the response.ok = false issue for file:// URIs in Android)
+    const blob = await readFileAsBlob(localUri);
 
-    // 2. Upload to storage (upsert overwrites any existing photo)
+    // 2. Upload to storage (upsert = true replaces existing avatar)
     const path = `${authUserId}/avatar.jpg`;
     const { error: uploadErr } = await supabase.storage
       .from(BUCKET)
-      .upload(path, arrayBuffer, {
+      .upload(path, blob, {
         contentType: 'image/jpeg',
         upsert:      true,
       });
 
     if (uploadErr) {
+      const msg = translateStorageError(uploadErr.message);
       console.warn('[avatar] upload error:', uploadErr.message);
-      return null;
+      return { url: null, error: msg };
     }
 
-    // 3. Derive the public URL (bucket is public, no signature needed)
+    // 3. Derive the public URL (bucket is public — no signature needed)
     const { data: { publicUrl } } = supabase.storage
       .from(BUCKET)
       .getPublicUrl(path);
@@ -66,13 +76,62 @@ export async function uploadMobileAvatar(
 
     if (updateErr) {
       console.warn('[avatar] profiles update error:', updateErr.message);
+      // Non-fatal: the file is in storage, just the DB update failed.
+      // Return success so the UI shows the new photo.
     }
 
-    return publicUrl;
+    return { url: publicUrl, error: '' };
   } catch (e) {
-    console.warn('[avatar] uploadMobileAvatar error:', e);
-    return null;
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn('[avatar] uploadMobileAvatar exception:', msg);
+    return { url: null, error: msg };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Reads a local file URI (file:// or content://) as a Blob using
+ * XMLHttpRequest. More reliable than fetch() for local URIs on Android.
+ */
+function readFileAsBlob(uri: string): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.responseType = 'blob';
+    xhr.onload = () => {
+      if (xhr.response instanceof Blob) {
+        resolve(xhr.response);
+      } else {
+        reject(new Error('XHR did not return a Blob'));
+      }
+    };
+    xhr.onerror = () => reject(new Error('XHR failed to read file'));
+    xhr.open('GET', uri, true);
+    xhr.send(null);
+  });
+}
+
+/**
+ * Translates common Supabase storage error messages into Spanish.
+ * Keeps the original message as fallback so it’s still useful for debugging.
+ */
+function translateStorageError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes('bucket not found') || m.includes('not found')) {
+    return 'El bucket de almacenamiento no existe. Aplica la migracíon 022_avatar.sql en Supabase.';
+  }
+  if (m.includes('row-level security') || m.includes('rls') || m.includes('policy')) {
+    return 'Sin permiso para subir la foto. Verifica las políticas RLS del bucket avatars.';
+  }
+  if (m.includes('payload too large') || m.includes('size')) {
+    return 'La imagen es demasiado grande. Máximo 5 MB.';
+  }
+  if (m.includes('invalid') && m.includes('token')) {
+    return 'Sesión expirada. Cierra sesión y vuelve a entrar.';
+  }
+  return message;
 }
 
 // ---------------------------------------------------------------------------

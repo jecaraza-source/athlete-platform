@@ -91,7 +91,7 @@ export default function ProfileScreen() {
       return;
     }
 
-    const result = await (useCamera
+    const pickerResult = await (useCamera
       ? ImagePicker.launchCameraAsync
       : ImagePicker.launchImageLibraryAsync
     )({
@@ -101,22 +101,25 @@ export default function ProfileScreen() {
       quality: 0.7,      // compress to ~70% quality
     });
 
-    if (result.canceled || !result.assets?.[0]?.uri) return;
+    if (pickerResult.canceled || !pickerResult.assets?.[0]?.uri) return;
 
-    const localUri = result.assets[0].uri;
+    const localUri = pickerResult.assets[0].uri;
 
     // Optimistic UI: show the local image immediately
     setAvatarUrl(localUri);
     setUploading(true);
 
-    const publicUrl = await uploadMobileAvatar(localUri, authUserId, profileId);
+    const uploadResult = await uploadMobileAvatar(localUri, authUserId, profileId);
     setUploading(false);
 
-    if (publicUrl) {
-      setAvatarUrl(getCacheBustedUrl(publicUrl));
+    if (uploadResult.url) {
+      setAvatarUrl(getCacheBustedUrl(uploadResult.url));
     } else {
-      Alert.alert('Error', 'No se pudo subir la foto. Intenta de nuevo.');
-      setAvatarUrl(profile?.avatar_url ?? null); // revert
+      Alert.alert(
+        'Error al subir la foto',
+        uploadResult.error || 'No se pudo subir la foto. Intenta de nuevo.',
+      );
+      setAvatarUrl(profile?.avatar_url ?? null); // revert to previous
     }
   }
 
