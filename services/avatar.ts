@@ -44,15 +44,18 @@ export async function uploadMobileAvatar(
   profileId:  string,
 ): Promise<{ url: string | null; error: string }> {
   try {
-    // 1. Read the local image as a Blob via XHR
-    //    (avoids the response.ok = false issue for file:// URIs in Android)
-    const blob = await readFileAsBlob(localUri);
+    // 1. Read the local image as a Uint8Array via XHR
+    //    (avoids response.ok=false for local URIs on Android,
+    //     and avoids "Network request failed" when using RN Blobs in fetch)
+    const bytes = await readFileAsUint8Array(localUri);
 
-    // 2. Upload to storage (upsert = true replaces existing avatar)
+    // 2. Upload to storage (upsert overwrites any existing photo)
+    //    Uint8Array is an ArrayBufferView — handled natively by the
+    //    React Native fetch polyfill without throwing.
     const path = `${authUserId}/avatar.jpg`;
     const { error: uploadErr } = await supabase.storage
       .from(BUCKET)
-      .upload(path, blob, {
+      .upload(path, bytes, {
         contentType: 'image/jpeg',
         upsert:      true,
       });
@@ -93,21 +96,33 @@ export async function uploadMobileAvatar(
 // ---------------------------------------------------------------------------
 
 /**
- * Reads a local file URI (file:// or content://) as a Blob using
- * XMLHttpRequest. More reliable than fetch() for local URIs on Android.
+ * Reads a local file URI (file:// or content://) as a Uint8Array
+ * using XMLHttpRequest with responseType 'arraybuffer'.
+ *
+ * Why Uint8Array (not Blob)?
+ *   When a React Native XHR Blob is passed as the body of fetch(),
+ *   the RN fetch polyfill cannot serialize it correctly and throws
+ *   "Network request failed". Passing a Uint8Array (an ArrayBufferView)
+ *   is handled natively and avoids this issue.
+ *
+ * Why XHR instead of fetch()?
+ *   On Android, local file:// / content:// URIs from expo-image-picker
+ *   can return status 0 in fetch(), making response.ok == false even
+ *   though the data is valid. XHR is more reliable for local URIs.
  */
-function readFileAsBlob(uri: string): Promise<Blob> {
+function readFileAsUint8Array(uri: string): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.responseType = 'blob';
+    xhr.responseType = 'arraybuffer';
     xhr.onload = () => {
-      if (xhr.response instanceof Blob) {
-        resolve(xhr.response);
+      if (xhr.response) {
+        resolve(new Uint8Array(xhr.response as ArrayBuffer));
       } else {
-        reject(new Error('XHR did not return a Blob'));
+        reject(new Error('No se pudo leer el archivo (XHR sin respuesta)'));
       }
     };
-    xhr.onerror = () => reject(new Error('XHR failed to read file'));
+    xhr.onerror = () => reject(new Error('No se pudo leer el archivo de imagen'));
+    xhr.ontimeout = () => reject(new Error('Tiempo de espera agotado al leer la imagen'));
     xhr.open('GET', uri, true);
     xhr.send(null);
   });
