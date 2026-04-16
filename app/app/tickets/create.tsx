@@ -38,50 +38,27 @@ export default function CreateTicketScreen() {
   const [pickerSearch, setPickerSearch] = useState('');
 
   // Load assignable staff on mount.
-  // Two-step: get non-athlete profile_ids from user_roles, then fetch those profiles.
-  // Profiles are readable after migration 019 (staff profiles policy).
+  // Queries profiles WHERE role IS NOT NULL AND role != 'athlete'.
+  // Uses the legacy profiles.role field since admin/staff users may not have
+  // entries in user_roles (they were created before the RBAC migration).
+  // Requires the 'Legacy non-athlete profiles readable' RLS policy
+  // (migration 019b in Supabase SQL editor).
   useEffect(() => {
     (async () => {
       try {
-        // Step 1 — get all user_roles with their role code
-        const { data: roleRows, error: roleErr } = await supabase
-          .from('user_roles')
-          .select('profile_id, roles(code)');
-
-        if (roleErr) {
-          console.warn('[ticket] load roles error:', roleErr.message);
-          return;
-        }
-
-        // Extract unique profile_ids that are NOT athletes.
-        // Supabase returns embedded resources as arrays, so roles is { code }[].
-        type RoleRow = { profile_id: string; roles: { code: string }[] | { code: string } | null };
-        const nonAthleteIds = [...new Set(
-          (roleRows as unknown as RoleRow[] ?? [])
-            .filter((r) => {
-              const roles = r.roles;
-              const code = Array.isArray(roles) ? roles[0]?.code : roles?.code;
-              return code && code !== 'athlete';
-            })
-            .map((r) => r.profile_id)
-            .filter(Boolean),
-        )];
-
-        if (nonAthleteIds.length === 0) return;
-
-        // Step 2 — fetch profiles (RLS: own profile always + others after migration 019)
-        const { data: profileData, error: profileErr } = await supabase
+        const { data, error } = await supabase
           .from('profiles')
           .select('id, first_name, last_name')
-          .in('id', nonAthleteIds)
+          .not('role', 'is', null)
+          .neq('role', 'athlete')
           .order('last_name', { ascending: true });
 
-        if (profileErr) {
-          console.warn('[ticket] load profiles error:', profileErr.message);
+        if (error) {
+          console.warn('[ticket] load staff error:', error.message);
           return;
         }
 
-        setStaffList((profileData ?? []).filter((p): p is StaffProfile => !!p?.id));
+        setStaffList((data ?? []).filter((p): p is StaffProfile => !!p?.id));
       } catch (e) {
         console.warn('[ticket] load staff error', e);
       }
