@@ -54,6 +54,9 @@ export type ProfileSummary = {
   email: string | null;
   role: string | null;
   auth_user_id?: string | null;
+  /** Public URL of the profile photo in the `avatars` storage bucket.
+   *  Added by migration 022. Null when no photo has been uploaded yet. */
+  avatar_url?: string | null;
 };
 
 export type CurrentUser = {

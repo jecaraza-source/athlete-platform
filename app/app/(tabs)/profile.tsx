@@ -1,17 +1,136 @@
+import { useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, useColorScheme, Alert,
+  View, Text, ScrollView, StyleSheet, useColorScheme,
+  Alert, TouchableOpacity, ActivityIndicator, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, PRIMARY } from '@/constants/theme';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store';
 import { deactivateDeviceTokens } from '@/services/push';
+import {
+  uploadMobileAvatar,
+  deleteMobileAvatar,
+  getCacheBustedUrl,
+} from '@/services/avatar';
 
 export default function ProfileScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
-  const { profile, roles, signOut, fullName } = useAuthStore();
+  const { profile, roles, signOut, fullName, session } = useAuthStore();
+
+  // Local avatar URL state so the UI updates immediately after upload
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    profile?.avatar_url ?? null
+  );
+  const [uploading, setUploading] = useState(false);
+
+  // ── Avatar change handler ─────────────────────────────────────────────
+  async function handleChangePhoto() {
+    if (!profile || !session?.user?.id) return;
+
+    // Lazy-load expo-image-picker so it's never evaluated in Expo Go builds
+    // where camera/photo-library permissions aren't configured.
+    let ImagePicker: typeof import('expo-image-picker');
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ImagePicker = require('expo-image-picker');
+    } catch {
+      Alert.alert('Error', 'expo-image-picker no está disponible en este entorno.');
+      return;
+    }
+
+    const { status } =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permiso necesario',
+        'Necesitamos acceso a tu galería para cambiar la foto de perfil.',
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Foto de perfil',
+      '¿Cómo quieres seleccionar la foto?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Galería',
+          onPress: () => pickImage(ImagePicker, profile.id, session.user.id, false),
+        },
+        {
+          text: 'Cámara',
+          onPress: () => pickImage(ImagePicker, profile.id, session.user.id, true),
+        },
+        ...(avatarUrl
+          ? [{
+              text: 'Eliminar foto',
+              style: 'destructive' as const,
+              onPress: () => handleDeletePhoto(),
+            }]
+          : []),
+      ],
+    );
+  }
+
+  async function pickImage(
+    ImagePicker: typeof import('expo-image-picker'),
+    profileId: string,
+    authUserId: string,
+    useCamera: boolean,
+  ) {
+    const perm = useCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (perm.status !== 'granted') {
+      Alert.alert('Permiso denegado', 'Habilita el permiso en Ajustes del dispositivo.');
+      return;
+    }
+
+    const result = await (useCamera
+      ? ImagePicker.launchCameraAsync
+      : ImagePicker.launchImageLibraryAsync
+    )({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],   // square crop
+      quality: 0.7,      // compress to ~70% quality
+    });
+
+    if (result.canceled || !result.assets?.[0]?.uri) return;
+
+    const localUri = result.assets[0].uri;
+
+    // Optimistic UI: show the local image immediately
+    setAvatarUrl(localUri);
+    setUploading(true);
+
+    const publicUrl = await uploadMobileAvatar(localUri, authUserId, profileId);
+    setUploading(false);
+
+    if (publicUrl) {
+      setAvatarUrl(getCacheBustedUrl(publicUrl));
+    } else {
+      Alert.alert('Error', 'No se pudo subir la foto. Intenta de nuevo.');
+      setAvatarUrl(profile?.avatar_url ?? null); // revert
+    }
+  }
+
+  async function handleDeletePhoto() {
+    if (!profile || !session?.user?.id) return;
+    setUploading(true);
+    const ok = await deleteMobileAvatar(session.user.id, profile.id);
+    setUploading(false);
+    if (ok) {
+      setAvatarUrl(null);
+    } else {
+      Alert.alert('Error', 'No se pudo eliminar la foto.');
+    }
+  }
 
   async function handleSignOut() {
     Alert.alert(
@@ -41,11 +160,40 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Avatar */}
+        {/* Avatar + upload button */}
         <View style={styles.avatarSection}>
-          <View style={[styles.avatar, { backgroundColor: PRIMARY }]}>
-            <Text style={styles.initials}>{initials || '?'}</Text>
-          </View>
+          <TouchableOpacity
+            onPress={handleChangePhoto}
+            disabled={uploading}
+            style={styles.avatarWrap}
+            activeOpacity={0.8}
+          >
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={styles.avatarImg}
+              />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: PRIMARY }]}>
+                <Text style={styles.initials}>{initials || '?'}</Text>
+              </View>
+            )}
+
+            {/* Camera icon badge */}
+            {!uploading && (
+              <View style={styles.cameraBadge}>
+                <Ionicons name="camera" size={14} color="#fff" />
+              </View>
+            )}
+
+            {/* Upload spinner */}
+            {uploading && (
+              <View style={styles.uploadingOverlay}>
+                <ActivityIndicator size="small" color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+
           <Text style={[styles.name, { color: colors.text }]}>{fullName() || 'Usuario'}</Text>
           {profile?.email && (
             <Text style={[styles.email, { color: colors.icon }]}>{profile.email}</Text>
@@ -97,9 +245,30 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   container: { padding: 20, paddingBottom: 40 },
   avatarSection: { alignItems: 'center', marginBottom: 24 },
+  // Wraps both the image/initials circle and the overlays
+  avatarWrap: { position: 'relative', marginBottom: 12 },
   avatar: {
-    width: 80, height: 80, borderRadius: 40,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 12,
+    width: 88, height: 88, borderRadius: 44,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  avatarImg: {
+    width: 88, height: 88, borderRadius: 44,
+    backgroundColor: '#e2e8f0',
+  },
+  // Camera icon badge (bottom-right)
+  cameraBadge: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: PRIMARY,
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: '#fff',
+  },
+  // Semi-transparent spinner overlay while uploading
+  uploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 44,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center', alignItems: 'center',
   },
   initials: { fontSize: 30, fontWeight: '700', color: '#fff' },
   name: { fontSize: 20, fontWeight: '700', marginBottom: 4 },

@@ -11,7 +11,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.aodeporte.mobile",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "AO Deportes usa la c\u00e1mara para actualizar tu foto de perfil.",
+        "NSPhotoLibraryUsageDescription": "AO Deportes accede a tu galer\u00eda para seleccionar tu foto de perfil.",
+        "NSPhotoLibraryAddUsageDescription": "AO Deportes puede guardar fotos en tu galer\u00eda."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +26,12 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.aodeporte.mobile",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "output": "static",
@@ -29,6 +39,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "AO Deportes accede a tu galer\u00eda para seleccionar tu foto de perfil.",
+          "cameraPermission": "AO Deportes usa la c\u00e1mara para actualizar tu foto de perfil."
+        }
+      ],
       [
         "expo-splash-screen",
         {
