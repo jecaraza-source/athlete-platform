@@ -5,12 +5,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "aodeportes",
+    "scheme": "aodeporte",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aodeportes.mobile",
+      "bundleIdentifier": "com.aodeporte.mobile",
       "buildNumber": "1"
     },
     "android": {
@@ -20,7 +20,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.aodeportes.mobile",
+      "package": "com.aodeporte.mobile",
       "versionCode": 1
     },
     "web": {

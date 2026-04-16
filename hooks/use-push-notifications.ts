@@ -51,7 +51,7 @@ export function usePushNotifications() {
       const data = response.notification.request.content.data as Record<string, unknown>;
       const deepLink = data?.deep_link as string | undefined;
       if (deepLink) {
-        const path = deepLink.replace(/^aodeportes:\/\//, '/');
+        const path = deepLink.replace(/^aodeporte:\/\//, '/');
         router.push(path as never);
       }
     });
