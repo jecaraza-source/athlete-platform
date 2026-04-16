@@ -23,7 +23,7 @@ export default function CreateTicketScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
   const router = useRouter();
-  const { profile, session } = useAuthStore();
+  const { profile } = useAuthStore();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -38,38 +38,50 @@ export default function CreateTicketScreen() {
   const [pickerSearch, setPickerSearch] = useState('');
 
   // Load assignable staff on mount.
-  // Uses profiles directly — readable thanks to migration 019 RLS policy
-  // that exposes profiles of users with non-athlete roles.
+  // Two-step: get non-athlete profile_ids from user_roles, then fetch those profiles.
+  // Profiles are readable after migration 019 (staff profiles policy).
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase
+        // Step 1 — get all user_roles with their role code
+        const { data: roleRows, error: roleErr } = await supabase
+          .from('user_roles')
+          .select('profile_id, roles(code)');
+
+        if (roleErr) {
+          console.warn('[ticket] load roles error:', roleErr.message);
+          return;
+        }
+
+        // Extract unique profile_ids that are NOT athletes.
+        // Supabase returns embedded resources as arrays, so roles is { code }[].
+        type RoleRow = { profile_id: string; roles: { code: string }[] | { code: string } | null };
+        const nonAthleteIds = [...new Set(
+          (roleRows as unknown as RoleRow[] ?? [])
+            .filter((r) => {
+              const roles = r.roles;
+              const code = Array.isArray(roles) ? roles[0]?.code : roles?.code;
+              return code && code !== 'athlete';
+            })
+            .map((r) => r.profile_id)
+            .filter(Boolean),
+        )];
+
+        if (nonAthleteIds.length === 0) return;
+
+        // Step 2 — fetch profiles (RLS: own profile always + others after migration 019)
+        const { data: profileData, error: profileErr } = await supabase
           .from('profiles')
           .select('id, first_name, last_name')
-          .in(
-            'id',
-            // Sub-select: profile_ids with a staff-level role
-            // (Supabase JS v2 does not support nested selects inline;
-            //  we use a two-step approach via RPC or direct filter).
-            // Since migration 019 allows reading these profiles, we query
-            // them via user_roles joined profile_id and roles code filter.
-            (await supabase
-              .from('user_roles')
-              .select('profile_id, role:roles!user_roles_role_id_fkey(code)')
-            ).data
-              ?.filter((r: { profile_id: string; role: { code: string }[] | { code: string } }) => {
-                const code = Array.isArray(r.role) ? r.role[0]?.code : (r.role as { code: string })?.code;
-                return code && code !== 'athlete';
-              })
-              .map((r: { profile_id: string }) => r.profile_id)
-              .filter(Boolean) ?? []
-          )
+          .in('id', nonAthleteIds)
           .order('last_name', { ascending: true });
 
-        const staff: StaffProfile[] = (data ?? []).filter(
-          (p): p is StaffProfile => !!p?.id,
-        );
-        setStaffList(staff);
+        if (profileErr) {
+          console.warn('[ticket] load profiles error:', profileErr.message);
+          return;
+        }
+
+        setStaffList((profileData ?? []).filter((p): p is StaffProfile => !!p?.id));
       } catch (e) {
         console.warn('[ticket] load staff error', e);
       }

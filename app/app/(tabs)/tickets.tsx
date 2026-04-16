@@ -39,13 +39,16 @@ export default function TicketsScreen() {
         createdBy: isAthlete() ? (profile?.id ?? undefined) : undefined,
       });
       setTickets(data);
-    } catch {
+    } catch (e) {
+      console.warn('[tickets] load error:', JSON.stringify(e));
       setTickets([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [statusFilter, isAthlete, profile?.id]);
+  // isAthlete is a stable Zustand function ref — safe in deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, profile?.id]);
 
   useEffect(() => { load(); }, [load]);
 
