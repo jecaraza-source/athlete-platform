@@ -3,6 +3,7 @@ import { Link } from '@/i18n/navigation';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireAuthenticated } from '@/lib/rbac/server';
 import AthleteDashboard from './athlete-dashboard';
+import { AvatarUploader } from '@/components/avatar/avatar-uploader';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,10 +116,39 @@ export default async function DashboardPage() {
     },
   ] as const;
 
+  const initials = [
+    currentUser.profile?.first_name?.[0] ?? '',
+    currentUser.profile?.last_name?.[0]  ?? '',
+  ].join('').toUpperCase() || '?';
+
+  const staffName = currentUser.profile
+    ? `${currentUser.profile.first_name} ${currentUser.profile.last_name}`.trim()
+    : null;
+
   return (
     <main className="p-8">
-      <h1 className="text-3xl font-bold text-indigo-700">{t('title')}</h1>
-      <p className="mt-2 text-gray-500 mb-6">{t('welcome')}</p>
+      {/* Personalized header with avatar */}
+      <div className="flex items-center gap-4 mb-6">
+        <AvatarUploader
+          currentUrl={currentUser.profile?.avatar_url}
+          initials={initials}
+          size="md"
+          readOnly
+        />
+        <div>
+          {staffName && (
+            <p className="text-sm text-gray-400 mb-0.5">{t('welcome')}</p>
+          )}
+          <h1 className="text-3xl font-bold text-indigo-700">
+            {staffName ?? t('title')}
+          </h1>
+          {currentUser.roles[0] && (
+            <span className="inline-flex items-center mt-1 rounded-full bg-indigo-50 px-3 py-0.5 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
+              {currentUser.roles[0].name ?? currentUser.roles[0].code}
+            </span>
+          )}
+        </div>
+      </div>
 
       {/* KPI metrics row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

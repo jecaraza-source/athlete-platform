@@ -13,6 +13,7 @@
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { AvatarUploader } from '@/components/avatar/avatar-uploader';
 import {
   SECTION_KEYS,
   SECTION_LABELS,
@@ -151,24 +152,37 @@ export default async function AthleteDashboard({ user }: Props) {
     diagPct > 0                        ? 'bg-indigo-500' :
     'bg-gray-300';
 
-  // ── 4. Render ─────────────────────────────────────────────────────────────
+  const headerInitials = [
+    user.profile?.first_name?.[0] ?? '',
+    user.profile?.last_name?.[0]  ?? '',
+  ].join('').toUpperCase() || '?';
+
+  // ── 4. Render ────────────────────────────────────────────────────────────────────────
   return (
     <main className="p-8 max-w-4xl">
 
-      {/* ── Welcome header ────────────────────────────────────────────────── */}
-      <div className="mb-8">
-        <p className="text-sm text-gray-400 mb-0.5">{t('welcome')}</p>
-        <h1 className="text-3xl font-bold text-gray-900">{fullName}</h1>
+      {/* ── Welcome header ──────────────────────────────────────────────────────── */}
+      <div className="mb-8 flex items-center gap-4">
+        <AvatarUploader
+          currentUrl={user.profile?.avatar_url}
+          initials={headerInitials}
+          size="lg"
+          readOnly
+        />
+        <div>
+          <p className="text-sm text-gray-400 mb-0.5">{t('welcome')}</p>
+          <h1 className="text-3xl font-bold text-gray-900">{fullName}</h1>
 
-        {athlete?.discipline && (
-          <p className="text-sm text-gray-500 mt-1">
-            {getDisciplineLabel(athlete.discipline)}
-          </p>
-        )}
+          {athlete?.discipline && (
+            <p className="text-sm text-gray-500 mt-1">
+              {getDisciplineLabel(athlete.discipline)}
+            </p>
+          )}
 
-        <span className="inline-flex items-center mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
-          {t('roleTag')}
-        </span>
+          <span className="inline-flex items-center mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
+            {t('roleTag')}
+          </span>
+        </div>
       </div>
 
       {/* ── Mi Diagnóstico Inicial ────────────────────────────────────────── */}
