@@ -113,10 +113,6 @@ export async function uploadAthleteAttachment(
   moduleTag  = 'seguimiento',
   description?: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  if (!asset.base64) {
-    return { ok: false, error: 'No se obtuvieron datos de la imagen.' };
-  }
-
   try {
     // 1. Derive file metadata
     const ext  = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
@@ -124,15 +120,16 @@ export async function uploadAthleteAttachment(
     const name = `${Date.now()}_${athleteId.slice(0, 8)}.${ext}`;
     const path = `athletes/${athleteId}/${name}`;
 
-    // 2. Decode base64 → ArrayBuffer
-    const binaryStr = atob(asset.base64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+    // 2. Read the file as a Blob via its local URI.
+    //    On Android, ArrayBuffer uploads via fetch fail with "Network request failed".
+    //    fetch(uri).blob() is the correct cross-platform approach in React Native.
+    const fileResponse = await fetch(asset.uri);
+    const blob = await fileResponse.blob();
 
     // 3. Upload to athlete-files bucket
     const { error: uploadError } = await supabase.storage
       .from('athlete-files')
-      .upload(path, bytes.buffer, { contentType: mime, upsert: false });
+      .upload(path, blob, { contentType: mime, upsert: false });
 
     if (uploadError) {
       console.warn('[attachments] upload error:', uploadError.message);

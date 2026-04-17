@@ -163,7 +163,6 @@ export default function AthleteDetailScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.7,
-      base64: true,
     });
     if (result.canceled || !result.assets?.[0]) return;
 
