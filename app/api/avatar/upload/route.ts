@@ -35,17 +35,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Token inválido o expirado.' }, { status: 401 });
     }
 
-    // ── 2. Parse body ─────────────────────────────────────────────────────
-    let body: { base64?: string; profileId?: string };
+    // ── 2. Parse body (multipart/form-data) ──────────────────────────────
+    let formData: FormData;
     try {
-      body = await req.json();
+      formData = await req.formData();
     } catch {
       return NextResponse.json({ error: 'Cuerpo de la solicitud inválido.' }, { status: 400 });
     }
 
-    const { base64, profileId } = body;
-    if (!base64 || !profileId) {
-      return NextResponse.json({ error: 'Faltan campos: base64 o profileId.' }, { status: 400 });
+    const file      = formData.get('file') as File | null;
+    const profileId = formData.get('profileId') as string | null;
+    if (!file || !profileId) {
+      return NextResponse.json({ error: 'Faltan campos: file o profileId.' }, { status: 400 });
     }
 
     // ── 3. Verify ownership ───────────────────────────────────────────────
@@ -60,8 +61,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Perfil no encontrado.' }, { status: 403 });
     }
 
-    // ── 4. Decode base64 → Buffer ─────────────────────────────────────────
-    const buffer = Buffer.from(base64, 'base64');
+    // ── 4. Read file bytes ────────────────────────────────────────────────
+    const buffer = Buffer.from(await file.arrayBuffer());
     if (buffer.byteLength > MAX_BYTES) {
       return NextResponse.json({ error: 'La imagen excede el límite de 5 MB.' }, { status: 413 });
     }
