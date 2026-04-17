@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { createNutritionPlan } from './actions';
 
 type Person = {
@@ -16,6 +17,8 @@ export default function NewPlanForm({
   athletes: Person[];
   nutritionists: Person[];
 }) {
+  const t = useTranslations('followUp.nutrition');
+  const tc = useTranslations('common');
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -41,11 +44,11 @@ export default function NewPlanForm({
           onClick={() => setOpen(true)}
           className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
         >
-          + New plan
+          {t('newPlan')}
         </button>
       ) : (
         <div className="rounded-lg border border-gray-200 p-5">
-          <h2 className="font-semibold mb-4">New Nutrition Plan</h2>
+          <h2 className="font-semibold mb-4">{t('newPlanTitle')}</h2>
 
           {error && (
             <p className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
@@ -57,7 +60,7 @@ export default function NewPlanForm({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="athlete_id">
-                  Athlete <span className="text-red-500">*</span>
+                  {t('athleteLabel')} <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="athlete_id"
@@ -65,7 +68,7 @@ export default function NewPlanForm({
                   required
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value="">Select athlete…</option>
+                  <option value="">{t('selectAthlete')}</option>
                   {athletes.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.first_name} {a.last_name}
@@ -76,7 +79,7 @@ export default function NewPlanForm({
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="nutritionist_profile_id">
-                  Nutritionist <span className="text-red-500">*</span>
+                  {t('nutritionistLabel')} <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="nutritionist_profile_id"
@@ -84,7 +87,7 @@ export default function NewPlanForm({
                   required
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value="">Select nutritionist…</option>
+                  <option value="">{t('selectNutritionist')}</option>
                   {nutritionists.map((n) => (
                     <option key={n.id} value={n.id}>
                       {n.first_name} {n.last_name}
@@ -95,21 +98,21 @@ export default function NewPlanForm({
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1" htmlFor="title">
-                  Title <span className="text-red-500">*</span>
+                  {t('titleLabel')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="title"
                   name="title"
                   type="text"
                   required
-                  placeholder="e.g. Pre-season nutrition plan"
+                  placeholder={t('titlePlaceholder')}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="start_date">
-                  Start date <span className="text-red-500">*</span>
+                  {t('startDateLabel')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="start_date"
@@ -122,7 +125,7 @@ export default function NewPlanForm({
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="end_date">
-                  End date
+                  {t('endDateLabel')}
                 </label>
                 <input
                   id="end_date"
@@ -134,16 +137,16 @@ export default function NewPlanForm({
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="status">
-                  Status
+                  {t('statusLabel')}
                 </label>
                 <select
                   id="status"
                   name="status"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value="active">Active</option>
-                  <option value="completed">Completed</option>
-                  <option value="paused">Paused</option>
+                  <option value="active">{t('statusActive')}</option>
+                  <option value="completed">{t('statusCompleted')}</option>
+                  <option value="paused">{t('statusPaused')}</option>
                 </select>
               </div>
             </div>
@@ -154,14 +157,14 @@ export default function NewPlanForm({
                 disabled={isPending}
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
-                {isPending ? 'Saving…' : 'Save plan'}
+              {isPending ? tc('saving') : t('savePlan')}
               </button>
               <button
                 type="button"
                 onClick={() => { setOpen(false); setError(null); }}
                 className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                {tc('cancel')}
               </button>
             </div>
           </form>

@@ -2,9 +2,12 @@
 
 import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createTicket } from '../actions';
 
 export default function NewTicketForm() {
+  const t = useTranslations('admin.tickets');
+  const tc = useTranslations('common');
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
@@ -35,14 +38,14 @@ export default function NewTicketForm() {
       {/* Title */}
       <div>
         <label className="block text-sm font-medium mb-1" htmlFor="title">
-          Title <span className="text-red-500">*</span>
+          {t('titleLabel')} <span className="text-red-500">*</span>
         </label>
         <input
           id="title"
           name="title"
           type="text"
           required
-          placeholder="Brief summary of the issue"
+          placeholder={t('titlePlaceholder')}
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -50,13 +53,13 @@ export default function NewTicketForm() {
       {/* Description */}
       <div>
         <label className="block text-sm font-medium mb-1" htmlFor="description">
-          Description
+          {t('descriptionLabel')}
         </label>
         <textarea
           id="description"
           name="description"
           rows={6}
-          placeholder="Detailed description of the issue, steps to reproduce, expected behaviour…"
+          placeholder={t('descPlaceholder')}
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -64,7 +67,7 @@ export default function NewTicketForm() {
       {/* Priority */}
       <div>
         <label className="block text-sm font-medium mb-1" htmlFor="priority">
-          Priority
+          {t('priorityLabel')}
         </label>
         <select
           id="priority"
@@ -72,10 +75,10 @@ export default function NewTicketForm() {
           defaultValue="medium"
           className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="low">Low — cosmetic or minor inconvenience</option>
-          <option value="medium">Medium — affects workflow</option>
-          <option value="high">High — blocks users or critical feature</option>
-          <option value="urgent">Urgent — system down or data loss risk</option>
+          <option value="low">{t('formPriorityLow')}</option>
+          <option value="medium">{t('formPriorityMedium')}</option>
+          <option value="high">{t('formPriorityHigh')}</option>
+          <option value="urgent">{t('formPriorityUrgent')}</option>
         </select>
       </div>
 
@@ -86,13 +89,13 @@ export default function NewTicketForm() {
           disabled={isPending}
           className="rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
-          {isPending ? 'Creating…' : 'Create Ticket'}
+          {isPending ? tc('creating') : t('createTicket')}
         </button>
         <a
           href="/admin/tickets"
           className="rounded-md border border-gray-300 px-5 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
         >
-          Cancel
+          {tc('cancel')}
         </a>
       </div>
     </form>

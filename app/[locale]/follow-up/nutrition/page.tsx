@@ -84,6 +84,12 @@ export default async function NutritionPage({
   const t = await getTranslations('followUp.nutrition');
   const tc = await getTranslations('common');
 
+  const statusLabels: Record<string, string> = {
+    active: t('statusActive'),
+    completed: t('statusCompleted'),
+    paused: t('statusPaused'),
+  };
+
   return (
     <main className="p-8">
       <BackButton href="/follow-up" label={tc('backToFollowUp')} />
@@ -119,15 +125,15 @@ export default async function NutritionPage({
                 <h2 className="text-lg font-semibold">{plan.title}</h2>
                 <p className="text-sm text-gray-600 mt-1">
                   {plan.athletes
-                    ? `${plan.athletes.first_name} ${plan.athletes.last_name}`
-                    : 'Unknown athlete'}
+                  ? `${plan.athletes.first_name} ${plan.athletes.last_name}`
+                  : tc('unknownAthlete')}
                 </p>
               </div>
               <div className="flex items-center gap-2 self-start md:self-auto">
                 <span
-                  className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${statusColors[plan.status] ?? 'bg-gray-100 text-gray-600'}`}
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusColors[plan.status] ?? 'bg-gray-100 text-gray-600'}`}
                 >
-                  {plan.status}
+                  {statusLabels[plan.status] ?? plan.status}
                 </span>
                 <PlanStatusSelect planId={plan.id} currentStatus={plan.status} />
               </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { createTrainingSession } from './actions';
 
 type Person = {
@@ -10,6 +11,8 @@ type Person = {
 };
 
 export default function NewSessionForm({ athletes, coaches }: { athletes: Person[]; coaches: Person[] }) {
+  const t = useTranslations('followUp.training');
+  const tc = useTranslations('common');
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -31,15 +34,15 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
   return (
     <div className="mb-8">
       {!open ? (
-        <button
+      <button
           onClick={() => setOpen(true)}
           className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
         >
-          + New session
+          {t('newSession')}
         </button>
       ) : (
         <div className="rounded-lg border border-gray-200 p-5">
-          <h2 className="font-semibold mb-4">New Training Session</h2>
+          <h2 className="font-semibold mb-4">{t('newSessionTitle')}</h2>
 
           {error && (
             <p className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
@@ -51,7 +54,7 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="athlete_id">
-                  Athlete <span className="text-red-500">*</span>
+                  {t('athleteLabel')} <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="athlete_id"
@@ -59,7 +62,7 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
                   required
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value="">Select athlete…</option>
+                  <option value="">{t('selectAthlete')}</option>
                   {athletes.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.first_name} {a.last_name}
@@ -70,7 +73,7 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="coach_profile_id">
-                  Coach <span className="text-red-500">*</span>
+                  {t('coachLabel')} <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="coach_profile_id"
@@ -78,7 +81,7 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
                   required
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value="">Select coach…</option>
+                  <option value="">{t('selectCoach')}</option>
                   {coaches.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.first_name} {c.last_name}
@@ -89,21 +92,21 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="title">
-                  Title <span className="text-red-500">*</span>
+                  {t('titleLabel')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="title"
                   name="title"
                   type="text"
                   required
-                  placeholder="e.g. Morning strength session"
+                  placeholder={t('titlePlaceholder')}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="session_date">
-                  Date <span className="text-red-500">*</span>
+                  {t('dateLabel')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="session_date"
@@ -116,20 +119,20 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="location">
-                  Location
+                  {t('location')}
                 </label>
                 <input
                   id="location"
                   name="location"
                   type="text"
-                  placeholder="e.g. Main gym"
+                  placeholder={t('locationPlaceholder')}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="start_time">
-                  Start time
+                  {t('startTimeLabel')}
                 </label>
                 <input
                   id="start_time"
@@ -141,7 +144,7 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="end_time">
-                  End time
+                  {t('endTimeLabel')}
                 </label>
                 <input
                   id="end_time"
@@ -154,13 +157,13 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
 
             <div>
               <label className="block text-sm font-medium mb-1" htmlFor="notes">
-                Notes
+                {t('notes')}
               </label>
               <textarea
                 id="notes"
                 name="notes"
                 rows={3}
-                placeholder="Any relevant observations…"
+                placeholder={t('notesPlaceholder')}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />
             </div>
@@ -171,14 +174,14 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
                 disabled={isPending}
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
-                {isPending ? 'Saving…' : 'Save session'}
+              {isPending ? tc('saving') : t('saveSession')}
               </button>
               <button
                 type="button"
                 onClick={() => { setOpen(false); setError(null); }}
                 className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                {tc('cancel')}
               </button>
             </div>
           </form>
