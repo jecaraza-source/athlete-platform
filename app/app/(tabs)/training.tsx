@@ -5,6 +5,8 @@ import {
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { Colors, PRIMARY } from '@/constants/theme';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +19,11 @@ import {
   createTrainingSession,
   type TrainingSession,
 } from '@/services/training';
+import {
+  uploadSessionFile,
+  formatFileSize,
+  type UploadableFile,
+} from '@/services/attachments';
 
 // ---------------------------------------------------------------------------
 // Session card
@@ -87,6 +94,46 @@ type FormState = {
   location: string;
   notes: string;
 };
+
+// ---------------------------------------------------------------------------
+// FileChip — shows a pending attachment with a remove button
+// ---------------------------------------------------------------------------
+
+function FileChip({
+  file, onRemove,
+}: {
+  file: UploadableFile;
+  onRemove: () => void;
+}) {
+  const scheme = useColorScheme() ?? 'light';
+  const colors = Colors[scheme];
+  const isImage = file.mimeType.startsWith('image/');
+
+  return (
+    <View style={[
+      styles.fileChip,
+      { backgroundColor: scheme === 'dark' ? '#1e2022' : '#f1f5f9', borderColor: scheme === 'dark' ? '#374151' : '#e2e8f0' },
+    ]}>
+      <Ionicons
+        name={isImage ? 'image-outline' : 'document-outline'}
+        size={14}
+        color={PRIMARY}
+        style={{ marginRight: 5 }}
+      />
+      <Text style={[styles.fileChipName, { color: colors.text }]} numberOfLines={1}>
+        {file.name}
+      </Text>
+      {!!file.size && (
+        <Text style={[styles.fileChipSize, { color: colors.icon }]}>
+          {' '}({formatFileSize(file.size)})
+        </Text>
+      )}
+      <TouchableOpacity onPress={onRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 6 }}>
+        <Ionicons name="close-circle" size={16} color={colors.icon} />
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 const todayISO = new Date().toISOString().slice(0, 10);
 
@@ -209,7 +256,50 @@ function NewSessionForm({
     notes: '',
   });
   const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState<Partial<FormState>>({});
+  const [errors, setErrors] = useState<Partial<FormState>>({})
+  const [pendingFiles, setPendingFiles] = useState<UploadableFile[]>([]);
+
+  // ── File pickers ────────────────────────────────────────────────────────
+  async function pickFromGallery() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso necesario', 'Se necesita acceso a la galería para adjuntar fotos.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    const newFiles: UploadableFile[] = result.assets.map((asset) => {
+      const ext  = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const name = asset.fileName ?? `foto_${Date.now()}.${ext}`;
+      const mime = asset.mimeType ?? (ext === 'jpg' ? 'image/jpeg' : `image/${ext}`);
+      return { uri: asset.uri, name, mimeType: mime, size: asset.fileSize ?? null };
+    });
+    setPendingFiles((prev) => [...prev, ...newFiles]);
+  }
+
+  async function pickDocument() {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ['*/*'],
+      multiple: true,
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    const newFiles: UploadableFile[] = result.assets.map((asset) => ({
+      uri:      asset.uri,
+      name:     asset.name,
+      mimeType: asset.mimeType ?? 'application/octet-stream',
+      size:     asset.size ?? null,
+    }));
+    setPendingFiles((prev) => [...prev, ...newFiles]);
+  }
+
+  function removeFile(index: number) {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  }
 
   function set(field: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -228,13 +318,12 @@ function NewSessionForm({
     }
     setSaving(true);
     try {
-      await createTrainingSession({
+      const session = await createTrainingSession({
         athlete_id: athleteId,
-        // The Training tab is exclusively shown to athlete-role users
-        // (href: showTraining ? undefined : null in _layout.tsx).
-        // Athlete self-registered sessions have no coach — passing null avoids
-        // incorrectly attributing the athlete's own profile as a coach.
-        coach_profile_id: null,
+        // The DB column is NOT NULL, so we pass the athlete's own profile ID.
+        // Self-registered sessions by athletes will have their own profile as
+        // coach_profile_id; staff-created sessions override this in the back-office.
+        coach_profile_id: profile.id,
         title: form.title.trim(),
         session_date: form.session_date,
         start_time: form.start_time || undefined,
@@ -242,6 +331,21 @@ function NewSessionForm({
         location: form.location.trim() || undefined,
         notes: form.notes.trim() || undefined,
       });
+
+      // Upload any pending attachments linked to the new session
+      if (pendingFiles.length > 0) {
+        const results = await Promise.all(
+          pendingFiles.map((f) => uploadSessionFile(f, athleteId, session.id))
+        );
+        const failed = results.filter((r) => !r.ok).length;
+        if (failed > 0) {
+          Alert.alert(
+            'Sesión guardada',
+            `${failed} archivo${failed > 1 ? 's' : ''} no se pudo${failed > 1 ? 'ieron' : ''} subir. Intenta adjuntarlos nuevamente.`,
+          );
+        }
+      }
+
       onSaved();
     } catch (e: unknown) {
       const msg =
@@ -312,6 +416,38 @@ function NewSessionForm({
         numberOfLines={4}
         style={{ height: 90, textAlignVertical: 'top' }}
       />
+
+      {/* ── Adjuntar archivos ─────────────────────────────────────────── */}
+      <View style={styles.fieldWrapper}>
+        <Text style={[styles.fieldLabel, { color: colors.text }]}>Adjuntar archivos</Text>
+        <View style={styles.attachRow}>
+          <TouchableOpacity
+            style={[styles.attachBtn, { borderColor: PRIMARY + '60', backgroundColor: PRIMARY + '10' }]}
+            onPress={pickFromGallery}
+            disabled={saving}
+          >
+            <Ionicons name="images-outline" size={16} color={PRIMARY} />
+            <Text style={[styles.attachBtnText, { color: PRIMARY }]}>Galería</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.attachBtn, { borderColor: PRIMARY + '60', backgroundColor: PRIMARY + '10' }]}
+            onPress={pickDocument}
+            disabled={saving}
+          >
+            <Ionicons name="document-attach-outline" size={16} color={PRIMARY} />
+            <Text style={[styles.attachBtnText, { color: PRIMARY }]}>Documentos</Text>
+          </TouchableOpacity>
+        </View>
+
+        {pendingFiles.length > 0 && (
+          <View style={styles.fileList}>
+            {pendingFiles.map((f, i) => (
+              <FileChip key={`${f.name}-${i}`} file={f} onRemove={() => removeFile(i)} />
+            ))}
+          </View>
+        )}
+      </View>
 
       <View style={styles.formActions}>
         <Button
@@ -474,4 +610,23 @@ const styles = StyleSheet.create({
   formActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
   saveBtn: { flex: 1 },
   cancelBtn: { flex: 1 },
+
+  // Attach buttons
+  attachRow: { flexDirection: 'row', gap: 10 },
+  attachBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1, borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 9,
+  },
+  attachBtnText: { fontSize: 13, fontWeight: '600' },
+
+  // File chip list
+  fileList: { marginTop: 10, gap: 6 },
+  fileChip: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 7,
+  },
+  fileChipName: { flex: 1, fontSize: 12 },
+  fileChipSize: { fontSize: 11 },
 });
