@@ -50,6 +50,7 @@ function detectLocale(request: NextRequest): Locale {
  * Routes that are accessible without a session (locale-stripped paths).
  */
 const PUBLIC_PATHS: string[] = [
+  '/',          // Landing page — public marketing page
   '/login',
   '/login/forgot-password',
   '/auth/confirm', // Supabase password-reset callback — user arrives unauthenticated with a ?code=

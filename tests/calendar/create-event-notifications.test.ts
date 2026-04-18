@@ -58,7 +58,7 @@ vi.mock('@/lib/notifications/providers/onesignal-adapter', () => ({
 }));
 
 // Import after mocks are declared so the module under test picks up mocked deps
-import { createEvent } from '@/app/[locale]/calendar/actions';
+import { createEvent } from '@/app/[locale]/(app)/calendar/actions';
 import { assertPermission } from '@/lib/rbac/server';
 
 // ---------------------------------------------------------------------------

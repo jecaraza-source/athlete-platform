@@ -273,7 +273,7 @@ import {
   saveCoachSection,
   savePhysioSection,
   saveIntegratedResult,
-} from '@/app/[locale]/athletes/[id]/diagnostic/actions';
+} from '@/app/[locale]/(app)/athletes/[id]/diagnostic/actions';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
