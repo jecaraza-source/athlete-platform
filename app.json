@@ -11,13 +11,16 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.aodeporte.mobile",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "NSCameraUsageDescription": "AO Deportes usa la cámara para actualizar tu foto de perfil.",
         "NSPhotoLibraryUsageDescription": "AO Deportes accede a tu galería para seleccionar tu foto de perfil.",
         "NSPhotoLibraryAddUsageDescription": "AO Deportes puede guardar fotos en tu galería.",
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": ["remote-notification", "fetch"]
+        "UIBackgroundModes": [
+          "remote-notification",
+          "fetch"
+        ]
       }
     },
     "android": {
@@ -43,6 +46,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "onesignal-expo-plugin",
+        {
+          "mode": "production"
+        }
+      ],
       [
         "expo-image-picker",
         {
