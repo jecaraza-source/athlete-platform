@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.aodeporte.mobile",
-      "buildNumber": "3",
+      "buildNumber": "5",
       "infoPlist": {
         "NSCameraUsageDescription": "AO Deportes usa la cámara para actualizar tu foto de perfil.",
         "NSPhotoLibraryUsageDescription": "AO Deportes accede a tu galería para seleccionar tu foto de perfil.",
@@ -46,12 +46,6 @@
     },
     "plugins": [
       "expo-router",
-      [
-        "onesignal-expo-plugin",
-        {
-          "mode": "production"
-        }
-      ],
       [
         "expo-image-picker",
         {
