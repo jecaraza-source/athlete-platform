@@ -12,6 +12,9 @@ import type { Permission } from '@/lib/rbac/types';
 const GROUPS: Record<string, string[]> = {
   Athletes:       ['view_athletes', 'create_athletes', 'edit_athletes', 'delete_athletes'],
   Calendar:       ['view_calendar', 'manage_calendar'],
+  Training:       ['manage_training', 'view_training'],
+  Tickets:        ['view_tickets', 'create_tickets', 'edit_tickets', 'assign_tickets', 'comment_tickets', 'close_tickets'],
+  Notifications:  ['manage_email_campaigns', 'manage_push_campaigns', 'manage_notification_templates', 'manage_ticket_emails', 'view_notification_logs', 'send_notifications'],
   Administration: ['manage_users', 'manage_roles', 'manage_permissions'],
 };
 
@@ -63,6 +66,9 @@ export default function PermissionsForm({
   const groupDescriptions: Record<string, string> = {
     Athletes:       t('groupAthletesDesc'),
     Calendar:       t('groupCalendarDesc'),
+    Training:       t('groupTrainingDesc'),
+    Tickets:        t('groupTicketsDesc'),
+    Notifications:  t('groupNotificationsDesc'),
     Administration: t('groupAdministrationDesc'),
   };
 
