@@ -89,7 +89,12 @@ async function registerForPushNotifications(
   }
 
   try {
-    const token = await Notifications.getExpoPushTokenAsync();
+    const projectId = (
+      Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined
+    )?.eas?.projectId;
+    const token = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined,
+    );
     await registerDeviceToken({
       profileId,
       deviceToken: token.data,

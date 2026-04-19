@@ -13,6 +13,7 @@ import {
   markAllNotificationsAsRead,
 } from '@/services/notifications';
 import { useAuthStore } from '@/store';
+import { useRealtimeTable } from '@/hooks/use-realtime';
 import type { PushJob } from '@/types';
 
 export default function NotificationsScreen() {
@@ -37,6 +38,19 @@ export default function NotificationsScreen() {
   }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(); }, [load]);
+
+  // Auto-reload the list whenever a new push_job is inserted for this profile.
+  // This makes notifications appear in real time without manual pull-to-refresh.
+  // Channel suffix must differ from useRealtimeNotificationBadge (which uses
+  // 'rt_push_jobs_{profileId}') to avoid adding listeners to an already-
+  // subscribed channel — Supabase throws if .on() is called after .subscribe().
+  useRealtimeTable(
+    'push_jobs',
+    'INSERT',
+    profile?.id ? `recipient_profile_id=eq.${profile.id}` : undefined,
+    load,
+    profile?.id ? `list_${profile.id}` : 'list',
+  );
 
   const onRefresh = () => { setRefreshing(true); load(); };
 

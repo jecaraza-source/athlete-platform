@@ -113,11 +113,11 @@ export default function CalendarScreen() {
   const today = new Date();
 
   const isInitialized = useAuthStore((s) => s.isInitialized);
-  const athleteId     = useAuthStore((s) => s.athleteId);
-  const isAthleteUser = useAuthStore((s) => s.roles.some((r) => r.code === 'athlete'));
-  const isStaffUser   = useAuthStore((s) =>
-    s.roles.some((r) => ['super_admin', 'admin', 'coach', 'staff', 'program_director'].includes(r.code))
-  );
+  const profileId     = useAuthStore((s) => s.profile?.id);
+  // isAthleteUser controls DATA filtering (participant-based vs all-events) — keep as role check
+  const isAthleteUser    = useAuthStore((s) => s.roles.some((r) => r.code === 'athlete'));
+  // FAB visibility is an ACCESS CONTROL decision — use permission
+  const canManageCalendar = useAuthStore((s) => s.hasPermission('manage_calendar'));
 
   const [year, setYear]   = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -155,11 +155,11 @@ export default function CalendarScreen() {
           let data: CalendarEvent[];
 
           if (isAthleteUser) {
-            // Athlete: use the athleteId resolved once by the auth store.
-            if (athleteId) {
-              data = await listEventsForAthlete(athleteId, startISO, endISO);
+            // Athlete: filter events by their profile ID.
+            if (profileId) {
+              data = await listEventsForAthlete(profileId, startISO, endISO);
             } else {
-              // athleteId not yet resolved or no athlete record — show all as fallback
+              // profile not yet resolved — show all as fallback
               data = await listEventsInRange(startISO, endISO);
             }
           } else {
@@ -180,7 +180,7 @@ export default function CalendarScreen() {
     })();
 
     return () => { cancelled = true; };
-  }, [year, month, isInitialized, isAthleteUser, athleteId, reloadKey]);
+  }, [year, month, isInitialized, isAthleteUser, profileId, reloadKey]);
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear((y) => y - 1); }
@@ -301,8 +301,8 @@ export default function CalendarScreen() {
       </View>
     </ScrollView>
 
-    {/* FAB — visible only for staff */}
-    {isStaffUser && (
+    {/* FAB — visible only with manage_calendar permission */}
+    {canManageCalendar && (
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: PRIMARY }]}
         onPress={() => router.push('/app/calendar/create' as never)}

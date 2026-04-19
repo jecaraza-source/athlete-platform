@@ -24,10 +24,12 @@ export default function TabsLayout() {
   // Subscribe to the raw data — NOT the helper functions — so this
   // component re-renders when loadUserData() populates permissions/roles.
   const permissions = useAuthStore((s) => s.permissions);
-  const roles       = useAuthStore((s) => s.roles);
   const profile     = useAuthStore((s) => s.profile);
-  const showAthletes = permissions.has('view_athletes');
-  const showTraining  = roles.some((r) => r.code === 'athlete');
+  const showAthletes    = permissions.has('view_athletes');
+  // Training tab: visible to anyone with view_training OR manage_training
+  const showTraining    = permissions.has('view_training') || permissions.has('manage_training');
+  // Ticket create button: visible only to users who can open tickets
+  const canCreateTicket = permissions.has('create_tickets');
 
   // Notification badge — counts unread push_jobs (read_at IS NULL).
   // Refreshed on mount, on profile change, and on every incoming Realtime event.
@@ -96,8 +98,8 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="ticket-outline" size={size} color={color} />
           ),
-          // Add button moved here from the inline screen header
-          headerRight: () => (
+          // Add button: only for roles with create_tickets permission
+          headerRight: canCreateTicket ? () => (
             <TouchableOpacity
               onPress={() => router.push('/app/tickets/create' as never)}
               style={{ marginRight: 14 }}
@@ -105,7 +107,7 @@ export default function TabsLayout() {
             >
               <Ionicons name="add-circle" size={26} color={PRIMARY} />
             </TouchableOpacity>
-          ),
+          ) : undefined,
         }}
       />
 
@@ -113,8 +115,15 @@ export default function TabsLayout() {
         name="notifications"
         options={{
           title: 'Alertas',
-          tabBarBadge: notifBadge,
-          tabBarBadgeStyle: { fontSize: 10, minWidth: 16, height: 16 },
+          // Show a small red dot (not a count) when there are unread notifications
+          tabBarBadge: notifBadge !== undefined ? '' : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: '#dc2626',
+            minWidth: 10,
+            height: 10,
+            borderRadius: 5,
+            borderWidth: 0,
+          },
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="notifications-outline" size={size} color={color} />
           ),

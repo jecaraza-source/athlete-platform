@@ -101,9 +101,8 @@ export default function AthleteDetailScreen() {
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'diagnostic' | 'seguimiento'>('info');
 
-  const isStaffUser = useAuthStore((s) =>
-    s.roles.some((r) => ['super_admin', 'admin', 'coach', 'staff', 'program_director'].includes(r.code))
-  );
+  // Edit actions (upload docs, update diagnostic) gated by edit_athletes permission
+  const canEditAthletes = useAuthStore((s) => s.hasPermission('edit_athletes'));
 
   // Track which section is being edited (null = none)
   const [editingSection, setEditingSection] = useState<DiagnosticSectionKey | null>(null);
@@ -499,7 +498,7 @@ export default function AthleteDetailScreen() {
               <Text style={[styles.sectionsTitle, { color: colors.text }]}>
                 Documentos ({attachments.length})
               </Text>
-              {isStaffUser && (
+              {canEditAthletes && (
                 <TouchableOpacity
                   onPress={handleAddImage}
                   disabled={uploadingDoc}
@@ -580,7 +579,7 @@ export default function AthleteDetailScreen() {
                             bg={statusC.bg}
                             color={statusC.text}
                           />
-                          {isStaffUser && (
+                          {canEditAthletes && (
                             <TouchableOpacity
                               onPress={() => setEditingSection(isEditing ? null : key)}
                               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

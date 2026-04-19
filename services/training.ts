@@ -9,6 +9,10 @@ export type TrainingSession = {
   start_time: string | null;
   end_time: string | null;
   notes: string | null;
+  /** Athlete's feedback comment on the session (migration 028). */
+  athlete_comment: string | null;
+  /** Whether the athlete marked the session as completed (migration 028). */
+  is_done: boolean;
   created_at?: string;
 };
 
@@ -51,6 +55,18 @@ export async function createTrainingSession(
     .single();
   if (error) throw error;
   return data as TrainingSession;
+}
+
+/** Update athlete feedback (comment and/or done status) on a session. */
+export async function updateSessionFeedback(
+  sessionId: string,
+  feedback: { athlete_comment?: string | null; is_done?: boolean },
+): Promise<void> {
+  const { error } = await supabase
+    .from('training_sessions')
+    .update(feedback)
+    .eq('id', sessionId);
+  if (error) throw error;
 }
 
 /** Delete a training session. */

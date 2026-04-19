@@ -3,6 +3,7 @@ import {
   View, FlatList, StyleSheet, useColorScheme,
   RefreshControl, TouchableOpacity, Text,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Colors, PRIMARY } from '@/constants/theme';
@@ -32,17 +33,21 @@ export default function TicketsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<TicketStatus | undefined>(undefined);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoadError(null);
     try {
       const data = await listTickets({
-        status:    statusFilter,
-        // Athletes only see tickets they created; staff see all
-        createdBy: isAthleteUser ? (profile?.id ?? undefined) : undefined,
+        status: statusFilter,
+        // Athletes see tickets they created OR are assigned to; staff see all
+        involvedProfileId: isAthleteUser ? (profile?.id ?? undefined) : undefined,
       });
       setTickets(data);
     } catch (e) {
-      console.warn('[tickets] load error:', JSON.stringify(e));
+      const msg = (e as { message?: string })?.message ?? 'Error de conexión';
+      console.warn('[tickets] load error:', msg);
+      setLoadError(msg.includes('timed out') || msg.includes('Network') ? 'Sin conexión. Verifica tu red e intenta de nuevo.' : msg);
       setTickets([]);
     } finally {
       setLoading(false);
@@ -77,6 +82,16 @@ export default function TicketsScreen() {
         ))}
       </View>
 
+      {loadError && (
+        <View style={styles.errorBanner}>
+          <Ionicons name="wifi-outline" size={18} color="#dc2626" />
+          <Text style={styles.errorText}>{loadError}</Text>
+          <TouchableOpacity onPress={() => { setLoading(true); load(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={[styles.retryText, { color: PRIMARY }]}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {loading ? (
         <Loading fullScreen />
       ) : (
@@ -106,4 +121,11 @@ const styles = StyleSheet.create({
   filter: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, backgroundColor: '#e2e8f0' },
   filterText: { fontSize: 12, fontWeight: '500' },
   list: { paddingHorizontal: 16, paddingBottom: 30 },
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    margin: 12, padding: 12, borderRadius: 10,
+    backgroundColor: '#fee2e2',
+  },
+  errorText: { flex: 1, fontSize: 13, color: '#dc2626' },
+  retryText: { fontSize: 13, fontWeight: '600' },
 });
