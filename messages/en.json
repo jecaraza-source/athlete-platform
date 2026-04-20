@@ -392,7 +392,7 @@
         "groupTicketsDesc": "Control ticket lifecycle: view, create, edit, assign, comment, and close.",
         "groupNotificationsDesc": "Control push and email notification campaigns, templates, and send permissions.",
         "groupAdministrationDesc": "Control access to user management and RBAC configuration.",
-        "groupOtherDesc": "Additional custom permissions."
+        "groupOtherDesc": "Additional custom permissions.",
         "noPermissionsYet": "No permissions defined yet.",
         "noPermissionsHint": "Go to <link>Permissions</link> to create some first.",
         "allToggle": "All",

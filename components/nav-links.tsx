@@ -31,6 +31,12 @@ const mainLinks = [
     active:   'bg-sky-100 text-sky-900',
   },
   {
+    href: '/plans' as const,
+    key: 'plans',
+    inactive: 'bg-indigo-50  text-indigo-600  hover:bg-indigo-100  hover:text-indigo-800',
+    active:   'bg-indigo-100 text-indigo-900',
+  },
+  {
     href: '/follow-up' as const,
     key: 'followUp',
     inactive: 'bg-amber-50  text-amber-600  hover:bg-amber-100  hover:text-amber-800',
@@ -41,12 +47,6 @@ const mainLinks = [
     key: 'protocols',
     inactive: 'bg-violet-50  text-violet-600  hover:bg-violet-100  hover:text-violet-800',
     active:   'bg-violet-100 text-violet-900',
-  },
-  {
-    href: '/plans' as const,
-    key: 'plans',
-    inactive: 'bg-indigo-50  text-indigo-600  hover:bg-indigo-100  hover:text-indigo-800',
-    active:   'bg-indigo-100 text-indigo-900',
   },
   // ―― Athlete-only link: Mis Tickets ―――――――――――――――――――――――――――――――――――――
   // Staff/admin access tickets via the Communications > /admin/tickets route.

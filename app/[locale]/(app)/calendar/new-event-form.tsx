@@ -14,17 +14,16 @@ const EVENT_TYPES = [
 
 const STATUSES = ['scheduled', 'completed', 'cancelled'];
 
-type Profile = { id: string; first_name: string; last_name: string };
 type Athlete = { id: string; first_name: string; last_name: string };
 type Sport  = { id: string; name: string; category_type: string };
 type ParticipationMode = 'none' | 'individual' | 'group';
 
 export default function NewEventForm({
-  profiles,
+  currentProfileId,
   athletes = [],
   sports = [],
 }: {
-  profiles: Profile[];
+  currentProfileId: string;
   athletes?: Athlete[];
   sports?: Sport[];
 }) {
@@ -90,6 +89,7 @@ export default function NewEventForm({
       )}
 
       <form ref={formRef} action={handleSubmit} className="space-y-3">
+        <input type="hidden" name="created_by_profile_id" value={currentProfileId} />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium mb-1" htmlFor="ev_title">
@@ -103,25 +103,6 @@ export default function NewEventForm({
               placeholder="e.g. Morning training"
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
             />
-          </div>
-
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-medium mb-1" htmlFor="ev_created_by">
-              Created by <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="ev_created_by"
-              name="created_by_profile_id"
-              required
-              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-            >
-              <option value="">Select…</option>
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.first_name} {p.last_name}
-                </option>
-              ))}
-            </select>
           </div>
 
           {/* Sport */}

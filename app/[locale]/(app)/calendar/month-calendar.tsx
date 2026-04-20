@@ -16,7 +16,6 @@ type CalendarEvent = {
   end_at: string;
 };
 
-type Profile     = { id: string; first_name: string; last_name: string };
 type Athlete     = { id: string; first_name: string; last_name: string };
 type Participant = { event_id: string; participant_id: string };
 type View        = 'day' | 'week' | 'month';
@@ -204,13 +203,13 @@ function TimeGrid({ dates, events }: { dates: Date[]; events: CalendarEvent[] })
 
 export default function MonthCalendar({
   events,
-  profiles,
+  currentProfileId,
   athletes = [],
   participants = [],
   sports = [],
 }: {
   events: CalendarEvent[];
-  profiles: Profile[];
+  currentProfileId: string;
   athletes?: Athlete[];
   participants?: Participant[];
   sports?: { id: string; name: string; category_type: string }[];
@@ -335,7 +334,7 @@ export default function MonthCalendar({
               </button>
             ))}
           </div>
-          <NewEventForm profiles={profiles} athletes={athletes} sports={sports} />
+          <NewEventForm currentProfileId={currentProfileId} athletes={athletes} sports={sports} />
         </div>
       </div>
 

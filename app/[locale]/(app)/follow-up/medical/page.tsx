@@ -5,9 +5,9 @@ import { requirePermission } from '@/lib/rbac/server';
 import AthleteFilter from '../nutrition/athlete-filter';
 import NewCaseForm from './new-case-form';
 import NewMedicalSessionForm from './new-session-form';
-import EditSessionForm from './edit-session-form';
 import CaseStatusSelect from './case-status-select';
 import SessionChart from './session-chart';
+import SessionsList from './sessions-list';
 import AttachmentsLoader from '@/components/attachments/attachments-loader';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 type MedicalSession = {
   id: string;
   session_date: string;
+  created_at: string;
   treatment_summary: string | null;
   pain_score: number | null;
   health_score: number | null;
@@ -57,7 +58,7 @@ export default async function MedicalPage({
     .select(
       'id, athlete_id, status, opened_at, condition, notes, ' +
       'athletes(first_name, last_name), profiles(first_name, last_name), ' +
-      'medical_sessions(id, session_date, treatment_summary, pain_score, health_score, weight_kg, blood_pressure, adherence_score, notes, next_session_date)'
+      'medical_sessions(id, session_date, created_at, treatment_summary, pain_score, health_score, weight_kg, blood_pressure, adherence_score, notes, next_session_date)'
     )
     .order('opened_at', { ascending: false });
 
@@ -191,17 +192,7 @@ export default async function MedicalPage({
               {c.medical_sessions.length === 0 ? (
                 <p className="text-sm text-gray-400">{tc('noSessionsYet')}</p>
               ) : (
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {c.medical_sessions
-                    .slice()
-                    .sort(
-                      (a, b) =>
-                        new Date(b.session_date).getTime() - new Date(a.session_date).getTime()
-                    )
-                    .map((s) => (
-                      <EditSessionForm key={s.id} session={s} />
-                    ))}
-                </div>
+                <SessionsList sessions={c.medical_sessions} />
               )}
             </div>
 

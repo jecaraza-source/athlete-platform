@@ -19,7 +19,7 @@ export default async function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex bg-gray-50 text-gray-900">
       {/* Sidebar — hidden when printing */}
-      <aside className="w-56 shrink-0 bg-gray-50 border-r border-gray-200 flex flex-col print:hidden">
+      <aside className="w-56 shrink-0 bg-gray-50 border-r border-gray-200 flex flex-col print:hidden sticky top-0 h-screen overflow-y-auto">
         {/* Logo */}
         <div className="px-5 py-5 border-b border-gray-200">
         <Image

@@ -392,7 +392,7 @@
         "groupTicketsDesc": "Controla el ciclo de vida de tickets: ver, crear, editar, asignar, comentar y cerrar.",
         "groupNotificationsDesc": "Controla campañas de notificaciones push y email, plantillas y permisos de envío.",
         "groupAdministrationDesc": "Controla el acceso a gestión de usuarios y configuración RBAC.",
-        "groupOtherDesc": "Permisos personalizados adicionales."
+        "groupOtherDesc": "Permisos personalizados adicionales.",
         "noPermissionsYet": "Aún no hay permisos definidos.",
         "noPermissionsHint": "Ve a <link>Permisos</link> para crear algunos primero.",
         "allToggle": "Todos",

@@ -1,7 +1,7 @@
 import BackButton from '@/components/back-button';
 import { getTranslations } from 'next-intl/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requirePermission } from '@/lib/rbac/server';
+import { requirePermission, getCurrentUser } from '@/lib/rbac/server';
 import MonthCalendar from './month-calendar';
 import EventsListClient from './events-list-client';
 
@@ -24,9 +24,11 @@ type EventRow = {
 export default async function CalendarPage() {
   await requirePermission('view_calendar');
 
+  const currentUser = await getCurrentUser();
+  const currentProfileId = currentUser?.profile?.id ?? '';
+
   const [
     { data, error },
-    { data: profilesData },
     { data: athletesData },
     { data: participantsData },
     { data: sportsData },
@@ -35,10 +37,6 @@ export default async function CalendarPage() {
       .from('events')
       .select('id, title, event_type, sport_id, start_at, end_at, status, description, sports(id, name)')
       .order('start_at', { ascending: true }),
-    supabaseAdmin
-      .from('profiles')
-      .select('id, first_name, last_name')
-      .order('last_name', { ascending: true }),
     supabaseAdmin
       .from('athletes')
       .select('id, first_name, last_name')
@@ -62,7 +60,6 @@ export default async function CalendarPage() {
     sport_name: (Array.isArray(e.sports) ? e.sports[0] : e.sports)?.name ?? null,
   }));
 
-  const profiles    = (profilesData ?? []) as { id: string; first_name: string; last_name: string }[];
   const athletes    = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
   const participants = (participantsData ?? []) as { event_id: string; participant_id: string }[];
   const sports      = (sportsData    ?? []) as Sport[];
@@ -87,7 +84,7 @@ export default async function CalendarPage() {
 
       <MonthCalendar
         events={events}
-        profiles={profiles}
+        currentProfileId={currentProfileId}
         athletes={athletes}
         participants={participants}
         sports={sports}

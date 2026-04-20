@@ -30,6 +30,7 @@ export function PlanCard({ plan, signedUrl, readOnly = false }: Props) {
     month: 'short',
     year:  'numeric',
   });
+  const isNew = Date.now() - new Date(plan.created_at).getTime() < 7 * 24 * 60 * 60 * 1000;
 
   function handleDelete() {
     if (!confirm(`¿Eliminar el plan "${plan.title}"? Esta acción no se puede deshacer.`)) return;
@@ -66,16 +67,23 @@ export function PlanCard({ plan, signedUrl, readOnly = false }: Props) {
           </p>
         </div>
 
-        {/* Published badge */}
-        <span
-          className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-            published
-              ? 'bg-indigo-50 text-indigo-700'
-              : 'bg-gray-100 text-gray-500'
-          }`}
-        >
-          {published ? '📱 En app' : 'Borrador'}
-        </span>
+        {/* Badges */}
+        <div className="shrink-0 flex items-center gap-1.5">
+          {isNew && (
+            <span className="inline-flex items-center rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-bold text-white">
+              Nuevo
+            </span>
+          )}
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+              published
+                ? 'bg-indigo-50 text-indigo-700'
+                : 'bg-gray-100 text-gray-500'
+            }`}
+          >
+            {published ? '📱 En app' : 'Borrador'}
+          </span>
+        </div>
       </div>
 
       {/* Description */}

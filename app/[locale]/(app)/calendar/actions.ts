@@ -2,13 +2,18 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { assertPermission } from '@/lib/rbac/server';
+import { assertPermission, getCurrentUser } from '@/lib/rbac/server';
 import { sendEmailDirect } from '@/lib/notifications/email-service';
 import { oneSignalAdapter } from '@/lib/notifications/providers/onesignal-adapter';
 
 export async function createEvent(formData: FormData) {
   const denied = await assertPermission('manage_calendar');
   if (denied) return denied;
+
+  // Always use the signed-in user's profile — never trust client-supplied value.
+  const currentUser = await getCurrentUser();
+  const createdByProfileId = currentUser?.profile?.id;
+  if (!createdByProfileId) return { error: 'Could not resolve your profile. Please sign in again.' };
 
   const payload = {
     title:                 formData.get('title')                 as string,
@@ -18,7 +23,7 @@ export async function createEvent(formData: FormData) {
     end_at:                formData.get('end_at')                as string,
     status:               (formData.get('status') as string)    || 'scheduled',
     description:          (formData.get('description') as string) || null,
-    created_by_profile_id: formData.get('created_by_profile_id') as string,
+    created_by_profile_id: createdByProfileId,
   };
 
   // Insert event and get back the new row's id
