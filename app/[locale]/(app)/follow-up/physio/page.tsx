@@ -8,6 +8,7 @@ import AthleteFilter from '../nutrition/athlete-filter';
 import EditSessionForm from './edit-session-form';
 import CaseStatusSelect from './case-status-select';
 import AttachmentsLoader from '@/components/attachments/attachments-loader';
+import LinkedPlansSection, { type LinkedPlan } from '@/components/follow-up/linked-plans-section';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +53,16 @@ export default async function PhysioPage({
 
   if (selectedAthleteId) casesQuery = casesQuery.eq('athlete_id', selectedAthleteId);
 
-  const [{ data: casesData, error }, { data: athletesData }, physiosData, { data: injuriesData }] =
+  let plansQuery = supabaseAdmin
+    .from('plans')
+    .select('id, title, created_at, is_published, athlete_plans(athlete_id, athletes(first_name, last_name))')
+    .eq('type', 'rehabilitation')
+    .order('created_at', { ascending: false });
+  if (selectedAthleteId) {
+    plansQuery = plansQuery.eq('athlete_plans.athlete_id', selectedAthleteId);
+  }
+
+  const [{ data: casesData, error }, { data: athletesData }, physiosData, { data: injuriesData }, { data: plansData }] =
     await Promise.all([
       casesQuery,
       supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name'),
@@ -60,6 +70,7 @@ export default async function PhysioPage({
       // Falls back to legacy profiles.role = 'physio'.
       getProfilesByRoleCodes(['staff'], ['physio']),
       supabaseAdmin.from('injuries').select('id, injury_type, athlete_id'),
+      plansQuery,
     ]);
 
   const rawCases = (casesData ?? []) as unknown as PhysioCase[];
@@ -71,6 +82,7 @@ export default async function PhysioPage({
   const athletes = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
   const physios = physiosData;
   const injuries = (injuriesData ?? []) as { id: string; injury_type: string; athlete_id: string }[];
+  const linkedPlans = (plansData ?? []) as unknown as LinkedPlan[];
 
   const caseOptions = cases.filter((c) => c.status !== 'closed').map((c) => ({
     id: c.id,
@@ -90,6 +102,8 @@ export default async function PhysioPage({
       <p className="text-gray-600 mb-8">{t('description')}</p>
 
       <AthleteFilter athletes={athletes} selectedId={selectedAthleteId} />
+
+      <LinkedPlansSection plans={linkedPlans} followUpPath="/follow-up/physio" />
 
       <div className="flex flex-wrap items-start gap-3 mb-8">
         <NewCaseForm athletes={athletes} physios={physios} injuries={injuries} />

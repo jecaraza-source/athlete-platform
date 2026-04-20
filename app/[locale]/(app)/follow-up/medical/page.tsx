@@ -9,6 +9,7 @@ import CaseStatusSelect from './case-status-select';
 import SessionChart from './session-chart';
 import SessionsList from './sessions-list';
 import AttachmentsLoader from '@/components/attachments/attachments-loader';
+import LinkedPlansSection, { type LinkedPlan } from '@/components/follow-up/linked-plans-section';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +65,16 @@ export default async function MedicalPage({
 
   if (selectedAthleteId) casesQuery = casesQuery.eq('athlete_id', selectedAthleteId);
 
+  // Plans from the Plans module that match this discipline
+  let plansQuery = supabaseAdmin
+    .from('plans')
+    .select('id, title, created_at, is_published, athlete_plans(athlete_id, athletes(first_name, last_name))')
+    .eq('type', 'medical')
+    .order('created_at', { ascending: false });
+  if (selectedAthleteId) {
+    plansQuery = plansQuery.eq('athlete_plans.athlete_id', selectedAthleteId);
+  }
+
   // Look up the medic role to query the RBAC user_roles table
   const { data: medicRole } = await supabaseAdmin
     .from('roles')
@@ -71,7 +82,7 @@ export default async function MedicalPage({
     .eq('code', 'medic')
     .maybeSingle();
 
-  const [{ data: casesData, error }, { data: athletesData }, medicProfilesResult] =
+  const [{ data: casesData, error }, { data: athletesData }, medicProfilesResult, { data: plansData }] =
     await Promise.all([
       casesQuery,
       supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name'),
@@ -82,6 +93,7 @@ export default async function MedicalPage({
             .select('profile_id, profiles(id, first_name, last_name)')
             .eq('role_id', medicRole.id)
         : Promise.resolve({ data: [] }),
+      plansQuery,
     ]);
 
   const rawCases = (casesData ?? []) as unknown as MedicalCase[];
@@ -112,6 +124,8 @@ export default async function MedicalPage({
         : `Case — ${new Date(c.opened_at).toLocaleDateString()}`,
     }));
 
+  const linkedPlans = (plansData ?? []) as unknown as LinkedPlan[];
+
   const t = await getTranslations('followUp.medical');
   const tc = await getTranslations('common');
 
@@ -123,6 +137,8 @@ export default async function MedicalPage({
       <p className="text-gray-600 mb-8">{t('description')}</p>
 
       <AthleteFilter athletes={athletes} selectedId={selectedAthleteId} />
+
+      <LinkedPlansSection plans={linkedPlans} followUpPath="/follow-up/medical" />
 
       <div className="flex flex-wrap items-start gap-3 mb-8">
         <NewCaseForm athletes={athletes} doctors={doctors} />

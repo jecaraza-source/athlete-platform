@@ -8,6 +8,7 @@ import CheckinForm from './checkin-form';
 import CheckinChart from './checkin-chart';
 import PlanStatusSelect from './plan-status-select';
 import AttachmentsLoader from '@/components/attachments/attachments-loader';
+import LinkedPlansSection, { type LinkedPlan } from '@/components/follow-up/linked-plans-section';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,19 +61,30 @@ export default async function NutritionPage({
     .select('id, athlete_id, checkin_date, weight_kg, body_fat_percent, adherence_score, notes, next_actions')
     .order('checkin_date', { ascending: false });
 
-  const [{ data, error }, { data: athletesData }, nutritionistsData, { data: checkinsData }] = await Promise.all([
+  let globalPlansQuery = supabaseAdmin
+    .from('plans')
+    .select('id, title, created_at, is_published, athlete_plans(athlete_id, athletes(first_name, last_name))')
+    .eq('type', 'nutrition')
+    .order('created_at', { ascending: false });
+  if (selectedAthleteId) {
+    globalPlansQuery = globalPlansQuery.eq('athlete_plans.athlete_id', selectedAthleteId);
+  }
+
+  const [{ data, error }, { data: athletesData }, nutritionistsData, { data: checkinsData }, { data: globalPlansData }] = await Promise.all([
     buildPlansQuery(),
     supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name', { ascending: true }),
     // RBAC-aware: new system uses 'staff' for all specialists.
     // Falls back to legacy profiles.role = 'nutritionist'.
     getProfilesByRoleCodes(['staff'], ['nutritionist']),
     checkinsQuery,
+    globalPlansQuery,
   ]);
 
   const plans = (data ?? []) as unknown as NutritionPlan[];
   const athletes = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
   const nutritionists = nutritionistsData;
   const checkins = (checkinsData ?? []) as NutritionCheckin[];
+  const linkedPlans = (globalPlansData ?? []) as unknown as LinkedPlan[];
 
   // Group all checkins by athlete (already sorted desc by checkin_date)
   const checkinsByAthlete = checkins.reduce<Record<string, NutritionCheckin[]>>((acc, c) => {
@@ -98,6 +110,8 @@ export default async function NutritionPage({
       <p className="text-gray-600 mb-8">{t('description')}</p>
 
       <AthleteFilter athletes={athletes} selectedId={selectedAthleteId} />
+
+      <LinkedPlansSection plans={linkedPlans} followUpPath="/follow-up/nutrition" />
 
       <CheckinChart
         checkins={selectedAthleteId ? (checkinsByAthlete[selectedAthleteId] ?? []) : checkins}

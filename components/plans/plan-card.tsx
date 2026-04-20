@@ -93,17 +93,47 @@ export function PlanCard({ plan, signedUrl, readOnly = false }: Props) {
         </p>
       )}
 
-      {/* Athletes summary */}
-      <div className="px-4 pb-3 flex items-center gap-3 text-xs text-gray-500">
-        <span>
-          👤{' '}
-          {athleteCount === 0
-            ? 'Sin atletas asignados'
-            : `${athleteCount} atleta${athleteCount !== 1 ? 's' : ''} asignado${athleteCount !== 1 ? 's' : ''}`}
-        </span>
-        {plan.athlete_plans?.[0]?.assignment_mode === 'collective' && (
-          <span className="text-indigo-500 font-medium">· Colectivo</span>
-        )}
+      {/* Athletes */}
+      <div className="px-4 pb-3 text-xs text-gray-500">
+        {(() => {
+          const isCollective = plan.athlete_plans?.[0]?.assignment_mode === 'collective';
+          const names = (plan.athlete_plans ?? [])
+            .map((ap) => ap.athletes)
+            .filter((a): a is { first_name: string; last_name: string } => a != null);
+
+          if (isCollective) {
+            return (
+              <span className="flex items-center gap-1.5 flex-wrap">
+                <span>👥</span>
+                <span className="font-medium text-indigo-600">Colectivo</span>
+                <span className="text-gray-400">· {names.length} atleta{names.length !== 1 ? 's' : ''}</span>
+              </span>
+            );
+          }
+
+          if (names.length === 0) {
+            return <span className="text-gray-400">Sin atletas asignados</span>;
+          }
+
+          const shown = names.slice(0, 2);
+          const extra = names.length - shown.length;
+          return (
+            <span className="flex items-center gap-1 flex-wrap">
+              <span>👤</span>
+              {shown.map((a, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-700"
+                >
+                  {a.first_name} {a.last_name}
+                </span>
+              ))}
+              {extra > 0 && (
+                <span className="text-gray-400">+{extra} más</span>
+              )}
+            </span>
+          );
+        })()}
       </div>
 
       {/* Error */}

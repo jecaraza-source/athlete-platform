@@ -7,6 +7,8 @@ import NewSessionForm from './new-session-form';
 import EditSessionForm from './edit-session-form';
 import CaseStatusSelect from './case-status-select';
 import AttachmentsLoader from '@/components/attachments/attachments-loader';
+import AthleteFilter from '../nutrition/athlete-filter';
+import LinkedPlansSection, { type LinkedPlan } from '@/components/follow-up/linked-plans-section';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,24 +37,44 @@ const statusColors: Record<string, string> = {
   closed: 'bg-gray-100 text-gray-600',
 };
 
-export default async function PsychologyPage() {
+export default async function PsychologyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ athlete?: string }>;
+}) {
   await requirePermission('view_athletes');
 
-  const [{ data: casesData, error }, { data: athletesData }, psychologistsData] =
+  const { athlete: selectedAthleteId = '' } = await searchParams;
+
+  let casesQuery = supabaseAdmin
+    .from('psychology_cases')
+    .select('id, athlete_id, status, opened_at, summary, athletes(first_name, last_name), profiles(first_name, last_name), psychology_sessions(id, session_date, mood_score, stress_score, topic_summary, recommendations, next_session_date)')
+    .order('opened_at', { ascending: false });
+  if (selectedAthleteId) casesQuery = casesQuery.eq('athlete_id', selectedAthleteId);
+
+  let plansQuery = supabaseAdmin
+    .from('plans')
+    .select('id, title, created_at, is_published, athlete_plans(athlete_id, athletes(first_name, last_name))')
+    .eq('type', 'psychology')
+    .order('created_at', { ascending: false });
+  if (selectedAthleteId) {
+    plansQuery = plansQuery.eq('athlete_plans.athlete_id', selectedAthleteId);
+  }
+
+  const [{ data: casesData, error }, { data: athletesData }, psychologistsData, { data: plansData }] =
     await Promise.all([
-      supabaseAdmin
-        .from('psychology_cases')
-        .select('id, athlete_id, status, opened_at, summary, athletes(first_name, last_name), profiles(first_name, last_name), psychology_sessions(id, session_date, mood_score, stress_score, topic_summary, recommendations, next_session_date)')
-        .order('opened_at', { ascending: false }),
+      casesQuery,
       supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name'),
       // RBAC-aware: new system uses 'staff' for all specialists.
       // Falls back to legacy profiles.role = 'psychologist'.
       getProfilesByRoleCodes(['staff'], ['psychologist']),
+      plansQuery,
     ]);
 
   const cases = (casesData ?? []) as unknown as PsychologyCase[];
   const athletes = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
   const psychologists = psychologistsData;
+  const linkedPlans = (plansData ?? []) as unknown as LinkedPlan[];
 
   const caseOptions = cases.map((c) => ({
     id: c.id,
@@ -70,6 +92,10 @@ export default async function PsychologyPage() {
 
       <h1 className="text-3xl font-bold mt-4 mb-2 text-amber-700">{t('title')}</h1>
       <p className="text-gray-600 mb-8">{t('description')}</p>
+
+      <AthleteFilter athletes={athletes} selectedId={selectedAthleteId} />
+
+      <LinkedPlansSection plans={linkedPlans} followUpPath="/follow-up/psychology" />
 
       <div className="flex flex-wrap items-start gap-3 mb-8">
         <NewCaseForm athletes={athletes} psychologists={psychologists} />

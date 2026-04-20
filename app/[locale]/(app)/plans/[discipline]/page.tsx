@@ -9,8 +9,8 @@ import {
   getMyPlansForAthlete,
   type PlanType,
 } from '@/lib/plans/actions';
-import { PlanForm } from '@/components/plans/plan-form';
-import { PlanCard } from '@/components/plans/plan-card';
+import { PlanForm }  from '@/components/plans/plan-form';
+import { PlansList } from '@/components/plans/plans-list';
 
 export const dynamic = 'force-dynamic';
 
@@ -134,16 +134,11 @@ export default async function PlansDisciplinePage({
               )}
             </div>
           ) : (
-            <div className="space-y-4">
-              {plans.map((plan) => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  signedUrl={signedUrls[plan.id] ?? null}
-                  readOnly={isAthlete}
-                />
-              ))}
-            </div>
+            <PlansList
+              plans={plans}
+              signedUrls={signedUrls}
+              readOnly={isAthlete}
+            />
           )}
         </section>
 
