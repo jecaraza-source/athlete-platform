@@ -33,9 +33,15 @@ type PsychologyCase = {
 };
 
 const statusColors: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-700',
+  open:        'bg-blue-100 text-blue-700',
   in_progress: 'bg-yellow-100 text-yellow-700',
-  closed: 'bg-gray-100 text-gray-600',
+  closed:      'bg-gray-100 text-gray-600',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  open:        'Abierto',
+  in_progress: 'En progreso',
+  closed:      'Cerrado',
 };
 
 export default async function PsychologyPage({
@@ -126,15 +132,15 @@ export default async function PsychologyPage({
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                 <div>
                   <h2 className="text-lg font-semibold">
-                    {c.athletes ? `${c.athletes.first_name} ${c.athletes.last_name}` : 'Unknown athlete'}
+                    {c.athletes ? `${c.athletes.first_name} ${c.athletes.last_name}` : 'Atleta desconocido'}
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Psychologist: {c.profiles ? `${c.profiles.first_name} ${c.profiles.last_name}` : 'N/A'}
+                    Psicólogo/a: {c.profiles ? `${c.profiles.first_name} ${c.profiles.last_name}` : 'N/D'}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${statusColors[c.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                    {c.status}
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusColors[c.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {STATUS_LABELS[c.status] ?? c.status}
                   </span>
                   <span className="text-sm text-gray-500">{new Date(c.opened_at).toLocaleDateString()}</span>
                   <CaseStatusSelect caseId={c.id} currentStatus={c.status} />
@@ -142,7 +148,7 @@ export default async function PsychologyPage({
               </div>
               {c.summary && (
                 <div className="mt-3 text-sm text-gray-700">
-                  <span className="font-medium">Notes:</span>{' '}{c.summary}
+                  <span className="font-medium">Notas:</span>{' '}{c.summary}
                 </div>
               )}
               <div className="mt-4 border-t border-gray-100 pt-3">

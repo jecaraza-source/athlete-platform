@@ -4,9 +4,9 @@ import { useTransition } from 'react';
 import { updatePhysioCaseStatus } from './actions';
 
 const STATUSES = [
-  { value: 'open', label: 'Open' },
-  { value: 'in_progress', label: 'In progress' },
-  { value: 'closed', label: 'Closed' },
+  { value: 'open',        label: 'Abierto' },
+  { value: 'in_progress', label: 'En progreso' },
+  { value: 'closed',      label: 'Cerrado' },
 ];
 
 export default function CaseStatusSelect({

@@ -44,32 +44,32 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
           </span>
           {session.pain_score != null && (
             <span className="text-xs text-gray-500">
-              Pain: <span className="font-medium text-gray-700">{session.pain_score}/10</span>
+              Dolor: <span className="font-medium text-gray-700">{session.pain_score}/10</span>
             </span>
           )}
           {session.health_score != null && (
             <span className="text-xs text-gray-500">
-              Health: <span className="font-medium text-gray-700">{session.health_score}/10</span>
+              Salud: <span className="font-medium text-gray-700">{session.health_score}/10</span>
             </span>
           )}
           {session.adherence_score != null && (
             <span className="text-xs text-gray-500">
-              Adherence: <span className="font-medium text-gray-700">{session.adherence_score}/10</span>
+              Adherencia: <span className="font-medium text-gray-700">{session.adherence_score}/10</span>
             </span>
           )}
           {session.weight_kg != null && (
             <span className="text-xs text-gray-500">
-              Weight: <span className="font-medium text-gray-700">{session.weight_kg} kg</span>
+              Peso: <span className="font-medium text-gray-700">{session.weight_kg} kg</span>
             </span>
           )}
           {session.blood_pressure && (
             <span className="text-xs text-gray-500">
-              BP: <span className="font-medium text-gray-700">{session.blood_pressure}</span>
+              PA: <span className="font-medium text-gray-700">{session.blood_pressure}</span>
             </span>
           )}
           {session.next_session_date && (
             <span className="text-xs text-gray-500">
-              Next: <span className="font-medium text-gray-700">
+              Próxima: <span className="font-medium text-gray-700">
                 {new Date(session.next_session_date).toLocaleDateString()}
               </span>
             </span>
@@ -79,7 +79,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             onClick={() => setEditing(true)}
             className="ml-auto text-xs text-blue-600 hover:underline"
           >
-            Edit
+            Editar
           </button>
         </div>
         {session.treatment_summary && (
@@ -102,7 +102,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
         {/* Scores row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div>
-            <label className="block text-xs font-medium mb-0.5">Date <span className="text-red-500">*</span></label>
+            <label className="block text-xs font-medium mb-0.5">Fecha <span className="text-red-500">*</span></label>
             <input
               name="session_date"
               type="date"
@@ -112,7 +112,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Pain (1–10)</label>
+            <label className="block text-xs font-medium mb-0.5">Dolor (1–10)</label>
             <input
               name="pain_score"
               type="number"
@@ -122,7 +122,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Health (1–10)</label>
+            <label className="block text-xs font-medium mb-0.5">Salud (1–10)</label>
             <input
               name="health_score"
               type="number"
@@ -132,7 +132,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Adherence (1–10)</label>
+            <label className="block text-xs font-medium mb-0.5">Adherencia (1–10)</label>
             <input
               name="adherence_score"
               type="number"
@@ -146,7 +146,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
         {/* Vitals row */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <div>
-            <label className="block text-xs font-medium mb-0.5">Weight (kg)</label>
+            <label className="block text-xs font-medium mb-0.5">Peso (kg)</label>
             <input
               name="weight_kg"
               type="number"
@@ -156,7 +156,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Blood pressure</label>
+            <label className="block text-xs font-medium mb-0.5">Presión arterial</label>
             <input
               name="blood_pressure"
               type="text"
@@ -166,7 +166,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Next session</label>
+            <label className="block text-xs font-medium mb-0.5">Próxima sesión</label>
             <input
               name="next_session_date"
               type="date"
@@ -178,7 +178,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
 
         {/* Treatment */}
         <div>
-          <label className="block text-xs font-medium mb-0.5">Treatment summary</label>
+          <label className="block text-xs font-medium mb-0.5">Resumen del tratamiento</label>
           <textarea
             name="treatment_summary"
             rows={2}
@@ -189,7 +189,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
 
         {/* Notes */}
         <div>
-          <label className="block text-xs font-medium mb-0.5">Notes</label>
+          <label className="block text-xs font-medium mb-0.5">Notas</label>
           <textarea
             name="notes"
             rows={2}
@@ -204,14 +204,14 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             disabled={isPending}
             className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {isPending ? 'Saving…' : 'Done'}
+            {isPending ? 'Guardando…' : 'Listo'}
           </button>
           <button
             type="button"
             onClick={() => { setEditing(false); setError(null); }}
             className="rounded border border-gray-300 px-3 py-1 text-xs font-medium hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            Cancelar
           </button>
         </div>
       </form>

@@ -39,20 +39,20 @@ export default function EditSessionForm({ session }: { session: Session }) {
             {new Date(session.session_date).toLocaleDateString()}
           </span>
           {session.pain_score != null && (
-            <span className="text-xs text-gray-500">Pain: <span className="font-medium text-gray-700">{session.pain_score}/10</span></span>
+            <span className="text-xs text-gray-500">Dolor: <span className="font-medium text-gray-700">{session.pain_score}/10</span></span>
           )}
           {session.mobility_score != null && (
-            <span className="text-xs text-gray-500">Mobility: <span className="font-medium text-gray-700">{session.mobility_score}/10</span></span>
+            <span className="text-xs text-gray-500">Movilidad: <span className="font-medium text-gray-700">{session.mobility_score}/10</span></span>
           )}
           {session.next_session_date && (
-            <span className="text-xs text-gray-500">Next: <span className="font-medium text-gray-700">{new Date(session.next_session_date).toLocaleDateString()}</span></span>
+            <span className="text-xs text-gray-500">Próxima: <span className="font-medium text-gray-700">{new Date(session.next_session_date).toLocaleDateString()}</span></span>
           )}
           <button
             type="button"
             onClick={() => setEditing(true)}
             className="ml-auto text-xs text-blue-600 hover:underline"
           >
-            Edit
+            Editar
           </button>
         </div>
         {session.treatment_summary && (
@@ -73,7 +73,7 @@ export default function EditSessionForm({ session }: { session: Session }) {
       <form ref={formRef} action={handleSubmit} className="space-y-2">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <div>
-            <label className="block text-xs font-medium mb-0.5">Date <span className="text-red-500">*</span></label>
+            <label className="block text-xs font-medium mb-0.5">Fecha <span className="text-red-500">*</span></label>
             <input
               name="session_date"
               type="date"
@@ -83,7 +83,7 @@ export default function EditSessionForm({ session }: { session: Session }) {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Pain (1–10)</label>
+            <label className="block text-xs font-medium mb-0.5">Dolor (1–10)</label>
             <input
               name="pain_score"
               type="number"
@@ -95,7 +95,7 @@ export default function EditSessionForm({ session }: { session: Session }) {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Mobility (1–10)</label>
+            <label className="block text-xs font-medium mb-0.5">Movilidad (1–10)</label>
             <input
               name="mobility_score"
               type="number"
@@ -107,7 +107,7 @@ export default function EditSessionForm({ session }: { session: Session }) {
             />
           </div>
           <div className="col-span-2 sm:col-span-3">
-            <label className="block text-xs font-medium mb-0.5">Next session date</label>
+            <label className="block text-xs font-medium mb-0.5">Fecha próxima sesión</label>
             <input
               name="next_session_date"
               type="date"
@@ -117,7 +117,7 @@ export default function EditSessionForm({ session }: { session: Session }) {
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium mb-0.5">Treatment summary</label>
+          <label className="block text-xs font-medium mb-0.5">Resumen del tratamiento</label>
           <textarea
             name="treatment_summary"
             rows={2}
@@ -126,7 +126,7 @@ export default function EditSessionForm({ session }: { session: Session }) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium mb-0.5">Notes</label>
+          <label className="block text-xs font-medium mb-0.5">Notas</label>
           <textarea
             name="notes"
             rows={2}
@@ -140,14 +140,14 @@ export default function EditSessionForm({ session }: { session: Session }) {
             disabled={isPending}
             className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {isPending ? 'Saving…' : 'Done'}
+            {isPending ? 'Guardando…' : 'Listo'}
           </button>
           <button
             type="button"
             onClick={() => { setEditing(false); setError(null); }}
             className="rounded border border-gray-300 px-3 py-1 text-xs font-medium hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            Cancelar
           </button>
         </div>
       </form>
