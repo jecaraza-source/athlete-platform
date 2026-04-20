@@ -3,10 +3,10 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission, getProfilesByRoleCodes } from '@/lib/rbac/server';
 import { getTranslations } from 'next-intl/server';
 import NewSessionForm from './new-session-form';
-import EditSessionForm from './edit-session-form';
-import DeleteSessionButton from './delete-session-button';
 import AthleteFilter from '../nutrition/athlete-filter';
 import AttachmentsLoader from '@/components/attachments/attachments-loader';
+import LinkedPlansSection, { type LinkedPlan } from '@/components/follow-up/linked-plans-section';
+import TrainingSessionsList from './sessions-list';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,11 +28,15 @@ type TrainingSession = {
 export default async function TrainingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ athlete?: string }>;
+  searchParams: Promise<{ athlete?: string; new_session?: string; plan_title?: string }>;
 }) {
   await requirePermission('view_athletes');
 
-  const { athlete: selectedAthleteId = '' } = await searchParams;
+  const {
+    athlete: selectedAthleteId = '',
+    new_session: openNewSession = '',
+    plan_title: linkedPlanTitle = '',
+  } = await searchParams;
 
   let sessionsQuery = supabaseAdmin
     .from('training_sessions')
@@ -41,7 +45,16 @@ export default async function TrainingPage({
 
   if (selectedAthleteId) sessionsQuery = sessionsQuery.eq('athlete_id', selectedAthleteId);
 
-  const [{ data, error }, { data: athletesData }, coachesData] = await Promise.all([
+  let plansQuery = supabaseAdmin
+    .from('plans')
+    .select('id, title, created_at, is_published, athlete_plans(athlete_id, athletes(first_name, last_name))')
+    .eq('type', 'training')
+    .order('created_at', { ascending: false });
+  if (selectedAthleteId) {
+    plansQuery = plansQuery.eq('athlete_plans.athlete_id', selectedAthleteId);
+  }
+
+  const [{ data, error }, { data: athletesData }, coachesData, { data: plansData }] = await Promise.all([
     sessionsQuery,
     supabaseAdmin
       .from('athletes')
@@ -50,11 +63,14 @@ export default async function TrainingPage({
     // RBAC-aware: queries user_roles → roles(code='coach').
     // Falls back to profiles.role = 'coach' if no RBAC assignments found.
     getProfilesByRoleCodes(['coach']),
+    plansQuery,
   ]);
 
   const sessions = (data ?? []) as unknown as TrainingSession[];
   const athletes = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
   const coaches = coachesData;
+  const linkedPlans = ((plansData ?? []) as unknown as LinkedPlan[])
+    .filter((p) => !selectedAthleteId || p.athlete_plans.length > 0);
 
   const t = await getTranslations('followUp.training');
   const tc = await getTranslations('common');
@@ -68,7 +84,19 @@ export default async function TrainingPage({
 
       <AthleteFilter athletes={athletes} selectedId={selectedAthleteId} />
 
-      <NewSessionForm athletes={athletes} coaches={coaches} />
+      <LinkedPlansSection
+        plans={linkedPlans}
+        followUpPath="/follow-up/training"
+        showConfirm
+      />
+
+      <NewSessionForm
+        athletes={athletes}
+        coaches={coaches}
+        defaultOpen={openNewSession === '1'}
+        initialAthleteId={selectedAthleteId}
+        initialPlanTitle={decodeURIComponent(linkedPlanTitle)}
+      />
 
       {error && (
         <div className="mb-4 rounded border border-red-300 bg-red-50 p-4 text-red-700">
@@ -82,48 +110,22 @@ export default async function TrainingPage({
         </div>
       )}
 
-      <div className="space-y-4">
-        {sessions.map((session) => (
-          <div key={session.id} className="rounded-lg border border-gray-200 p-5">
-            {/* Session header */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-              <div>
-                <h2 className="text-lg font-semibold">{session.title}</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  {session.athletes
-                    ? `${session.athletes.first_name} ${session.athletes.last_name}`
-                    : tc('unknownAthlete')}
-                </p>
-              </div>
-              <div className="text-sm text-gray-600">
-                {new Date(session.session_date).toLocaleDateString()}
-              </div>
-            </div>
-
-            {/* Inline edit form — shows read view by default */}
-            <div className="mt-4 border-t border-gray-100 pt-3">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                {t('sessionDetailsLabel')}
-              </p>
-              <EditSessionForm session={session} />
-              <div className="mt-2 flex justify-end">
-                <DeleteSessionButton sessionId={session.id} />
-              </div>
-            </div>
-
-            {/* Documentos anexos */}
-            <div className="mt-4">
-              <AttachmentsLoader
-                athleteId={session.athlete_id}
-                module="training"
-                relatedRecordId={session.id}
-                title="Documentos de la sesión"
-                defaultCollapsed
-              />
-            </div>
-          </div>
-        ))}
-      </div>
+      <TrainingSessionsList
+        slots={sessions.map((session) => ({
+          session,
+          attachmentNode: (
+            <AttachmentsLoader
+              athleteId={session.athlete_id}
+              module="training"
+              relatedRecordId={session.id}
+              title="Documentos de la sesión"
+              defaultCollapsed
+            />
+          ),
+        }))}
+        sessionDetailsLabel={t('sessionDetailsLabel')}
+        unknownAthlete={tc('unknownAthlete')}
+      />
     </main>
   );
 }

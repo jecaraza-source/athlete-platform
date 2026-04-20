@@ -9,6 +9,7 @@ import CheckinChart from './checkin-chart';
 import PlanStatusSelect from './plan-status-select';
 import AttachmentsLoader from '@/components/attachments/attachments-loader';
 import LinkedPlansSection, { type LinkedPlan } from '@/components/follow-up/linked-plans-section';
+import SortableItems from '@/components/follow-up/sortable-items';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,7 +85,8 @@ export default async function NutritionPage({
   const athletes = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
   const nutritionists = nutritionistsData;
   const checkins = (checkinsData ?? []) as NutritionCheckin[];
-  const linkedPlans = (globalPlansData ?? []) as unknown as LinkedPlan[];
+  const linkedPlans = ((globalPlansData ?? []) as unknown as LinkedPlan[])
+    .filter((p) => !selectedAthleteId || p.athlete_plans.length > 0);
 
   // Group all checkins by athlete (already sorted desc by checkin_date)
   const checkinsByAthlete = checkins.reduce<Record<string, NutritionCheckin[]>>((acc, c) => {
@@ -125,71 +127,60 @@ export default async function NutritionPage({
         </div>
       )}
 
-      {!error && plans.length === 0 && (
-        <div className="rounded border border-gray-200 p-4 text-gray-600">
-          {t('noPlans')}
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {plans.map((plan, i) => (
-          <div key={plan.id} className="rounded-lg border border-gray-200 p-5">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-              <div>
-                <h2 className="text-lg font-semibold">{plan.title}</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  {plan.athletes
-                  ? `${plan.athletes.first_name} ${plan.athletes.last_name}`
-                  : tc('unknownAthlete')}
+      <SortableItems
+        emptyNode={
+          !error && plans.length === 0 ? (
+            <div className="rounded border border-gray-200 p-4 text-gray-600">{t('noPlans')}</div>
+          ) : null
+        }
+        items={plans.map((plan) => ({
+          id: plan.id,
+          date: plan.start_date,
+          athleteName: plan.athletes ? `${plan.athletes.last_name} ${plan.athletes.first_name}` : '',
+          status: plan.status,
+          node: (
+            <div className="rounded-lg border border-gray-200 p-5">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                <div>
+                  <h2 className="text-lg font-semibold">{plan.title}</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {plan.athletes ? `${plan.athletes.first_name} ${plan.athletes.last_name}` : tc('unknownAthlete')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 self-start md:self-auto">
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusColors[plan.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {statusLabels[plan.status] ?? plan.status}
+                  </span>
+                  <PlanStatusSelect planId={plan.id} currentStatus={plan.status} />
+                </div>
+              </div>
+              <div className="mt-3 text-sm text-gray-700 space-y-1">
+                <p>
+                  <span className="font-medium">{t('nutritionist')}:</span>{' '}
+                  {plan.profiles ? `${plan.profiles.first_name} ${plan.profiles.last_name}` : tc('na')}
+                </p>
+                <p>
+                  <span className="font-medium">{t('period')}:</span>{' '}
+                  {new Date(plan.start_date).toLocaleDateString()}
+                  {plan.end_date ? ` – ${new Date(plan.end_date).toLocaleDateString()}` : ` ${t('ongoing')}`}
                 </p>
               </div>
-              <div className="flex items-center gap-2 self-start md:self-auto">
-                <span
-                  className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusColors[plan.status] ?? 'bg-gray-100 text-gray-600'}`}
-                >
-                  {statusLabels[plan.status] ?? plan.status}
-                </span>
-                <PlanStatusSelect planId={plan.id} currentStatus={plan.status} />
-              </div>
-            </div>
-
-            <div className="mt-3 text-sm text-gray-700 space-y-1">
-              <p>
-                <span className="font-medium">{t('nutritionist')}:</span>{' '}
-                {plan.profiles
-                  ? `${plan.profiles.first_name} ${plan.profiles.last_name}`
-                  : tc('na')}
-              </p>
-              <p>
-                <span className="font-medium">{t('period')}:</span>{' '}
-                {new Date(plan.start_date).toLocaleDateString()}
-                {plan.end_date ? ` – ${new Date(plan.end_date).toLocaleDateString()}` : ` ${t('ongoing')}`}
-              </p>
-            </div>
-
-            {plan.athlete_id && (
-              <CheckinForm
-                athleteId={plan.athlete_id}
-                nutritionists={nutritionists}
-                previousCheckins={checkinsByAthlete[plan.athlete_id] ?? []}
-              />
-            )}
-
-            {/* Documentos anexos — unificado */}
-            {plan.athlete_id && (
-              <div className="mt-4">
-                <AttachmentsLoader
+              {plan.athlete_id && (
+                <CheckinForm
                   athleteId={plan.athlete_id}
-                  module="nutrition"
-                  relatedRecordId={plan.id}
-                  title="Documentos del plan"
-                  defaultCollapsed
+                  nutritionists={nutritionists}
+                  previousCheckins={checkinsByAthlete[plan.athlete_id] ?? []}
                 />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+              )}
+              {plan.athlete_id && (
+                <div className="mt-4">
+                  <AttachmentsLoader athleteId={plan.athlete_id} module="nutrition" relatedRecordId={plan.id} title="Documentos del plan" defaultCollapsed />
+                </div>
+              )}
+            </div>
+          ),
+        }))}
+      />
     </main>
   );
 }

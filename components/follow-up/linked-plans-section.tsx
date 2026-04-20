@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Link } from '@/i18n/navigation';
+import { useRouter } from 'next/navigation';
 
 export type LinkedPlan = {
   id: string;
@@ -32,11 +33,26 @@ function isNew(createdAt: string): boolean {
 export default function LinkedPlansSection({
   plans,
   followUpPath,
+  showConfirm = false,
 }: {
   plans: LinkedPlan[];
   followUpPath: string;
+  /** When true the CTA shows a confirmation dialog before navigating. */
+  showConfirm?: boolean;
 }) {
   const [open, setOpen] = useState(true);
+  const router = useRouter();
+
+  function handleConfirmCta(athleteId: string, athleteName: string | null, planTitle: string) {
+    const who = athleteName ?? 'este atleta';
+    const confirmed = window.confirm(
+      `¿Deseas crear una nueva sesión de entrenamiento para ${who} en relación al plan "${planTitle}"?`
+    );
+    if (!confirmed) return;
+    router.push(
+      `${followUpPath}?athlete=${athleteId}&new_session=1&plan_title=${encodeURIComponent(planTitle)}`
+    );
+  }
 
   if (plans.length === 0) return null;
 
@@ -134,12 +150,22 @@ export default function LinkedPlansSection({
 
               {/* Right: CTA */}
               {row.athleteId ? (
-                <Link
-                  href={`${followUpPath}?athlete=${row.athleteId}` as Parameters<typeof Link>[0]['href']}
-                  className="shrink-0 inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
-                >
-                  Dar seguimiento →
-                </Link>
+                showConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmCta(row.athleteId!, row.athleteName, row.title)}
+                    className="shrink-0 inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                  >
+                    Dar seguimiento →
+                  </button>
+                ) : (
+                  <Link
+                    href={`${followUpPath}?athlete=${row.athleteId}` as Parameters<typeof Link>[0]['href']}
+                    className="shrink-0 inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                  >
+                    Dar seguimiento →
+                  </Link>
+                )
               ) : (
                 <span className="shrink-0 text-xs text-gray-400 italic">Sin atleta</span>
               )}

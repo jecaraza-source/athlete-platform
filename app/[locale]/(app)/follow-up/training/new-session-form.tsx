@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useRef, useState, useTransition, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { createTrainingSession } from './actions';
 
@@ -10,13 +10,37 @@ type Person = {
   last_name: string;
 };
 
-export default function NewSessionForm({ athletes, coaches }: { athletes: Person[]; coaches: Person[] }) {
+export default function NewSessionForm({
+  athletes,
+  coaches,
+  defaultOpen = false,
+  initialAthleteId = '',
+  initialPlanTitle = '',
+}: {
+  athletes: Person[];
+  coaches: Person[];
+  defaultOpen?: boolean;
+  initialAthleteId?: string;
+  initialPlanTitle?: string;
+}) {
   const t = useTranslations('followUp.training');
   const tc = useTranslations('common');
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Open and scroll into view when defaultOpen prop changes to true
+  useEffect(() => {
+    if (defaultOpen) {
+      setOpen(true);
+      // Small delay to allow the form to render before scrolling
+      setTimeout(() => {
+        wrapperRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
+  }, [defaultOpen]);
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -32,9 +56,9 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
   }
 
   return (
-    <div className="mb-8">
+    <div className="mb-8" ref={wrapperRef}>
       {!open ? (
-      <button
+        <button
           onClick={() => setOpen(true)}
           className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
         >
@@ -50,6 +74,16 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
             </p>
           )}
 
+          {initialPlanTitle && (
+            <div className="mb-4 flex items-start gap-2 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2.5">
+              <span className="text-sm">📋</span>
+              <p className="text-xs text-indigo-700">
+                <span className="font-semibold">Seguimiento del plan:</span>{' '}
+                {initialPlanTitle}
+              </p>
+            </div>
+          )}
+
           <form ref={formRef} action={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -60,6 +94,7 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
                   id="athlete_id"
                   name="athlete_id"
                   required
+                  defaultValue={initialAthleteId}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="">{t('selectAthlete')}</option>
@@ -163,6 +198,7 @@ export default function NewSessionForm({ athletes, coaches }: { athletes: Person
                 id="notes"
                 name="notes"
                 rows={3}
+                defaultValue={initialPlanTitle ? `Seguimiento del plan: ${initialPlanTitle}` : ''}
                 placeholder={t('notesPlaceholder')}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />

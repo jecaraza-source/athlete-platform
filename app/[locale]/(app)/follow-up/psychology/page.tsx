@@ -9,6 +9,7 @@ import CaseStatusSelect from './case-status-select';
 import AttachmentsLoader from '@/components/attachments/attachments-loader';
 import AthleteFilter from '../nutrition/athlete-filter';
 import LinkedPlansSection, { type LinkedPlan } from '@/components/follow-up/linked-plans-section';
+import SortableItems from '@/components/follow-up/sortable-items';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,7 +75,8 @@ export default async function PsychologyPage({
   const cases = (casesData ?? []) as unknown as PsychologyCase[];
   const athletes = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
   const psychologists = psychologistsData;
-  const linkedPlans = (plansData ?? []) as unknown as LinkedPlan[];
+  const linkedPlans = ((plansData ?? []) as unknown as LinkedPlan[])
+    .filter((p) => !selectedAthleteId || p.athlete_plans.length > 0);
 
   const caseOptions = cases.map((c) => ({
     id: c.id,
@@ -108,76 +110,65 @@ export default async function PsychologyPage({
         </div>
       )}
 
-      {!error && cases.length === 0 && (
-        <div className="rounded border border-gray-200 p-4 text-gray-600">
-          {t('noCases')}
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {cases.map((c) => (
-          <div key={c.id} className="rounded-lg border border-gray-200 p-5">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-              <div>
-                <h2 className="text-lg font-semibold">
-                  {c.athletes
-                    ? `${c.athletes.first_name} ${c.athletes.last_name}`
-                    : 'Unknown athlete'}
-                </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Psychologist: {c.profiles ? `${c.profiles.first_name} ${c.profiles.last_name}` : 'N/A'}
+      <SortableItems
+        emptyNode={
+          !error && cases.length === 0 ? (
+            <div className="rounded border border-gray-200 p-4 text-gray-600">{t('noCases')}</div>
+          ) : null
+        }
+        items={cases.map((c) => ({
+          id: c.id,
+          date: c.opened_at,
+          athleteName: c.athletes ? `${c.athletes.last_name} ${c.athletes.first_name}` : '',
+          status: c.status,
+          node: (
+            <div className="rounded-lg border border-gray-200 p-5">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                <div>
+                  <h2 className="text-lg font-semibold">
+                    {c.athletes ? `${c.athletes.first_name} ${c.athletes.last_name}` : 'Unknown athlete'}
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Psychologist: {c.profiles ? `${c.profiles.first_name} ${c.profiles.last_name}` : 'N/A'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${statusColors[c.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {c.status}
+                  </span>
+                  <span className="text-sm text-gray-500">{new Date(c.opened_at).toLocaleDateString()}</span>
+                  <CaseStatusSelect caseId={c.id} currentStatus={c.status} />
+                </div>
+              </div>
+              {c.summary && (
+                <div className="mt-3 text-sm text-gray-700">
+                  <span className="font-medium">Notes:</span>{' '}{c.summary}
+                </div>
+              )}
+              <div className="mt-4 border-t border-gray-100 pt-3">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                  {tc('sessionHistory')} ({c.psychology_sessions.length})
                 </p>
+                {c.psychology_sessions.length === 0 ? (
+                  <p className="text-sm text-gray-400">{tc('noSessionsYet')}</p>
+                ) : (
+                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    {c.psychology_sessions
+                      .slice()
+                      .sort((a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime())
+                      .map((s) => <EditSessionForm key={s.id} session={s} />)}
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${statusColors[c.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                  {c.status}
-                </span>
-                <span className="text-sm text-gray-500">
-                  {new Date(c.opened_at).toLocaleDateString()}
-                </span>
-                <CaseStatusSelect caseId={c.id} currentStatus={c.status} />
-              </div>
-            </div>
-
-            {c.summary && (
-              <div className="mt-3 text-sm text-gray-700">
-                <span className="font-medium">Notes:</span>{' '}{c.summary}
-              </div>
-            )}
-
-            <div className="mt-4 border-t border-gray-100 pt-3">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                {tc('sessionHistory')} ({c.psychology_sessions.length})
-              </p>
-              {c.psychology_sessions.length === 0 ? (
-                <p className="text-sm text-gray-400">{tc('noSessionsYet')}</p>
-              ) : (
-                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                  {c.psychology_sessions
-                    .slice()
-                    .sort((a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime())
-                    .map((s) => (
-                      <EditSessionForm key={s.id} session={s} />
-                    ))}
+              {c.athlete_id && (
+                <div className="mt-4">
+                  <AttachmentsLoader athleteId={c.athlete_id} module="psychology" relatedRecordId={c.id} title="Documentos del caso" defaultCollapsed />
                 </div>
               )}
             </div>
-
-            {/* Documentos anexos */}
-            {c.athlete_id && (
-              <div className="mt-4">
-                <AttachmentsLoader
-                  athleteId={c.athlete_id}
-                  module="psychology"
-                  relatedRecordId={c.id}
-                  title="Documentos del caso"
-                  defaultCollapsed
-                />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+          ),
+        }))}
+      />
 
     </main>
   );
