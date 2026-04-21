@@ -53,6 +53,28 @@ export async function createCalendarEvent(
 }
 
 /**
+ * Insert participant rows for an event.
+ * participant_id stores a profiles.id value (works for both staff and athletes).
+ */
+export async function addEventParticipants(
+  eventId: string,
+  profileIds: string[],
+): Promise<void> {
+  if (!profileIds.length) return;
+  const rows = profileIds.map((profileId) => ({
+    event_id:          eventId,
+    participant_id:    profileId,
+    participant_type:  'profile',   // mobile uses profiles.id; web uses athletes.id
+    attendance_status: 'planned',
+  }));
+  const { error } = await supabase.from('event_participants').insert(rows);
+  if (error) {
+    console.warn('[calendar] addEventParticipants error:', error.message);
+    throw error;
+  }
+}
+
+/**
  * Returns the total count of events in a date range.
  * Useful for debugging — confirms whether ANY events exist in the range.
  */
@@ -102,19 +124,13 @@ export async function listEventsInRange(
 }
 
 /**
- * Fetch events visible to a specific athlete.
- *
- * An athlete sees an event if:
- *  (a) they are explicitly listed as a participant in event_participants, OR
- *  (b) the event has NO participants at all (global / public event).
- *
- * Strategy:
- *  1. Fetch all events in the date range.
- *  2. Fetch all event_participants rows for those events.
- *  3. Filter client-side using the two rules above.
+ * Fetch events visible to a specific user (athlete or staff).
+ * participant_id is compared against profiles.id.
+ * Rules: included if (a) profile is an explicit participant, OR
+ *        (b) the event has no participants at all (global event).
  */
 export async function listEventsForAthlete(
-  athleteId: string,
+  profileId: string,
   startISO: string,
   endISO: string,
 ): Promise<CalendarEvent[]> {
@@ -143,7 +159,7 @@ export async function listEventsForAthlete(
   // Set of event IDs where THIS athlete is explicitly a participant
   const athleteEventIds = new Set(
     participants
-      .filter((p) => p.participant_id === athleteId)
+      .filter((p) => p.participant_id === profileId)
       .map((p) => p.event_id),
   );
 

@@ -73,6 +73,10 @@ export const PERMISSION_NAMES = [
   'manage_notification_templates',
   'manage_ticket_emails',
   'view_notification_logs',
+  // Training (migration 029)
+  'manage_training',   // create sessions for athletes, reply to comments (coaches/staff)
+  'view_training',     // view own sessions, mark done, comment (athletes + all staff)
+  'send_notifications', // send push/email notifications to other users
 ] as const;
 export type PermissionName = (typeof PERMISSION_NAMES)[number];
 

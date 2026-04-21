@@ -18,13 +18,6 @@ export default function AppLayout() {
         headerTitleStyle: { color: colors.text, fontSize: 16, fontWeight: '600' },
       }}
     >
-      {/* (auth) group is fully managed by (auth)/_layout.tsx */}
-      {/* Password-reset screen — opened via deep link after email click */}
-      <Stack.Screen
-        name="(auth)/reset-password"
-        options={{ title: 'Nueva contraseña', headerBackTitle: 'Inicio' }}
-      />
-
       {/* Tab screens – no header (tab layout handles its own header) */}
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 

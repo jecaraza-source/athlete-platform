@@ -18,10 +18,20 @@
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "ios": {
+        "buildConfiguration": "Release",
+        "distribution": "store"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "javierec@me.com",
+        "ascAppId": "6762497328",
+        "appleTeamId": "H9YU46VDV3"
+      }
+    }
   }
 }

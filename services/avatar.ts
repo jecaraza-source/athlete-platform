@@ -32,16 +32,20 @@ const WEB_URL =
 /**
  * Uploads a profile photo by proxying through the web API.
  *
- * Accepts the raw base64 string from expo-image-picker { base64: true }.
- * Sends it to POST /api/avatar/upload together with the user's JWT so the
- * server can validate the request and upload using supabaseAdmin.
+ * Accepts the local image URI from expo-image-picker and sends it as
+ * multipart/form-data to POST /api/avatar/upload together with the user's
+ * JWT so the server can validate the request and upload using supabaseAdmin.
+ *
+ * Using FormData avoids the base64 encoding overhead (~33% larger payload)
+ * and the "Network request failed" errors on Android caused by sending large
+ * base64 strings as a JSON body.
  *
  * Returns { url, error }.
  */
 export async function uploadMobileAvatar(
-  base64Data: string,
+  imageUri:    string,
   _authUserId: string,  // kept for API compatibility; server derives from JWT
-  profileId:  string,
+  profileId:   string,
 ): Promise<{ url: string | null; error: string }> {
   try {
     // 1. Get the current session's access token
@@ -55,14 +59,24 @@ export async function uploadMobileAvatar(
       };
     }
 
-    // 2. POST to the web proxy endpoint
+    // 2. Build multipart/form-data payload.
+    //    React Native treats { uri, name, type } as a file part; do NOT set
+    //    Content-Type manually — fetch injects the correct multipart boundary.
+    const formData = new FormData();
+    formData.append('file', {
+      uri:  imageUri,
+      name: 'avatar.jpg',
+      type: 'image/jpeg',
+    } as unknown as Blob);
+    formData.append('profileId', profileId);
+
+    // 3. POST to the web proxy endpoint
     const response = await fetch(`${WEB_URL}/api/avatar/upload`, {
       method:  'POST',
       headers: {
-        'Content-Type':  'application/json',
         'Authorization': `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ base64: base64Data, profileId }),
+      body: formData,
     });
 
     // 3. Parse the JSON response

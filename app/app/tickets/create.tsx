@@ -10,6 +10,7 @@ import { Colors, PRIMARY } from '@/constants/theme';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { createTicket } from '@/services/tickets';
+import { notifyProfiles } from '@/services/notifications';
 import { useAuthStore } from '@/store';
 import { supabase } from '@/lib/supabase';
 import type { TicketPriority } from '@/types';
@@ -17,7 +18,7 @@ import { TICKET_PRIORITY_LABELS } from '@/types';
 
 const PRIORITIES: TicketPriority[] = ['low', 'medium', 'high', 'urgent'];
 
-type StaffProfile = { id: string; first_name: string; last_name: string };
+type PersonProfile = { id: string; first_name: string; last_name: string };
 
 export default function CreateTicketScreen() {
   const scheme = useColorScheme() ?? 'light';
@@ -31,70 +32,47 @@ export default function CreateTicketScreen() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ title?: string; description?: string }>({});
 
-  // Assignee state
-  const [assignee, setAssignee] = useState<StaffProfile | null>(null);
-  const [staffList, setStaffList] = useState<StaffProfile[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // Assignee state (multi-select: staff + athletes)
+  const [assignees,    setAssignees]    = useState<PersonProfile[]>([]);
+  const [peopleList,   setPeopleList]   = useState<PersonProfile[]>([]);
+  const [pickerOpen,   setPickerOpen]   = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
 
-  // Load staff profiles on mount.
-  // Strategy:
-  //   1. Fetch profile IDs that have the 'athlete' role via RBAC (user_roles → roles).
-  //   2. Fetch all profiles and exclude those athlete IDs.
-  //   3. Also exclude profiles whose legacy `role` column equals 'athlete'
-  //      (backward compat for installs not fully migrated to RBAC).
+  // Notification options
+  const [notifyPush,  setNotifyPush]  = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState(false);
+
+  // Only users with assign_tickets permission see the assignee picker
+  const canAssign = useAuthStore((s) => s.hasPermission('assign_tickets'));
+
+  // Load all profiles (staff + athletes) for assignment
   useEffect(() => {
     (async () => {
       try {
-        // Step 1 — identify athlete profile IDs via RBAC
-        const { data: roleRow } = await supabase
-          .from('roles')
-          .select('id')
-          .eq('code', 'athlete')
-          .maybeSingle();
-
-        const athleteProfileIds = new Set<string>();
-        if (roleRow?.id !== undefined) {
-          const { data: urRows } = await supabase
-            .from('user_roles')
-            .select('profile_id')
-            .eq('role_id', roleRow.id);
-          (urRows ?? []).forEach((r: { profile_id: string }) => athleteProfileIds.add(r.profile_id));
-        }
-
-        // Step 2 — fetch all profiles
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, first_name, last_name, role')
+          .select('id, first_name, last_name')
           .order('last_name', { ascending: true });
-
         if (error) {
-          console.warn('[ticket] load staff error:', error.message);
+          console.warn('[ticket] load people error:', error.message);
           return;
         }
-
-        // Step 3 — exclude athletes (by RBAC id set OR legacy role column)
-        const staff = (data ?? [])
-          .filter(
-            (p) =>
-              p.id &&
-              !athleteProfileIds.has(p.id) &&
-              p.role !== 'athlete',
-          )
-          .map(({ id, first_name, last_name }) => ({ id, first_name, last_name })) as StaffProfile[];
-
-        setStaffList(staff);
+        setPeopleList(
+          (data ?? [])
+            .filter((p) => p.id && p.first_name)
+            .map(({ id, first_name, last_name }) => ({ id, first_name, last_name })) as PersonProfile[],
+        );
       } catch (e) {
-        console.warn('[ticket] load staff error', e);
+        console.warn('[ticket] load people error', e);
       }
     })();
   }, []);
 
-  const filteredStaff = pickerSearch.trim()
-    ? staffList.filter((s) =>
-        `${s.first_name} ${s.last_name}`.toLowerCase().includes(pickerSearch.toLowerCase())
+  const filteredPeople = pickerSearch.trim()
+    ? peopleList.filter((p) =>
+        `${p.first_name} ${p.last_name}`.toLowerCase().includes(pickerSearch.toLowerCase())
       )
-    : staffList;
+    : peopleList;
 
   async function handleCreate() {
     const errs: typeof errors = {};
@@ -106,7 +84,7 @@ export default function CreateTicketScreen() {
     setErrors({});
     setLoading(true);
     try {
-      await createTicket({
+      const ticket = await createTicket({
         title:             title.trim(),
         description:       description.trim(),
         priority,
@@ -114,8 +92,35 @@ export default function CreateTicketScreen() {
         // requester_user_id FK → profiles.id (migration 009).
         // Must be profile.id (NOT session.user.id which is auth.uid()).
         requester_user_id: profile.id,
-        assigned_to:       assignee?.id,
+        assigned_to:       assignees[0]?.id,
       });
+      // Send notifications BEFORE navigating so any error is visible on this screen
+      if ((notifyPush || notifyEmail) && assignees.length > 0) {
+        try {
+          await notifyProfiles(
+            assignees.map((a) => a.id),
+            {
+              notifyPush,
+              notifyEmail,
+              entityType:     'ticket',
+              entityId:       ticket.id,
+              pushTitle:      `Ticket asignado: ${title.trim()}`,
+              pushMessage:    `Se te asignó el ticket "${title.trim()}"`,
+              emailSubject:   `Ticket asignado: ${title.trim()}`,
+              emailHtmlBody:  `<p>Se te ha asignado el ticket <strong>${title.trim()}</strong> con prioridad <strong>${priority}</strong>.</p>`,
+              emailPlainBody: `Se te asignó el ticket "${title.trim()}" con prioridad ${priority}.`,
+            },
+          );
+        } catch (ne: unknown) {
+          const nm = (ne as { message?: string })?.message ?? 'Error desconocido';
+          console.error('[ticket] notify error:', nm);
+          Alert.alert(
+            'Notificación no enviada',
+            `El ticket fue creado pero las notificaciones fallaron.\n\nDetalle: ${nm}\n\nVerifica que las migraciones 026 y 027 estén aplicadas en Supabase.`,
+          );
+        }
+      }
+
       router.back();
     } catch (e: unknown) {
       // PostgrestError from Supabase is NOT instanceof Error — check .message directly.
@@ -155,8 +160,10 @@ export default function CreateTicketScreen() {
             style={{ height: 100, textAlignVertical: 'top' }}
           />
 
-          {/* Assignee picker */}
-          <Text style={[styles.label, { color: colors.text }]}>Asignado a</Text>
+          {/* Assignee picker — only for roles with assign_tickets permission */}
+          {canAssign && <Text style={[styles.label, { color: colors.text }]}>Asignado a</Text>}
+          {/* (invisible placeholder keeps layout consistent when hidden) */}
+          {canAssign && (
           <TouchableOpacity
             onPress={() => setPickerOpen(true)}
             style={[
@@ -167,22 +174,42 @@ export default function CreateTicketScreen() {
               },
             ]}
           >
-            <Text style={[
-              styles.pickerBtnText,
-              { color: assignee ? colors.text : colors.icon },
-            ]}>
-              {assignee ? `${assignee.first_name} ${assignee.last_name}` : 'Sin asignar (opcional)'}
+            <Text style={[styles.pickerBtnText, { color: colors.icon }]}>
+              {assignees.length > 0 ? `${assignees.length} asignado(s)` : 'Sin asignar (opcional)'}
             </Text>
-            <Ionicons
-              name={assignee ? 'close-circle' : 'chevron-down'}
-              size={18}
-              color={colors.icon}
-              onPress={assignee ? () => setAssignee(null) : undefined}
-            />
+            <Ionicons name="chevron-down" size={18} color={colors.icon} />
           </TouchableOpacity>
+          )}
 
-          {/* Staff picker modal */}
-          <Modal visible={pickerOpen} animationType="slide" presentationStyle="pageSheet">
+          {/* Selected assignees — horizontally scrollable chips */}
+          {canAssign && assignees.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator
+              style={styles.chipsScrollView}
+              contentContainerStyle={styles.chipsContent}
+            >
+              {assignees.map((a) => (
+                <View
+                  key={a.id}
+                  style={[styles.chip, { backgroundColor: PRIMARY + '18', borderColor: PRIMARY + '40' }]}
+                >
+                  <Text style={[styles.chipText, { color: PRIMARY }]}>
+                    {a.first_name} {a.last_name}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setAssignees((prev) => prev.filter((x) => x.id !== a.id))}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close-circle" size={16} color={PRIMARY} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+
+          {/* Assignee picker modal */}
+          <Modal visible={canAssign && pickerOpen} animationType="slide" presentationStyle="pageSheet">
             <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>Seleccionar asignado</Text>
@@ -207,26 +234,32 @@ export default function CreateTicketScreen() {
               {/* "Sin asignar" option */}
               <TouchableOpacity
                 style={[styles.staffRow, { borderBottomColor: scheme === 'dark' ? '#374151' : '#e2e8f0' }]}
-                onPress={() => { setAssignee(null); setPickerOpen(false); setPickerSearch(''); }}
+                onPress={() => { setAssignees([]); setPickerOpen(false); setPickerSearch(''); }}
               >
                 <View style={styles.staffAvatar}>
                   <Ionicons name="person-outline" size={16} color={colors.icon} />
                 </View>
                 <Text style={[styles.staffName, { color: colors.icon }]}>Sin asignar</Text>
-                {!assignee && <Ionicons name="checkmark" size={18} color={PRIMARY} />}
+                {assignees.length === 0 && <Ionicons name="checkmark" size={18} color={PRIMARY} />}
               </TouchableOpacity>
 
               <FlatList
-                data={filteredStaff}
-                keyExtractor={(s) => s.id}
+                data={filteredPeople}
+                keyExtractor={(p) => p.id}
                 keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => {
                   const initials = `${item.first_name[0] ?? ''}${item.last_name[0] ?? ''}`.toUpperCase();
-                  const selected = assignee?.id === item.id;
+                  const selected = assignees.some((a) => a.id === item.id);
                   return (
                     <TouchableOpacity
                       style={[styles.staffRow, { borderBottomColor: scheme === 'dark' ? '#374151' : '#e2e8f0' }]}
-                      onPress={() => { setAssignee(item); setPickerOpen(false); setPickerSearch(''); }}
+                      onPress={() =>
+                        setAssignees((prev) =>
+                          prev.some((a) => a.id === item.id)
+                            ? prev.filter((a) => a.id !== item.id)
+                            : [...prev, item],
+                        )
+                      }
                     >
                       <View style={[styles.staffAvatar, { backgroundColor: PRIMARY }]}>
                         <Text style={styles.staffInitials}>{initials}</Text>
@@ -242,8 +275,45 @@ export default function CreateTicketScreen() {
                   <Text style={[styles.emptyText, { color: colors.icon }]}>Sin resultados</Text>
                 }
               />
+
+              {/* Done button */}
+              <TouchableOpacity
+                style={[styles.doneBtn, { backgroundColor: PRIMARY }]}
+                onPress={() => { setPickerOpen(false); setPickerSearch(''); }}
+              >
+                <Text style={styles.doneBtnText}>Listo</Text>
+              </TouchableOpacity>
             </View>
           </Modal>
+
+          {/* Notification options — visible when assignees are selected */}
+          {assignees.length > 0 && (
+            <View style={styles.notifSection}>
+              <Text style={[styles.label, { color: colors.text }]}>Notificaciones</Text>
+              <TouchableOpacity
+                onPress={() => setNotifyPush((v) => !v)}
+                style={styles.notifRow}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.notifDot, { backgroundColor: notifyPush ? PRIMARY : colors.icon }]}>
+                  {notifyPush && <Ionicons name="checkmark" size={12} color="#fff" />}
+                </View>
+                <Ionicons name="notifications-outline" size={15} color={notifyPush ? PRIMARY : colors.icon} style={{ marginLeft: 4, marginRight: 6 }} />
+                <Text style={[{ fontSize: 14, color: notifyPush ? colors.text : colors.icon }]}>Push notification</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setNotifyEmail((v) => !v)}
+                style={styles.notifRow}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.notifDot, { backgroundColor: notifyEmail ? PRIMARY : colors.icon }]}>
+                  {notifyEmail && <Ionicons name="checkmark" size={12} color="#fff" />}
+                </View>
+                <Ionicons name="mail-outline" size={15} color={notifyEmail ? PRIMARY : colors.icon} style={{ marginLeft: 4, marginRight: 6 }} />
+                <Text style={[{ fontSize: 14, color: notifyEmail ? colors.text : colors.icon }]}>Email</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Priority selector */}
           <Text style={[styles.label, { color: colors.text }]}>Prioridad</Text>
@@ -328,4 +398,28 @@ const styles = StyleSheet.create({
   },
   priorityText: { fontSize: 13, fontWeight: '500' },
   btn: { marginTop: 4 },
+
+  // Multi-select assignee chips
+  chipsScrollView: { marginBottom: 12 },
+  chipsContent: { gap: 8, paddingVertical: 4 },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  chipText: { fontSize: 13, fontWeight: '500' },
+  // Done button inside picker modal
+  doneBtn: {
+    margin: 16, borderRadius: 10, paddingVertical: 14,
+    alignItems: 'center',
+  },
+  doneBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  // Notification options
+  notifSection: { marginBottom: 16 },
+  notifRow: { flexDirection: 'row', alignItems: 'center', gap: 0, marginBottom: 10 },
+  notifDot: {
+    width: 22, height: 22, borderRadius: 11,
+    justifyContent: 'center', alignItems: 'center',
+  },
 });

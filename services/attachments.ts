@@ -113,10 +113,6 @@ export async function uploadAthleteAttachment(
   moduleTag  = 'seguimiento',
   description?: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  if (!asset.base64) {
-    return { ok: false, error: 'No se obtuvieron datos de la imagen.' };
-  }
-
   try {
     // 1. Derive file metadata
     const ext  = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
@@ -124,15 +120,16 @@ export async function uploadAthleteAttachment(
     const name = `${Date.now()}_${athleteId.slice(0, 8)}.${ext}`;
     const path = `athletes/${athleteId}/${name}`;
 
-    // 2. Decode base64 → ArrayBuffer
-    const binaryStr = atob(asset.base64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-
-    // 3. Upload to athlete-files bucket
+    // 2. Upload to athlete-files bucket.
+    //    We build FormData ourselves so Supabase hits the FormData branch of
+    //    uploadOrUpdate (which doesn't set Content-Type). The plain-object
+    //    branch would hard-code 'text/plain;charset=UTF-8' and fail.
+    //    React Native's native fetch sets the correct multipart boundary.
+    const uploadForm = new FormData();
+    uploadForm.append('', { uri: asset.uri, name, type: mime } as unknown as Blob);
     const { error: uploadError } = await supabase.storage
       .from('athlete-files')
-      .upload(path, bytes.buffer, { contentType: mime, upsert: false });
+      .upload(path, uploadForm, { upsert: false });
 
     if (uploadError) {
       console.warn('[attachments] upload error:', uploadError.message);
@@ -146,10 +143,11 @@ export async function uploadAthleteAttachment(
         athlete_id:           athleteId,
         module_name:          moduleTag,
         file_name_original:   name,
+        file_name_storage:    name,          // NOT NULL in DB
         file_path:            path,
         mime_type:            mime,
         file_extension:       ext,
-        file_size:            asset.fileSize ?? null,
+        file_size:            asset.fileSize ?? 0,  // NOT NULL in DB
         description:          description ?? null,
         is_active:            true,
       });
@@ -165,6 +163,85 @@ export async function uploadAthleteAttachment(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.warn('[attachments] unexpected error:', msg);
+    return { ok: false, error: msg };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Generic file upload (supports both image-picker and document-picker assets)
+// ---------------------------------------------------------------------------
+
+/**
+ * A normalised file descriptor that can be built from either
+ * expo-image-picker's `ImagePickerAsset` or expo-document-picker's
+ * `DocumentPickerAsset`.
+ */
+export type UploadableFile = {
+  uri:      string;
+  name:     string;
+  mimeType: string;
+  size:     number | null;
+};
+
+/**
+ * Uploads a file to the `athlete-files` Supabase Storage bucket and inserts
+ * a row in `athlete_attachments` linked to a specific training session.
+ *
+ * @param file      - Normalised file descriptor (from image or document picker)
+ * @param athleteId - UUID of the athlete record
+ * @param sessionId - UUID of the training session (stored as related_record_id)
+ *
+ * Returns `{ ok: true }` on success or `{ ok: false, error }` on failure.
+ */
+export async function uploadSessionFile(
+  file:      UploadableFile,
+  athleteId: string,
+  sessionId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const ext      = file.name.split('.').pop()?.toLowerCase() ?? 'bin';
+    const safeName = `${Date.now()}_${athleteId.slice(0, 8)}.${ext}`;
+    const path     = `athletes/${athleteId}/training/${safeName}`;
+
+    // Same FormData pattern: wrap the RN file object so Supabase hits the
+    // FormData branch and doesn't override Content-Type.
+    const uploadForm = new FormData();
+    uploadForm.append('', { uri: file.uri, name: safeName, type: file.mimeType } as unknown as Blob);
+    const { error: uploadError } = await supabase.storage
+      .from('athlete-files')
+      .upload(path, uploadForm, { upsert: false });
+
+    if (uploadError) {
+      console.warn('[attachments] uploadSessionFile storage error:', uploadError.message);
+      return { ok: false, error: uploadError.message };
+    }
+
+    const { error: dbError } = await supabase
+      .from('athlete_attachments')
+      .insert({
+        athlete_id:          athleteId,
+        module_name:         'training',
+        section_name:        'session',
+        related_record_id:   sessionId,
+        file_name_original:  file.name,
+        file_name_storage:   safeName,       // NOT NULL in DB
+        file_path:           path,
+        mime_type:           file.mimeType,
+        file_extension:      ext,
+        file_size:           file.size ?? 0, // NOT NULL in DB
+        is_active:           true,
+      });
+
+    if (dbError) {
+      console.warn('[attachments] uploadSessionFile db error:', dbError.message);
+      await supabase.storage.from('athlete-files').remove([path]);
+      return { ok: false, error: dbError.message };
+    }
+
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn('[attachments] uploadSessionFile unexpected error:', msg);
     return { ok: false, error: msg };
   }
 }

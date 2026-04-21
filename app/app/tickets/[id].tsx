@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/ui/loading';
 import { getTicket, getTicketComments, addComment, changeTicketStatus } from '@/services/tickets';
+import { notifyProfiles } from '@/services/notifications';
 import { useAuthStore } from '@/store';
 import type { TicketWithProfiles, CommentWithAuthor, TicketStatus } from '@/types';
 import { TICKET_STATUS_LABELS, TICKET_PRIORITY_LABELS } from '@/types';
@@ -44,13 +45,37 @@ export default function TicketDetailScreen() {
   useEffect(() => { load(); }, [id]);
 
   async function handleAddComment() {
-    if (!comment.trim() || !profile) return;
+    if (!comment.trim() || !profile || !ticket) return;
     setSending(true);
+    const commentText = comment.trim(); // capture before clearing
     try {
-      await addComment(id, profile.id, comment.trim());
+      await addComment(id, profile.id, commentText);
       setComment('');
       const updated = await getTicketComments(id);
       setComments(updated);
+
+      // Notify the ticket creator and assignee (excluding the commenter)
+      const recipients = new Set<string>();
+      if (ticket.created_by && ticket.created_by !== profile.id)
+        recipients.add(ticket.created_by);
+      if (ticket.assigned_to && ticket.assigned_to !== profile.id)
+        recipients.add(ticket.assigned_to);
+
+      if (recipients.size > 0) {
+        const authorName = `${profile.first_name} ${profile.last_name}`.trim() || 'Alguien';
+        const preview    = commentText.length > 80 ? `${commentText.slice(0, 80)}…` : commentText;
+        notifyProfiles(Array.from(recipients), {
+          notifyPush:     true,
+          notifyEmail:    false,
+          entityType:     'ticket',
+          entityId:       id,
+          pushTitle:      `Comentario en: ${ticket.title}`,
+          pushMessage:    `${authorName}: “${preview}”`,
+          emailSubject:   `Comentario en ticket: ${ticket.title}`,
+          emailHtmlBody:  `<p><strong>${authorName}</strong> comentó: ${commentText}</p>`,
+          emailPlainBody: `${authorName} comentó: ${commentText}`,
+        }).catch((e) => console.warn('[ticket/comment] notify error:', e));
+      }
     } finally {
       setSending(false);
     }

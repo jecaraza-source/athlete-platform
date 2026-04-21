@@ -5,9 +5,13 @@ export type TicketFilters = {
   status?:    TicketStatus;
   priority?:  TicketPriority;
   search?:    string;
-  /** When set, only returns tickets whose created_by matches this profile ID.
-   *  Used for athletes who should only see their own tickets. */
+  /** @deprecated Use involvedProfileId instead. */
   createdBy?: string;
+  /**
+   * When set, returns tickets where the profile is the creator OR the assignee.
+   * Used for athletes so they see both tickets they raised and tickets assigned to them.
+   */
+  involvedProfileId?: string;
 };
 
 /** List tickets with optional filters. */
@@ -21,8 +25,12 @@ export async function listTickets(filters?: TicketFilters): Promise<TicketWithPr
     `)
     .order('created_at', { ascending: false });
 
-  if (filters?.createdBy) {
-    // Athletes only see their own tickets
+  if (filters?.involvedProfileId) {
+    // Show tickets the profile created OR is assigned to
+    query = query.or(
+      `created_by.eq.${filters.involvedProfileId},assigned_to.eq.${filters.involvedProfileId}`,
+    );
+  } else if (filters?.createdBy) {
     query = query.eq('created_by', filters.createdBy);
   }
   if (filters?.status) {
