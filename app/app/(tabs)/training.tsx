@@ -37,12 +37,15 @@ function SessionCard({
   isAthlete,
   isStaff,
   athleteProfileId,
+  athleteId,
 }: {
   session: TrainingSession;
   isAthlete?: boolean;
   /** Show athlete comment to coach and allow push reply */
   isStaff?: boolean;
   athleteProfileId?: string;
+  /** Used to upload attachments directly from this card */
+  athleteId?: string;
 }) {
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
@@ -56,6 +59,9 @@ function SessionCard({
   const [showReply,    setShowReply]    = useState(false);
   const [replyText,    setReplyText]    = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  // Attachment state
+  const [showAttach,  setShowAttach]  = useState(false);
+  const [uploading,   setUploading]   = useState(false);
 
   const date = new Date(session.session_date).toLocaleDateString('es-MX', {
     weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
@@ -95,6 +101,66 @@ function SessionCard({
       Alert.alert('Error', 'No se pudo enviar la notificación.');
     } finally {
       setSendingReply(false);
+    }
+  }
+
+  async function pickAndUpload(source: 'gallery' | 'document') {
+    if (!athleteId) return;
+    setUploading(true);
+    try {
+      let files: UploadableFile[] = [];
+      if (source === 'gallery') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permiso necesario', 'Se necesita acceso a la galería para adjuntar fotos.');
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsMultipleSelection: true,
+          quality: 0.8,
+        });
+        if (result.canceled || !result.assets?.length) return;
+        files = result.assets.map((asset) => {
+          const ext  = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+          const name = asset.fileName ?? `foto_${Date.now()}.${ext}`;
+          const mime = asset.mimeType ?? (ext === 'jpg' ? 'image/jpeg' : `image/${ext}`);
+          return { uri: asset.uri, name, mimeType: mime, size: asset.fileSize ?? null };
+        });
+      } else {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: ['*/*'],
+          multiple: true,
+          copyToCacheDirectory: true,
+        });
+        if (result.canceled || !result.assets?.length) return;
+        files = result.assets.map((asset) => ({
+          uri:      asset.uri,
+          name:     asset.name,
+          mimeType: asset.mimeType ?? 'application/octet-stream',
+          size:     asset.size ?? null,
+        }));
+      }
+      const results = await Promise.all(
+        files.map((f) => uploadSessionFile(f, athleteId, session.id))
+      );
+      const failed = results.filter((r) => !r.ok).length;
+      if (failed > 0) {
+        Alert.alert(
+          'Error al subir',
+          `${failed} archivo${failed > 1 ? 's' : ''} no se pudo${failed > 1 ? 'ieron' : ''} subir.`,
+        );
+      } else {
+        Alert.alert(
+          '¡Listo!',
+          `${files.length} archivo${files.length > 1 ? 's' : ''} adjuntado${files.length > 1 ? 's' : ''} correctamente.`,
+        );
+        setShowAttach(false);
+      }
+    } catch {
+      Alert.alert('Error', 'No se pudo adjuntar el archivo.');
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -235,6 +301,23 @@ function SessionCard({
             <Text style={[styles.athleteBtnText, { color: showComment ? PRIMARY : colors.icon }]}>Comentario</Text>
           </TouchableOpacity>
 
+          {athleteId && (
+            <TouchableOpacity
+              onPress={() => setShowAttach((v) => !v)}
+              style={[
+                styles.athleteBtn,
+                { backgroundColor: showAttach ? PRIMARY + '18' : (scheme === 'dark' ? '#374151' : '#f1f5f9') },
+              ]}
+              activeOpacity={0.75}
+              disabled={uploading}
+            >
+              <Ionicons name="attach-outline" size={14} color={showAttach ? PRIMARY : colors.icon} />
+              <Text style={[styles.athleteBtnText, { color: showAttach ? PRIMARY : colors.icon }]}>
+                {uploading ? 'Subiendo…' : 'Adjuntos'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             onPress={toggleDone}
             style={[
@@ -252,6 +335,34 @@ function SessionCard({
               {isDone ? '¡Hecho!' : 'Hecho'}
             </Text>
           </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Inline attachment picker (athlete) */}
+      {isAthlete && showAttach && athleteId && (
+        <View style={styles.attachPanel}>
+          <TouchableOpacity
+            style={[styles.attachPanelBtn, { borderColor: PRIMARY + '60', backgroundColor: PRIMARY + '10' }]}
+            onPress={() => pickAndUpload('gallery')}
+            disabled={uploading}
+          >
+            <Ionicons name="images-outline" size={16} color={PRIMARY} />
+            <Text style={[styles.attachBtnText, { color: PRIMARY }]}>Galería / Fotos</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.attachPanelBtn, { borderColor: PRIMARY + '60', backgroundColor: PRIMARY + '10' }]}
+            onPress={() => pickAndUpload('document')}
+            disabled={uploading}
+          >
+            <Ionicons name="document-attach-outline" size={16} color={PRIMARY} />
+            <Text style={[styles.attachBtnText, { color: PRIMARY }]}>Documentos / Archivos</Text>
+          </TouchableOpacity>
+          {uploading && (
+            <View style={styles.attachUploadingRow}>
+              <Ionicons name="cloud-upload-outline" size={14} color={colors.icon} />
+              <Text style={[styles.attachUploadingText, { color: colors.icon }]}>Subiendo archivos...</Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -958,6 +1069,7 @@ export default function TrainingScreen() {
               isAthlete={canViewTraining && !canManageTraining}
               isStaff={canManageTraining}
               athleteProfileId={canManageTraining ? (selectedAthleteProfileId ?? undefined) : undefined}
+              athleteId={effectiveAthleteId ?? undefined}
             />
           ))
         )}
@@ -1078,6 +1190,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 9,
   },
   attachBtnText: { fontSize: 13, fontWeight: '600' },
+  // Attach panel inside SessionCard
+  attachPanel: { marginTop: 10, gap: 8 },
+  attachPanelBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  attachUploadingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 },
+  attachUploadingText: { fontSize: 12 },
 
   // File chip list
   fileList: { marginTop: 10, gap: 6 },
