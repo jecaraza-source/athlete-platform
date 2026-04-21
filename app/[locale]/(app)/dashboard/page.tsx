@@ -70,16 +70,20 @@ export default async function DashboardPage() {
     { count: activeAthletes },
     { count: openTickets },
     { count: upcomingEvents },
-    { count: pendingDiagnostics },
+    { count: completeDiagnostics },
   ] = await Promise.all([
     supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true }),
     supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true }).eq('status', 'active'),
     supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
     supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
       .gte('start_at', now.toISOString()).lte('start_at', weekEnd),
+    // Athletes with no diagnostic record are shown as 'pendiente' in the athletes table,
+    // so pending = total − those with a complete diagnostic.
     supabaseAdmin.from('athlete_initial_diagnostic').select('*', { count: 'exact', head: true })
-      .neq('overall_status', 'completo'),
+      .eq('overall_status', 'completo'),
   ]);
+
+  const pendingDiagnostics = (totalAthletes ?? 0) - (completeDiagnostics ?? 0);
 
   const metrics = [
     {

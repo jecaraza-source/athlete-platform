@@ -7,10 +7,11 @@ export const dynamic = 'force-dynamic';
 
 type Discipline = {
   href: '/protocols/coach' | '/protocols/physio' | '/protocols/medic' | '/protocols/nutrition' | '/protocols/psychology';
-  key: 'coach' | 'physio' | 'medic' | 'nutrition' | 'psychology';
-  card: string;
+  key:  'coach' | 'physio' | 'medic' | 'nutrition' | 'psychology';
+  card:  string;
   title: string;
-  text: string;
+  text:  string;
+  icon:  string;
 };
 
 const disciplines: Discipline[] = [
@@ -20,6 +21,7 @@ const disciplines: Discipline[] = [
     card:  'border-blue-200   bg-blue-50   hover:bg-blue-100',
     title: 'text-blue-800',
     text:  'text-blue-600',
+    icon:  '🤝',
   },
   {
     href:  '/protocols/physio',
@@ -27,6 +29,7 @@ const disciplines: Discipline[] = [
     card:  'border-orange-200 bg-orange-50 hover:bg-orange-100',
     title: 'text-orange-800',
     text:  'text-orange-600',
+    icon:  '🦴',
   },
   {
     href:  '/protocols/medic',
@@ -34,6 +37,7 @@ const disciplines: Discipline[] = [
     card:  'border-rose-200   bg-rose-50   hover:bg-rose-100',
     title: 'text-rose-800',
     text:  'text-rose-600',
+    icon:  '🩺',
   },
   {
     href:  '/protocols/nutrition',
@@ -41,6 +45,7 @@ const disciplines: Discipline[] = [
     card:  'border-emerald-200 bg-emerald-50 hover:bg-emerald-100',
     title: 'text-emerald-800',
     text:  'text-emerald-600',
+    icon:  '🥗',
   },
   {
     href:  '/protocols/psychology',
@@ -48,6 +53,7 @@ const disciplines: Discipline[] = [
     card:  'border-purple-200 bg-purple-50 hover:bg-purple-100',
     title: 'text-purple-800',
     text:  'text-purple-600',
+    icon:  '🧠',
   },
 ];
 
@@ -68,10 +74,13 @@ export default async function ProtocolsPage() {
           <Link
             key={d.href}
             href={d.href}
-            className={`rounded-xl border p-6 transition-colors ${d.card}`}
+            className={`rounded-xl border p-6 transition-colors flex items-start gap-4 ${d.card}`}
           >
-            <h2 className={`text-lg font-bold mb-1.5 ${d.title}`}>{t(`${d.key}.label` as Parameters<typeof t>[0])}</h2>
-            <p className={`text-sm ${d.text}`}>{t(`${d.key}.description` as Parameters<typeof t>[0])}</p>
+            <span className="text-3xl mt-0.5">{d.icon}</span>
+            <div>
+              <h2 className={`text-lg font-bold mb-1.5 ${d.title}`}>{t(`${d.key}.label` as Parameters<typeof t>[0])}</h2>
+              <p className={`text-sm ${d.text}`}>{t(`${d.key}.description` as Parameters<typeof t>[0])}</p>
+            </div>
           </Link>
         ))}
       </div>

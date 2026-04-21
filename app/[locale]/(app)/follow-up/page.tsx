@@ -5,9 +5,10 @@ import { getTranslations } from 'next-intl/server';
 type Category = {
   href: '/follow-up/training' | '/follow-up/nutrition' | '/follow-up/physio' | '/follow-up/psychology' | '/follow-up/medical';
   labelKey: 'training' | 'nutrition' | 'physio' | 'psychology' | 'medical';
-  card: string;
+  card:  string;
   title: string;
-  text: string;
+  text:  string;
+  icon:  string;
 };
 
 const categories: Category[] = [
@@ -17,6 +18,7 @@ const categories: Category[] = [
     card:     'border-blue-200   bg-blue-50   hover:bg-blue-100',
     title:    'text-blue-800',
     text:     'text-blue-600',
+    icon:     '🏃',
   },
   {
     href:     '/follow-up/nutrition',
@@ -24,6 +26,7 @@ const categories: Category[] = [
     card:     'border-emerald-200 bg-emerald-50 hover:bg-emerald-100',
     title:    'text-emerald-800',
     text:     'text-emerald-600',
+    icon:     '🥗',
   },
   {
     href:     '/follow-up/physio',
@@ -31,6 +34,7 @@ const categories: Category[] = [
     card:     'border-orange-200 bg-orange-50 hover:bg-orange-100',
     title:    'text-orange-800',
     text:     'text-orange-600',
+    icon:     '🦴',
   },
   {
     href:     '/follow-up/psychology',
@@ -38,6 +42,7 @@ const categories: Category[] = [
     card:     'border-purple-200 bg-purple-50 hover:bg-purple-100',
     title:    'text-purple-800',
     text:     'text-purple-600',
+    icon:     '🧠',
   },
   {
     href:     '/follow-up/medical',
@@ -45,6 +50,7 @@ const categories: Category[] = [
     card:     'border-rose-200   bg-rose-50   hover:bg-rose-100',
     title:    'text-rose-800',
     text:     'text-rose-600',
+    icon:     '🩺',
   },
 ];
 
@@ -62,10 +68,13 @@ export default async function FollowUpPage() {
           <Link
             key={cat.href}
             href={cat.href}
-            className={`rounded-xl border p-6 transition-colors ${cat.card}`}
+            className={`rounded-xl border p-6 transition-colors flex items-start gap-4 ${cat.card}`}
           >
-            <h2 className={`font-bold text-lg mb-1 ${cat.title}`}>{t(`${cat.labelKey}.title` as Parameters<typeof t>[0])}</h2>
-            <p className={`text-sm ${cat.text}`}>{t(`${cat.labelKey}.description` as Parameters<typeof t>[0])}</p>
+            <span className="text-3xl mt-0.5">{cat.icon}</span>
+            <div>
+              <h2 className={`font-bold text-lg mb-1 ${cat.title}`}>{t(`${cat.labelKey}.title` as Parameters<typeof t>[0])}</h2>
+              <p className={`text-sm ${cat.text}`}>{t(`${cat.labelKey}.description` as Parameters<typeof t>[0])}</p>
+            </div>
           </Link>
         ))}
       </div>
