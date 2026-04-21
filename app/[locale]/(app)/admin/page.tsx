@@ -80,6 +80,17 @@ export default async function AdminPage() {
             <p className="text-sm text-violet-600 mt-1">{t('protocolsAdmin.description')}</p>
           </div>
         </Link>
+
+        <Link
+          href="/admin/disciplines"
+          className="rounded-lg border border-indigo-200 bg-indigo-50 p-6 hover:bg-indigo-100 transition-colors flex items-start gap-4"
+        >
+          <span className="text-3xl mt-0.5">🏅</span>
+          <div>
+            <h2 className="text-lg font-semibold text-indigo-800">Configuración de Disciplinas</h2>
+            <p className="text-sm text-indigo-600 mt-1">Gestiona las disciplinas deportivas del calendario y formularios.</p>
+          </div>
+        </Link>
       </div>
     </main>
   );
