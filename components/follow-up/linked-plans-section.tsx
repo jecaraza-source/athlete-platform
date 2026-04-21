@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Link } from '@/i18n/navigation';
 import { useRouter } from 'next/navigation';
 
 export type LinkedPlan = {
@@ -150,22 +149,17 @@ export default function LinkedPlansSection({
 
               {/* Right: CTA */}
               {row.athleteId ? (
-                showConfirm ? (
-                  <button
-                    type="button"
-                    onClick={() => handleConfirmCta(row.athleteId!, row.athleteName, row.title)}
-                    className="shrink-0 inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
-                  >
-                    Dar seguimiento →
-                  </button>
-                ) : (
-                  <Link
-                    href={`${followUpPath}?athlete=${row.athleteId}` as Parameters<typeof Link>[0]['href']}
-                    className="shrink-0 inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
-                  >
-                    Dar seguimiento →
-                  </Link>
-                )
+                <button
+                  type="button"
+                  onClick={() =>
+                    showConfirm
+                      ? handleConfirmCta(row.athleteId!, row.athleteName, row.title)
+                      : router.push(`${followUpPath}?athlete=${row.athleteId}`)
+                  }
+                  className="shrink-0 inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                >
+                  Dar seguimiento →
+                </button>
               ) : (
                 <span className="shrink-0 text-xs text-gray-400 italic">Sin atleta</span>
               )}
