@@ -2,6 +2,7 @@ import BackButton from '@/components/back-button';
 import { getTranslations } from 'next-intl/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission, getCurrentUser } from '@/lib/rbac/server';
+import { DISCIPLINES } from '@/lib/types/diagnostic';
 import MonthCalendar from './month-calendar';
 import EventsListClient from './events-list-client';
 
@@ -39,7 +40,7 @@ export default async function CalendarPage() {
       .order('start_at', { ascending: true }),
     supabaseAdmin
       .from('athletes')
-      .select('id, first_name, last_name')
+      .select('id, first_name, last_name, discipline')
       .order('last_name', { ascending: true }),
     supabaseAdmin
       .from('event_participants')
@@ -60,7 +61,7 @@ export default async function CalendarPage() {
     sport_name: (Array.isArray(e.sports) ? e.sports[0] : e.sports)?.name ?? null,
   }));
 
-  const athletes    = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
+  const athletes    = (athletesData ?? []) as { id: string; first_name: string; last_name: string; discipline: string | null }[];
   const participants = (participantsData ?? []) as { event_id: string; participant_id: string }[];
   const sports      = (sportsData    ?? []) as Sport[];
 
@@ -88,6 +89,7 @@ export default async function CalendarPage() {
         athletes={athletes}
         participants={participants}
         sports={sports}
+        disciplines={DISCIPLINES}
       />
 
       {error && (

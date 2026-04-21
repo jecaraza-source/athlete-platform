@@ -16,7 +16,8 @@ type CalendarEvent = {
   end_at: string;
 };
 
-type Athlete     = { id: string; first_name: string; last_name: string };
+type Athlete     = { id: string; first_name: string; last_name: string; discipline?: string | null };
+type Discipline  = { value: string; label: string };
 type Participant = { event_id: string; participant_id: string };
 type View        = 'day' | 'week' | 'month';
 
@@ -215,20 +216,23 @@ export default function MonthCalendar({
   athletes = [],
   participants = [],
   sports = [],
+  disciplines = [],
 }: {
   events: CalendarEvent[];
   currentProfileId: string;
   athletes?: Athlete[];
   participants?: Participant[];
   sports?: { id: string; name: string; category_type: string }[];
+  disciplines?: readonly Discipline[];
 }) {
   const today = new Date();
-  const [view,           setView]          = useState<View>('month');
-  const [year,           setYear]          = useState(today.getFullYear());
-  const [month,          setMonth]         = useState(today.getMonth());
-  const [day,            setDay]           = useState(today.getDate());
-  const [selectedUserId,  setSelectedUserId]  = useState('');
-  const [selectedSportId, setSelectedSportId] = useState('');
+  const [view,               setView]             = useState<View>('month');
+  const [year,               setYear]             = useState(today.getFullYear());
+  const [month,              setMonth]            = useState(today.getMonth());
+  const [day,                setDay]              = useState(today.getDate());
+  const [selectedUserId,     setSelectedUserId]   = useState('');
+  const [selectedSportId,    setSelectedSportId]  = useState('');
+  const [selectedDiscipline, setSelectedDiscipline] = useState('');
 
   // Apply athlete filter
   const athleteFiltered = selectedUserId
@@ -242,10 +246,28 @@ export default function MonthCalendar({
       })()
     : events;
 
-  // Apply sport filter on top of athlete filter
-  const visibleEvents = selectedSportId
+  // Apply sport (sport_id) filter
+  const sportFiltered = selectedSportId
     ? athleteFiltered.filter((e) => e.sport_id === selectedSportId)
     : athleteFiltered;
+
+  // Apply discipline filter — shows events where at least one participant
+  // athlete belongs to the selected discipline
+  const visibleEvents = selectedDiscipline
+    ? (() => {
+        const discAthletes = new Set(
+          athletes
+            .filter((a) => a.discipline === selectedDiscipline)
+            .map((a) => a.id)
+        );
+        const allowed = new Set(
+          participants
+            .filter((p) => discAthletes.has(p.participant_id))
+            .map((p) => p.event_id)
+        );
+        return sportFiltered.filter((e) => allowed.has(e.id));
+      })()
+    : sportFiltered;
 
   function prev() {
     const offsets: Record<View, number> = { day: -1, week: -7, month: 0 };
@@ -298,16 +320,16 @@ export default function MonthCalendar({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* Sport filter */}
-          {sports.length > 0 && (
+          {/* Discipline filter */}
+          {disciplines.length > 0 && (
             <select
-              value={selectedSportId}
-              onChange={(e) => setSelectedSportId(e.target.value)}
+              value={selectedDiscipline}
+              onChange={(e) => setSelectedDiscipline(e.target.value)}
               className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             >
-              <option value="">All sports</option>
-              {sports.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+              <option value="">Todas las disciplinas</option>
+              {disciplines.map((d) => (
+                <option key={d.value} value={d.value}>{d.label}</option>
               ))}
             </select>
           )}
