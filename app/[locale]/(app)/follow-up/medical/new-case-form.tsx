@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { createMedicalCase } from './actions';
 
 type Person = { id: string; first_name: string; last_name: string };
@@ -12,6 +13,8 @@ export default function NewCaseForm({
   athletes: Person[];
   doctors: Person[];
 }) {
+  const t  = useTranslations('followUp.medical');
+  const tc = useTranslations('common');
   const [open, setOpen]   = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -37,11 +40,11 @@ export default function NewCaseForm({
           onClick={() => setOpen(true)}
           className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
         >
-          + Nuevo caso
+          {t('newCaseBtn')}
         </button>
       ) : (
         <div className="rounded-lg border border-gray-200 p-5">
-          <h2 className="font-semibold mb-4">Nuevo Caso Médico</h2>
+          <h2 className="font-semibold mb-4">{t('newCaseTitle')}</h2>
 
           {error && (
             <p className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
@@ -54,7 +57,7 @@ export default function NewCaseForm({
               {/* Athlete */}
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="med-athlete">
-                  Atleta <span className="text-red-500">*</span>
+                  {t('athleteLabel')} <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="med-athlete"
@@ -62,7 +65,7 @@ export default function NewCaseForm({
                   required
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value="">Seleccionar atleta…</option>
+                  <option value="">{t('selectAthlete')}</option>
                   {athletes.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.first_name} {a.last_name}
@@ -74,14 +77,14 @@ export default function NewCaseForm({
               {/* Medical professional */}
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="med-doctor">
-                  Profesional médico
+                  {t('medicalProfLabel')}
                 </label>
                 <select
                   id="med-doctor"
                   name="doctor_profile_id"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value="">Seleccionar profesional…</option>
+                  <option value="">{t('selectProfessional')}</option>
                   {doctors.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.first_name} {d.last_name}
@@ -93,13 +96,13 @@ export default function NewCaseForm({
               {/* Condition / Diagnosis */}
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="med-condition">
-                  Condición / Diagnóstico
+                  {t('conditionLabel')}
                 </label>
                 <input
                   id="med-condition"
                   name="condition"
                   type="text"
-                  placeholder="ej. Hipertensión, Diabetes tipo 2…"
+                  placeholder={t('conditionPlaceholder')}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
               </div>
@@ -107,7 +110,7 @@ export default function NewCaseForm({
               {/* Opened on */}
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="med-opened">
-                  Fecha de apertura <span className="text-red-500">*</span>
+                  {t('openedOnLabel')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="med-opened"
@@ -121,16 +124,16 @@ export default function NewCaseForm({
               {/* Status */}
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="med-status">
-                  Estado
+                  {t('statusLabel')}
                 </label>
                 <select
                   id="med-status"
                   name="status"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value="open">Abierto</option>
-                  <option value="in_progress">En progreso</option>
-                  <option value="closed">Cerrado</option>
+                  <option value="open">{t('statusOpen')}</option>
+                  <option value="in_progress">{t('statusInProgress')}</option>
+                  <option value="closed">{t('statusClosed')}</option>
                 </select>
               </div>
             </div>
@@ -138,13 +141,13 @@ export default function NewCaseForm({
             {/* Notes */}
             <div>
               <label className="block text-sm font-medium mb-1" htmlFor="med-notes">
-                Notas
+                {t('caseNotesLabel')}
               </label>
               <textarea
                 id="med-notes"
                 name="notes"
                 rows={2}
-                placeholder="Antecedentes, información de referencia, contexto…"
+                placeholder={t('caseNotesPlaceholder')}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />
             </div>
@@ -155,14 +158,14 @@ export default function NewCaseForm({
                 disabled={isPending}
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
-                {isPending ? 'Guardando…' : 'Guardar caso'}
+                {isPending ? tc('saving') : t('saveCase')}
               </button>
               <button
                 type="button"
                 onClick={() => { setOpen(false); setError(null); }}
                 className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
               >
-                Cancelar
+                {tc('cancel')}
               </button>
             </div>
           </form>

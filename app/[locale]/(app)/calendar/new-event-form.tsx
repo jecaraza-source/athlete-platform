@@ -1,22 +1,9 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { createEvent } from './actions';
 
-const EVENT_TYPES: { value: string; label: string }[] = [
-  { value: 'training',    label: 'Entrenamiento' },
-  { value: 'competition', label: 'Competencia'   },
-  { value: 'meeting',     label: 'Reunión'        },
-  { value: 'medical',     label: 'Médico'         },
-  { value: 'evaluation',  label: 'Evaluación'    },
-  { value: 'other',       label: 'Otro'           },
-];
-
-const STATUSES: { value: string; label: string }[] = [
-  { value: 'scheduled',  label: 'Programado'  },
-  { value: 'completed',  label: 'Completado'  },
-  { value: 'cancelled',  label: 'Cancelado'   },
-];
 
 type Athlete = { id: string; first_name: string; last_name: string };
 type Sport  = { id: string; name: string; category_type: string };
@@ -31,6 +18,23 @@ export default function NewEventForm({
   athletes?: Athlete[];
   sports?: Sport[];
 }) {
+  const t  = useTranslations('calendar');
+  const tc = useTranslations('common');
+
+  const EVENT_TYPES = [
+    { value: 'training',    label: t('typeTraining')    },
+    { value: 'competition', label: t('typeCompetition') },
+    { value: 'meeting',     label: t('typeMeeting')     },
+    { value: 'medical',     label: t('typeMedical')     },
+    { value: 'evaluation',  label: t('typeEvaluation')  },
+    { value: 'other',       label: t('typeOther')       },
+  ];
+  const STATUSES = [
+    { value: 'scheduled', label: t('statusScheduled') },
+    { value: 'completed', label: t('statusCompleted')  },
+    { value: 'cancelled', label: t('statusCancelled')  },
+  ];
+
   const [open,    setOpen]    = useState(false);
   const [error,   setError]   = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -77,14 +81,14 @@ export default function NewEventForm({
         onClick={() => setOpen(true)}
         className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
       >
-        + Nuevo evento
+        {t('newEvent')}
       </button>
     );
   }
 
   return (
     <div className="mt-4 rounded-md border border-gray-200 bg-white p-4">
-      <h3 className="font-semibold text-sm mb-3">Nuevo Evento</h3>
+      <h3 className="font-semibold text-sm mb-3">{t('newEventTitle')}</h3>
 
       {error && (
         <p className="mb-3 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-700">
@@ -97,29 +101,29 @@ export default function NewEventForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium mb-1" htmlFor="ev_title">
-              Título <span className="text-red-500">*</span>
+              {t('titleLabel')} <span className="text-red-500">*</span>
             </label>
             <input
               id="ev_title"
               name="title"
               type="text"
               required
-              placeholder="ej. Entrenamiento matutino"
+              placeholder={t('titlePlaceholder')}
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
             />
           </div>
 
-          {/* Disciplina */}
+          {/* Discipline */}
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor="ev_sport">
-              Disciplina
+              {t('disciplineLabel')}
             </label>
             <select
               id="ev_sport"
               name="sport_id"
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
             >
-              <option value="">General (sin disciplina)</option>
+              <option value="">{t('noDiscipline')}</option>
               {sports.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -131,7 +135,7 @@ export default function NewEventForm({
 
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor="ev_type">
-              Tipo <span className="text-red-500">*</span>
+              {t('typeLabel')} <span className="text-red-500">*</span>
             </label>
             <select
               id="ev_type"
@@ -139,7 +143,7 @@ export default function NewEventForm({
               required
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
             >
-              <option value="">Seleccionar…</option>
+              <option value="">{t('selectType')}</option>
               {EVENT_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
                   {t.label}
@@ -150,7 +154,7 @@ export default function NewEventForm({
 
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor="ev_status">
-              Estado
+              {t('statusLabel')}
             </label>
             <select
               id="ev_status"
@@ -167,7 +171,7 @@ export default function NewEventForm({
 
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor="ev_start">
-              Inicio <span className="text-red-500">*</span>
+              {t('startLabel')} <span className="text-red-500">*</span>
             </label>
             <input
               id="ev_start"
@@ -180,7 +184,7 @@ export default function NewEventForm({
 
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor="ev_end">
-              Fin <span className="text-red-500">*</span>
+              {t('endLabel')} <span className="text-red-500">*</span>
             </label>
             <input
               id="ev_end"
@@ -193,13 +197,13 @@ export default function NewEventForm({
 
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium mb-1" htmlFor="ev_desc">
-              Descripción
+              {t('descriptionLabel')}
             </label>
             <textarea
               id="ev_desc"
               name="description"
               rows={2}
-              placeholder="Detalles opcionales…"
+              placeholder={t('descriptionPlaceholder')}
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm resize-none"
             />
           </div>
@@ -207,14 +211,14 @@ export default function NewEventForm({
           {/* ── Participants ───────────────────────────────────────── */}
           {athletes.length > 0 && (
             <div className="sm:col-span-2">
-              <p className="block text-xs font-medium mb-2">Participantes</p>
+              <p className="block text-xs font-medium mb-2">{t('participantsLabel')}</p>
 
               {/* Mode selector */}
               <div className="flex flex-wrap gap-4 mb-3">
                 {([
-                  { value: 'none',       label: 'Sin atletas específicos' },
-                  { value: 'individual', label: 'Atleta individual' },
-                  { value: 'group',      label: 'Grupo de atletas' },
+                  { value: 'none',       label: t('noSpecificAthletes') },
+                  { value: 'individual', label: t('individualAthlete')  },
+                  { value: 'group',      label: t('groupAthletes')      },
                 ] as { value: ParticipationMode; label: string }[]).map((opt) => (
                   <label key={opt.value} className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-gray-700">
                     <input
@@ -237,7 +241,7 @@ export default function NewEventForm({
                   required
                   className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
                 >
-                  <option value="">Seleccionar atleta…</option>
+                  <option value="">{t('selectAthlete')}</option>
                   {athletes.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.first_name} {a.last_name}
@@ -257,7 +261,7 @@ export default function NewEventForm({
                       onChange={(e) => toggleAll(e.target.checked)}
                       className="h-3.5 w-3.5 rounded accent-sky-600"
                     />
-                    <span className="text-xs font-semibold text-gray-700">Seleccionar todos los atletas</span>
+                    <span className="text-xs font-semibold text-gray-700">{t('selectAllAthletes')}</span>
                   </label>
 
                   {/* Individual athletes */}
@@ -282,7 +286,7 @@ export default function NewEventForm({
               {/* ── Notify participants ─────────────────────────────── */}
               {mode !== 'none' && (
                 <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5">
-                  <p className="text-xs font-medium text-gray-700 mb-2">Notificar participantes</p>
+                  <p className="text-xs font-medium text-gray-700 mb-2">{t('notifyParticipants')}</p>
                   <div className="flex flex-wrap gap-5">
                     <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-700">
                       <input
@@ -300,7 +304,7 @@ export default function NewEventForm({
                         value="on"
                         className="h-3.5 w-3.5 rounded accent-sky-600"
                       />
-                      Notificación push
+                      {t('pushNotification')}
                     </label>
                   </div>
                 </div>
@@ -315,14 +319,14 @@ export default function NewEventForm({
             disabled={isPending}
             className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {isPending ? 'Guardando…' : 'Guardar evento'}
+            {isPending ? tc('saving') : t('saveEvent')}
           </button>
           <button
             type="button"
             onClick={() => { setOpen(false); setError(null); }}
             className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium hover:bg-gray-50 transition-colors"
           >
-            Cancelar
+            {tc('cancel')}
           </button>
         </div>
       </form>

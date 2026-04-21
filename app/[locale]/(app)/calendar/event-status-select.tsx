@@ -1,13 +1,8 @@
 'use client';
 
 import { useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { updateEventStatus } from './actions';
-
-const STATUSES = [
-  { value: 'scheduled', label: 'Programado' },
-  { value: 'completed', label: 'Completado' },
-  { value: 'cancelled', label: 'Cancelado'  },
-];
 
 export default function EventStatusSelect({
   eventId,
@@ -16,6 +11,12 @@ export default function EventStatusSelect({
   eventId: string;
   currentStatus: string;
 }) {
+  const t = useTranslations('calendar');
+  const STATUSES = [
+    { value: 'scheduled', label: t('statusScheduled') },
+    { value: 'completed', label: t('statusCompleted')  },
+    { value: 'cancelled', label: t('statusCancelled')  },
+  ];
   const [isPending, startTransition] = useTransition();
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {

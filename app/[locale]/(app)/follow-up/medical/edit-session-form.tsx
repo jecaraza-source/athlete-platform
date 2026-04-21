@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { updateMedicalSession } from './actions';
 
 type MedicalSession = {
@@ -17,6 +18,8 @@ type MedicalSession = {
 };
 
 export default function EditSessionForm({ session }: { session: MedicalSession }) {
+  const t  = useTranslations('followUp.medical');
+  const tc = useTranslations('common');
   const [editing, setEditing] = useState(false);
   const [error, setError]     = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -44,32 +47,32 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
           </span>
           {session.pain_score != null && (
             <span className="text-xs text-gray-500">
-              Dolor: <span className="font-medium text-gray-700">{session.pain_score}/10</span>
+              {t('painDisplay')} <span className="font-medium text-gray-700">{session.pain_score}/10</span>
             </span>
           )}
           {session.health_score != null && (
             <span className="text-xs text-gray-500">
-              Salud: <span className="font-medium text-gray-700">{session.health_score}/10</span>
+              {t('healthDisplay')} <span className="font-medium text-gray-700">{session.health_score}/10</span>
             </span>
           )}
           {session.adherence_score != null && (
             <span className="text-xs text-gray-500">
-              Adherencia: <span className="font-medium text-gray-700">{session.adherence_score}/10</span>
+              {t('adherenceDisplay')} <span className="font-medium text-gray-700">{session.adherence_score}/10</span>
             </span>
           )}
           {session.weight_kg != null && (
             <span className="text-xs text-gray-500">
-              Peso: <span className="font-medium text-gray-700">{session.weight_kg} kg</span>
+              {t('weightDisplay')} <span className="font-medium text-gray-700">{session.weight_kg} kg</span>
             </span>
           )}
           {session.blood_pressure && (
             <span className="text-xs text-gray-500">
-              PA: <span className="font-medium text-gray-700">{session.blood_pressure}</span>
+              {t('bpDisplay')} <span className="font-medium text-gray-700">{session.blood_pressure}</span>
             </span>
           )}
           {session.next_session_date && (
             <span className="text-xs text-gray-500">
-              Próxima: <span className="font-medium text-gray-700">
+              {t('nextDisplay')} <span className="font-medium text-gray-700">
                 {new Date(session.next_session_date).toLocaleDateString()}
               </span>
             </span>
@@ -79,7 +82,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             onClick={() => setEditing(true)}
             className="ml-auto text-xs text-blue-600 hover:underline"
           >
-            Editar
+            {tc('edit')}
           </button>
         </div>
         {session.treatment_summary && (
@@ -102,7 +105,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
         {/* Scores row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div>
-            <label className="block text-xs font-medium mb-0.5">Fecha <span className="text-red-500">*</span></label>
+            <label className="block text-xs font-medium mb-0.5">{t('dateLabel')} <span className="text-red-500">*</span></label>
             <input
               name="session_date"
               type="date"
@@ -112,7 +115,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Dolor (1–10)</label>
+            <label className="block text-xs font-medium mb-0.5">{t('painLabel')}</label>
             <input
               name="pain_score"
               type="number"
@@ -122,7 +125,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Salud (1–10)</label>
+            <label className="block text-xs font-medium mb-0.5">{t('healthLabel')}</label>
             <input
               name="health_score"
               type="number"
@@ -132,7 +135,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Adherencia (1–10)</label>
+            <label className="block text-xs font-medium mb-0.5">{t('adherenceLabel')}</label>
             <input
               name="adherence_score"
               type="number"
@@ -146,7 +149,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
         {/* Vitals row */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <div>
-            <label className="block text-xs font-medium mb-0.5">Peso (kg)</label>
+            <label className="block text-xs font-medium mb-0.5">{t('weightLabel')}</label>
             <input
               name="weight_kg"
               type="number"
@@ -156,7 +159,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Presión arterial</label>
+            <label className="block text-xs font-medium mb-0.5">{t('bloodPressureLabel')}</label>
             <input
               name="blood_pressure"
               type="text"
@@ -166,7 +169,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Próxima sesión</label>
+            <label className="block text-xs font-medium mb-0.5">{t('nextSessionLabel')}</label>
             <input
               name="next_session_date"
               type="date"
@@ -178,7 +181,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
 
         {/* Treatment */}
         <div>
-          <label className="block text-xs font-medium mb-0.5">Resumen del tratamiento</label>
+          <label className="block text-xs font-medium mb-0.5">{t('treatmentLabel')}</label>
           <textarea
             name="treatment_summary"
             rows={2}
@@ -189,7 +192,7 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
 
         {/* Notes */}
         <div>
-          <label className="block text-xs font-medium mb-0.5">Notas</label>
+          <label className="block text-xs font-medium mb-0.5">{t('sessionNotesLabel')}</label>
           <textarea
             name="notes"
             rows={2}
@@ -204,14 +207,14 @@ export default function EditSessionForm({ session }: { session: MedicalSession }
             disabled={isPending}
             className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {isPending ? 'Guardando…' : 'Listo'}
+            {isPending ? tc('saving') : t('doneBtn')}
           </button>
           <button
             type="button"
             onClick={() => { setEditing(false); setError(null); }}
             className="rounded border border-gray-300 px-3 py-1 text-xs font-medium hover:bg-gray-50 transition-colors"
           >
-            Cancelar
+            {tc('cancel')}
           </button>
         </div>
       </form>

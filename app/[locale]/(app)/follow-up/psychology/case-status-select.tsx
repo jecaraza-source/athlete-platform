@@ -1,13 +1,8 @@
 'use client';
 
 import { useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { updatePsychologyCaseStatus } from './actions';
-
-const STATUSES = [
-  { value: 'open',        label: 'Abierto' },
-  { value: 'in_progress', label: 'En progreso' },
-  { value: 'closed',      label: 'Cerrado' },
-];
 
 export default function CaseStatusSelect({
   caseId,
@@ -16,6 +11,12 @@ export default function CaseStatusSelect({
   caseId: string;
   currentStatus: string;
 }) {
+  const t = useTranslations('followUp.psychology');
+  const STATUSES = [
+    { value: 'open',        label: t('statusOpen')       },
+    { value: 'in_progress', label: t('statusInProgress') },
+    { value: 'closed',      label: t('statusClosed')     },
+  ];
   const [isPending, startTransition] = useTransition();
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {

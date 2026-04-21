@@ -1,4 +1,5 @@
 import BackButton from '@/components/back-button';
+import { getTranslations } from 'next-intl/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireAdminAccess } from '@/lib/rbac/server';
 import NewDisciplineForm from './new-discipline-form';
@@ -26,6 +27,9 @@ const STATUS_BADGE: Record<string, string> = {
 export default async function DisciplinesPage() {
   await requireAdminAccess();
 
+  const t  = await getTranslations('admin.disciplines');
+  const tc = await getTranslations('common');
+
   const { data, error } = await supabaseAdmin
     .from('sports')
     .select('id, name, category_type, status')
@@ -37,14 +41,12 @@ export default async function DisciplinesPage() {
 
   return (
     <main className="p-8 max-w-4xl">
-      <BackButton href="/admin" label="Volver a Admin" />
+      <BackButton href="/admin" label={tc('backToAdmin')} />
 
       <div className="mt-4 mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-indigo-700">Configuración de Disciplinas</h1>
-          <p className="text-gray-500 mt-1">
-            Gestiona las disciplinas deportivas disponibles en el calendario y formularios.
-          </p>
+          <h1 className="text-3xl font-bold text-indigo-700">{t('title')}</h1>
+          <p className="text-gray-500 mt-1">{t('description')}</p>
         </div>
       </div>
 
@@ -55,21 +57,21 @@ export default async function DisciplinesPage() {
 
       {error && (
         <div className="mb-4 rounded border border-red-300 bg-red-50 p-4 text-red-700">
-          Error al cargar disciplinas: {error.message}
+          {t('errorLoading')} {error.message}
         </div>
       )}
 
       {/* Active disciplines */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">Disciplinas activas</h2>
+          <h2 className="text-lg font-semibold text-gray-800">{t('activeSectionTitle')}</h2>
           <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
             {active.length}
           </span>
         </div>
 
         {active.length === 0 ? (
-          <p className="text-sm text-gray-400">No hay disciplinas activas.</p>
+          <p className="text-sm text-gray-400">{t('noActiveDisciplines')}</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {active.map((s) => (
@@ -83,7 +85,7 @@ export default async function DisciplinesPage() {
                     {CATEGORY_LABELS[s.category_type] ?? s.category_type}
                     {' · '}
                     <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-500'}`}>
-                      {s.status === 'active' ? 'Activa' : 'Inactiva'}
+                      {s.status === 'active' ? t('activeStatus') : t('inactiveStatus')}
                     </span>
                   </p>
                 </div>
@@ -98,7 +100,7 @@ export default async function DisciplinesPage() {
       {inactive.length > 0 && (
         <section className="mt-8">
           <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Inactivas</h2>
+          <h2 className="text-lg font-semibold text-gray-800">{t('inactiveSectionTitle')}</h2>
             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
               {inactive.length}
             </span>

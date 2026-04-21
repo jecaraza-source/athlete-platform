@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { createPhysioCase } from './actions';
 
 type Person = { id: string; first_name: string; last_name: string };
@@ -15,6 +16,8 @@ export default function NewCaseForm({
   physios: Person[];
   injuries: Injury[];
 }) {
+  const t  = useTranslations('followUp.physio');
+  const tc = useTranslations('common');
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -44,11 +47,11 @@ export default function NewCaseForm({
           onClick={() => setOpen(true)}
           className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
         >
-          + Nuevo caso
+          {t('newCaseBtn')}
         </button>
       ) : (
         <div className="rounded-lg border border-gray-200 p-5">
-          <h2 className="font-semibold mb-4">Nuevo Caso de Fisioterapia</h2>
+          <h2 className="font-semibold mb-4">{t('newCaseTitle')}</h2>
 
           {error && (
             <p className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
@@ -60,7 +63,7 @@ export default function NewCaseForm({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="athlete_id">
-                  Atleta <span className="text-red-500">*</span>
+                  {t('athleteLabel')} <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="athlete_id"
@@ -70,7 +73,7 @@ export default function NewCaseForm({
                   onChange={(e) => setSelectedAthlete(e.target.value)}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value="">Seleccionar atleta…</option>
+                  <option value="">{t('selectAthlete')}</option>
                   {athletes.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.first_name} {a.last_name}
@@ -81,7 +84,7 @@ export default function NewCaseForm({
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="physio_profile_id">
-                  Fisioterapeuta <span className="text-red-500">*</span>
+                  {t('physioLabel')} <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="physio_profile_id"
@@ -89,7 +92,7 @@ export default function NewCaseForm({
                   required
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value="">Seleccionar fisioterapeuta…</option>
+                  <option value="">{t('selectPhysio')}</option>
                   {physios.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.first_name} {p.last_name}
@@ -100,7 +103,7 @@ export default function NewCaseForm({
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="injury_id">
-                  Lesión
+                  {t('injuryLabel')}
                 </label>
                 <select
                   id="injury_id"
@@ -109,7 +112,7 @@ export default function NewCaseForm({
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-400"
                 >
                   <option value="">
-                    {selectedAthlete ? 'Seleccionar lesión (opcional)…' : 'Primero selecciona un atleta'}
+                    {selectedAthlete ? t('selectInjury') : t('selectAthleteFirst')}
                   </option>
                   {athleteInjuries.map((i) => (
                     <option key={i.id} value={i.id}>
@@ -121,7 +124,7 @@ export default function NewCaseForm({
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="opened_at">
-                  Fecha de apertura <span className="text-red-500">*</span>
+                  {t('openedOnLabel')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="opened_at"
@@ -134,15 +137,15 @@ export default function NewCaseForm({
 
               <div>
                 <label className="block text-sm font-medium mb-1" htmlFor="status">
-                  Estado
+                  {t('statusLabel')}
                 </label>
                 <select
                   id="status"
                   name="status"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value="open">Abierto</option>
-                  <option value="closed">Cerrado</option>
+                  <option value="open">{t('statusOpen')}</option>
+                  <option value="closed">{t('statusClosed')}</option>
                 </select>
               </div>
             </div>
@@ -153,14 +156,14 @@ export default function NewCaseForm({
                 disabled={isPending}
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
-                {isPending ? 'Guardando…' : 'Guardar caso'}
+                {isPending ? tc('saving') : t('saveCase')}
               </button>
               <button
                 type="button"
                 onClick={() => { setOpen(false); setError(null); setSelectedAthlete(''); }}
                 className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
               >
-                Cancelar
+                {tc('cancel')}
               </button>
             </div>
           </form>

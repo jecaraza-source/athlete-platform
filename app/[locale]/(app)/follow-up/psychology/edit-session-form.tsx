@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { updatePsychologySession } from './actions';
 
 type Session = {
@@ -14,6 +15,8 @@ type Session = {
 };
 
 export default function EditSessionForm({ session }: { session: Session }) {
+  const t  = useTranslations('followUp.psychology');
+  const tc = useTranslations('common');
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -39,20 +42,20 @@ export default function EditSessionForm({ session }: { session: Session }) {
             {new Date(session.session_date).toLocaleDateString()}
           </span>
           {session.mood_score != null && (
-            <span className="text-xs text-gray-500">Ánimo: <span className="font-medium text-gray-700">{session.mood_score}/10</span></span>
+            <span className="text-xs text-gray-500">{t('moodDisplay')} <span className="font-medium text-gray-700">{session.mood_score}/10</span></span>
           )}
           {session.stress_score != null && (
-            <span className="text-xs text-gray-500">Estrés: <span className="font-medium text-gray-700">{session.stress_score}/10</span></span>
+            <span className="text-xs text-gray-500">{t('stressDisplay')} <span className="font-medium text-gray-700">{session.stress_score}/10</span></span>
           )}
           {session.next_session_date && (
-            <span className="text-xs text-gray-500">Próxima: <span className="font-medium text-gray-700">{new Date(session.next_session_date).toLocaleDateString()}</span></span>
+            <span className="text-xs text-gray-500">{t('nextDisplay')} <span className="font-medium text-gray-700">{new Date(session.next_session_date).toLocaleDateString()}</span></span>
           )}
           <button
             type="button"
             onClick={() => setEditing(true)}
             className="ml-auto text-xs text-blue-600 hover:underline"
           >
-            Editar
+            {tc('edit')}
           </button>
         </div>
         {session.topic_summary && (
@@ -73,7 +76,7 @@ export default function EditSessionForm({ session }: { session: Session }) {
       <form ref={formRef} action={handleSubmit} className="space-y-2">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <div>
-            <label className="block text-xs font-medium mb-0.5">Fecha <span className="text-red-500">*</span></label>
+            <label className="block text-xs font-medium mb-0.5">{t('dateLabel')} <span className="text-red-500">*</span></label>
             <input
               name="session_date"
               type="date"
@@ -83,7 +86,7 @@ export default function EditSessionForm({ session }: { session: Session }) {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Estado de ánimo (1–10)</label>
+            <label className="block text-xs font-medium mb-0.5">{t('moodLabel')}</label>
             <input
               name="mood_score"
               type="number"
@@ -95,7 +98,7 @@ export default function EditSessionForm({ session }: { session: Session }) {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Estrés (1–10)</label>
+            <label className="block text-xs font-medium mb-0.5">{t('stressLabel')}</label>
             <input
               name="stress_score"
               type="number"
@@ -107,7 +110,7 @@ export default function EditSessionForm({ session }: { session: Session }) {
             />
           </div>
           <div className="col-span-2 sm:col-span-3">
-            <label className="block text-xs font-medium mb-0.5">Fecha próxima sesión</label>
+            <label className="block text-xs font-medium mb-0.5">{t('nextSessionLabel')}</label>
             <input
               name="next_session_date"
               type="date"
@@ -117,7 +120,7 @@ export default function EditSessionForm({ session }: { session: Session }) {
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium mb-0.5">Notas</label>
+          <label className="block text-xs font-medium mb-0.5">{t('topicLabel')}</label>
           <textarea
             name="topic_summary"
             rows={2}
@@ -126,7 +129,7 @@ export default function EditSessionForm({ session }: { session: Session }) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium mb-0.5">Recomendaciones</label>
+          <label className="block text-xs font-medium mb-0.5">{t('recommendationsLabel')}</label>
           <textarea
             name="recommendations"
             rows={2}
@@ -140,14 +143,14 @@ export default function EditSessionForm({ session }: { session: Session }) {
             disabled={isPending}
             className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {isPending ? 'Guardando…' : 'Listo'}
+            {isPending ? tc('saving') : t('doneBtn')}
           </button>
           <button
             type="button"
             onClick={() => { setEditing(false); setError(null); }}
             className="rounded border border-gray-300 px-3 py-1 text-xs font-medium hover:bg-gray-50 transition-colors"
           >
-            Cancelar
+            {tc('cancel')}
           </button>
         </div>
       </form>
