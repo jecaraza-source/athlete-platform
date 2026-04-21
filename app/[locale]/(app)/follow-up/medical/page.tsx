@@ -141,7 +141,7 @@ export default async function MedicalPage({
 
       <AthleteFilter athletes={athletes} selectedId={selectedAthleteId} />
 
-      <LinkedPlansSection plans={linkedPlans} followUpPath="/follow-up/medical" />
+      <LinkedPlansSection plans={linkedPlans} followUpPath="/follow-up/medical" showConfirm />
 
       <div className="flex flex-wrap items-start gap-3 mb-8">
         <NewCaseForm athletes={athletes} doctors={doctors} />

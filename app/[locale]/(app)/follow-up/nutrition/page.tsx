@@ -113,7 +113,7 @@ export default async function NutritionPage({
 
       <AthleteFilter athletes={athletes} selectedId={selectedAthleteId} />
 
-      <LinkedPlansSection plans={linkedPlans} followUpPath="/follow-up/nutrition" />
+      <LinkedPlansSection plans={linkedPlans} followUpPath="/follow-up/nutrition" showConfirm />
 
       <CheckinChart
         checkins={selectedAthleteId ? (checkinsByAthlete[selectedAthleteId] ?? []) : checkins}

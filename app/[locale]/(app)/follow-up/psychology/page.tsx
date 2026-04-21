@@ -103,7 +103,7 @@ export default async function PsychologyPage({
 
       <AthleteFilter athletes={athletes} selectedId={selectedAthleteId} />
 
-      <LinkedPlansSection plans={linkedPlans} followUpPath="/follow-up/psychology" />
+      <LinkedPlansSection plans={linkedPlans} followUpPath="/follow-up/psychology" showConfirm />
 
       <div className="flex flex-wrap items-start gap-3 mb-8">
         <NewCaseForm athletes={athletes} psychologists={psychologists} />

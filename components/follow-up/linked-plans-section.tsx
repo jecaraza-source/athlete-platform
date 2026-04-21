@@ -29,6 +29,15 @@ function isNew(createdAt: string): boolean {
  * @param followUpPath  The current follow-up path, e.g. "/follow-up/medical".
  *                      Used to build the ?athlete= filter link.
  */
+/** What to create per follow-up area (used in the confirmation dialog). */
+const CONFIRM_SUBJECT: Record<string, string> = {
+  '/follow-up/training':   'sesión de entrenamiento',
+  '/follow-up/medical':    'caso médico',
+  '/follow-up/physio':     'caso de fisioterapia',
+  '/follow-up/psychology': 'caso de psicología',
+  '/follow-up/nutrition':  'plan nutricional',
+};
+
 export default function LinkedPlansSection({
   plans,
   followUpPath,
@@ -43,14 +52,22 @@ export default function LinkedPlansSection({
   const router = useRouter();
 
   function handleConfirmCta(athleteId: string, athleteName: string | null, planTitle: string) {
-    const who = athleteName ?? 'este atleta';
+    const who     = athleteName ?? 'este atleta';
+    const subject = CONFIRM_SUBJECT[followUpPath] ?? 'seguimiento';
     const confirmed = window.confirm(
-      `¿Deseas crear una nueva sesión de entrenamiento para ${who} en relación al plan "${planTitle}"?`
+      `¿Deseas crear un nuevo ${subject} para ${who} en relación al plan "${planTitle}"?`
     );
     if (!confirmed) return;
-    router.push(
-      `${followUpPath}?athlete=${athleteId}&new_session=1&plan_title=${encodeURIComponent(planTitle)}`
-    );
+
+    // Training opens the session form automatically via extra params;
+    // other areas navigate to the filtered view so the user can use the existing forms.
+    if (followUpPath === '/follow-up/training') {
+      router.push(
+        `${followUpPath}?athlete=${athleteId}&new_session=1&plan_title=${encodeURIComponent(planTitle)}`
+      );
+    } else {
+      router.push(`${followUpPath}?athlete=${athleteId}`);
+    }
   }
 
   if (plans.length === 0) return null;
