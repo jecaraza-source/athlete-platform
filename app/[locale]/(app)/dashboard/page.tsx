@@ -7,14 +7,26 @@ import { AvatarUploader } from '@/components/avatar/avatar-uploader';
 
 export const dynamic = 'force-dynamic';
 
+type LegendItem = { label: string; dot: string };
+
 type Card = {
-  href: '/athletes' | '/calendar' | '/follow-up' | '/protocols';
+  href:     '/athletes' | '/calendar' | '/follow-up' | '/protocols';
   labelKey: 'athletes' | 'calendar' | 'followUp' | 'protocols';
-  descKey: 'athletesDescription' | 'calendarDescription' | 'followUpDescription' | 'protocolsDescription';
-  card: string;
-  title: string;
-  text: string;
+  descKey:  'athletesDescription' | 'calendarDescription' | 'followUpDescription' | 'protocolsDescription';
+  card:   string;
+  title:  string;
+  text:   string;
+  icon:   string;
+  legend?: LegendItem[];
 };
+
+const CALENDAR_LEGEND: LegendItem[] = [
+  { label: 'Entrenamiento', dot: 'bg-blue-500'   },
+  { label: 'Competencia',   dot: 'bg-red-500'    },
+  { label: 'Reunión',       dot: 'bg-yellow-500' },
+  { label: 'Médico',        dot: 'bg-green-500'  },
+  { label: 'Otro',          dot: 'bg-gray-400'   },
+];
 
 const cards: Card[] = [
   {
@@ -24,6 +36,7 @@ const cards: Card[] = [
     card:     'border-emerald-200 bg-emerald-50 hover:bg-emerald-100',
     title:    'text-emerald-800',
     text:     'text-emerald-600',
+    icon:     '👥',
   },
   {
     href:     '/calendar',
@@ -32,6 +45,8 @@ const cards: Card[] = [
     card:     'border-sky-200    bg-sky-50    hover:bg-sky-100',
     title:    'text-sky-800',
     text:     'text-sky-600',
+    icon:     '🗓️',
+    legend:   CALENDAR_LEGEND,
   },
   {
     href:     '/follow-up',
@@ -40,6 +55,7 @@ const cards: Card[] = [
     card:     'border-amber-200  bg-amber-50  hover:bg-amber-100',
     title:    'text-amber-800',
     text:     'text-amber-600',
+    icon:     '📊',
   },
   {
     href:     '/protocols',
@@ -48,6 +64,7 @@ const cards: Card[] = [
     card:     'border-violet-200 bg-violet-50 hover:bg-violet-100',
     title:    'text-violet-800',
     text:     'text-violet-600',
+    icon:     '📋',
   },
 ];
 
@@ -174,10 +191,23 @@ export default async function DashboardPage() {
           <Link
             key={c.href}
             href={c.href}
-            className={`rounded-xl border p-6 transition-colors ${c.card}`}
+            className={`rounded-xl border p-6 transition-colors flex items-start gap-4 ${c.card}`}
           >
-            <h2 className={`font-bold text-lg mb-1 ${c.title}`}>{t(c.labelKey)}</h2>
-            <p className={`text-sm ${c.text}`}>{t(c.descKey)}</p>
+            <span className="text-3xl mt-0.5">{c.icon}</span>
+            <div>
+              <h2 className={`font-bold text-lg mb-1 ${c.title}`}>{t(c.labelKey)}</h2>
+              <p className={`text-sm ${c.text}`}>{t(c.descKey)}</p>
+              {c.legend && (
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                  {c.legend.map((item) => (
+                    <span key={item.label} className="flex items-center gap-1">
+                      <span className={`w-2 h-2 rounded-sm flex-shrink-0 ${item.dot}`} />
+                      <span className="text-[11px] text-gray-600">{item.label}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </Link>
         ))}
       </div>

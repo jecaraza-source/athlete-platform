@@ -44,6 +44,14 @@ const TYPE_COLORS: Record<string, string> = {
   other:       'bg-gray-400',
 };
 
+const LEGEND = [
+  { label: 'Entrenamiento', color: 'bg-blue-500'   },
+  { label: 'Competencia',   color: 'bg-red-500'    },
+  { label: 'Reunión',       color: 'bg-yellow-500' },
+  { label: 'Médico',        color: 'bg-green-500'  },
+  { label: 'Evaluación / Otro', color: 'bg-gray-400' },
+];
+
 function eventColor(type: string) { return TYPE_COLORS[type.toLowerCase()] ?? 'bg-gray-400'; }
 
 function toDateKey(d: Date) {
@@ -336,6 +344,16 @@ export default function MonthCalendar({
           </div>
           <NewEventForm currentProfileId={currentProfileId} athletes={athletes} sports={sports} />
         </div>
+      </div>
+
+      {/* Color legend */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3 pb-3 border-b border-gray-100">
+        {LEGEND.map((item) => (
+          <span key={item.label} className="flex items-center gap-1.5">
+            <span className={`w-2.5 h-2.5 rounded-sm flex-shrink-0 ${item.color}`} />
+            <span className="text-xs text-gray-500">{item.label}</span>
+          </span>
+        ))}
       </div>
 
       {/* Active view */}
