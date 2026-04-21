@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 export type LinkedPlan = {
   id: string;
@@ -38,6 +38,15 @@ const CONFIRM_SUBJECT: Record<string, string> = {
   '/follow-up/nutrition':  'plan nutricional',
 };
 
+/** URL param key that triggers the creation form on each page. */
+const OPEN_PARAM: Record<string, string> = {
+  '/follow-up/training':   'new_session',
+  '/follow-up/medical':    'new_case',
+  '/follow-up/physio':     'new_case',
+  '/follow-up/psychology': 'new_case',
+  '/follow-up/nutrition':  'new_plan',
+};
+
 export default function LinkedPlansSection({
   plans,
   followUpPath,
@@ -50,6 +59,7 @@ export default function LinkedPlansSection({
 }) {
   const [open, setOpen] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   function handleConfirmCta(athleteId: string, athleteName: string | null, planTitle: string) {
     const who     = athleteName ?? 'este atleta';
@@ -59,15 +69,13 @@ export default function LinkedPlansSection({
     );
     if (!confirmed) return;
 
-    // Training opens the session form automatically via extra params;
-    // other areas navigate to the filtered view so the user can use the existing forms.
-    if (followUpPath === '/follow-up/training') {
-      router.push(
-        `${followUpPath}?athlete=${athleteId}&new_session=1&plan_title=${encodeURIComponent(planTitle)}`
-      );
-    } else {
-      router.push(`${followUpPath}?athlete=${athleteId}`);
-    }
+    // Navigate to the same page with athlete filter + the section-specific form-open trigger.
+    const openKey = OPEN_PARAM[followUpPath] ?? 'new_case';
+    router.push(
+      `${pathname}?athlete=${athleteId}&${openKey}=1&plan_title=${encodeURIComponent(planTitle)}`
+    );
+    // Collapse the panel so the creation form below is immediately visible.
+    setOpen(false);
   }
 
   if (plans.length === 0) return null;
@@ -171,7 +179,7 @@ export default function LinkedPlansSection({
                   onClick={() =>
                     showConfirm
                       ? handleConfirmCta(row.athleteId!, row.athleteName, row.title)
-                      : router.push(`${followUpPath}?athlete=${row.athleteId}`)
+                      : router.push(`${pathname}?athlete=${row.athleteId}`)
                   }
                   className="shrink-0 inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 transition-colors whitespace-nowrap"
                 >

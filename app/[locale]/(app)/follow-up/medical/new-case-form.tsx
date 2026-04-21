@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useRef, useState, useTransition, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createMedicalCase } from './actions';
 
@@ -15,10 +16,26 @@ export default function NewCaseForm({
 }) {
   const t  = useTranslations('followUp.medical');
   const tc = useTranslations('common');
-  const [open, setOpen]   = useState(false);
+
+  const searchParams   = useSearchParams();
+  const newCaseParam   = searchParams.get('new_case') === '1';
+  const athleteParam   = searchParams.get('athlete') ?? '';
+  const planTitleParam = decodeURIComponent(searchParams.get('plan_title') ?? '');
+
+  const [open, setOpen]   = useState(newCaseParam);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const formRef = useRef<HTMLFormElement>(null);
+  const formRef    = useRef<HTMLFormElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (newCaseParam) {
+      setOpen(true);
+      setTimeout(() => {
+        wrapperRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [newCaseParam]);
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -34,7 +51,7 @@ export default function NewCaseForm({
   }
 
   return (
-    <div>
+    <div ref={wrapperRef}>
       {!open ? (
         <button
           onClick={() => setOpen(true)}
@@ -52,6 +69,16 @@ export default function NewCaseForm({
             </p>
           )}
 
+          {planTitleParam && (
+            <div className="mb-4 flex items-start gap-2 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2.5">
+              <span className="text-sm">📋</span>
+              <p className="text-xs text-indigo-700">
+                <span className="font-semibold">Seguimiento del plan:</span>{' '}
+                {planTitleParam}
+              </p>
+            </div>
+          )}
+
           <form ref={formRef} action={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Athlete */}
@@ -63,6 +90,7 @@ export default function NewCaseForm({
                   id="med-athlete"
                   name="athlete_id"
                   required
+                  defaultValue={athleteParam}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="">{t('selectAthlete')}</option>

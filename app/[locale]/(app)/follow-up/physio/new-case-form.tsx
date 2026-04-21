@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useRef, useState, useTransition, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createPhysioCase } from './actions';
 
@@ -18,11 +19,28 @@ export default function NewCaseForm({
 }) {
   const t  = useTranslations('followUp.physio');
   const tc = useTranslations('common');
-  const [open, setOpen] = useState(false);
+
+  const searchParams   = useSearchParams();
+  const newCaseParam   = searchParams.get('new_case') === '1';
+  const athleteParam   = searchParams.get('athlete') ?? '';
+  const planTitleParam = decodeURIComponent(searchParams.get('plan_title') ?? '');
+
+  const [open, setOpen] = useState(newCaseParam);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [selectedAthlete, setSelectedAthlete] = useState('');
-  const formRef = useRef<HTMLFormElement>(null);
+  const [selectedAthlete, setSelectedAthlete] = useState(athleteParam);
+  const formRef    = useRef<HTMLFormElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (newCaseParam) {
+      setOpen(true);
+      setSelectedAthlete(athleteParam);
+      setTimeout(() => {
+        wrapperRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [newCaseParam, athleteParam]);
 
   const athleteInjuries = injuries.filter((i) => i.athlete_id === selectedAthlete);
 
@@ -41,7 +59,7 @@ export default function NewCaseForm({
   }
 
   return (
-    <div>
+    <div ref={wrapperRef}>
       {!open ? (
         <button
           onClick={() => setOpen(true)}
@@ -57,6 +75,16 @@ export default function NewCaseForm({
             <p className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
               {error}
             </p>
+          )}
+
+          {planTitleParam && (
+            <div className="mb-4 flex items-start gap-2 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2.5">
+              <span className="text-sm">📋</span>
+              <p className="text-xs text-indigo-700">
+                <span className="font-semibold">Seguimiento del plan:</span>{' '}
+                {planTitleParam}
+              </p>
+            </div>
           )}
 
           <form ref={formRef} action={handleSubmit} className="space-y-4">
@@ -160,7 +188,7 @@ export default function NewCaseForm({
               </button>
               <button
                 type="button"
-                onClick={() => { setOpen(false); setError(null); setSelectedAthlete(''); }}
+              onClick={() => { setOpen(false); setError(null); setSelectedAthlete(athleteParam); }}
                 className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
               >
                 {tc('cancel')}

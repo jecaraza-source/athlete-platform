@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useRef, useState, useTransition, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createNutritionPlan } from './actions';
 
@@ -19,10 +20,26 @@ export default function NewPlanForm({
 }) {
   const t = useTranslations('followUp.nutrition');
   const tc = useTranslations('common');
-  const [open, setOpen] = useState(false);
+
+  const searchParams   = useSearchParams();
+  const newPlanParam   = searchParams.get('new_plan') === '1';
+  const athleteParam   = searchParams.get('athlete') ?? '';
+  const planTitleParam = decodeURIComponent(searchParams.get('plan_title') ?? '');
+
+  const [open, setOpen] = useState(newPlanParam);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const formRef = useRef<HTMLFormElement>(null);
+  const formRef    = useRef<HTMLFormElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (newPlanParam) {
+      setOpen(true);
+      setTimeout(() => {
+        wrapperRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [newPlanParam]);
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -38,7 +55,7 @@ export default function NewPlanForm({
   }
 
   return (
-    <div className="mb-8">
+    <div className="mb-8" ref={wrapperRef}>
       {!open ? (
         <button
           onClick={() => setOpen(true)}
@@ -56,6 +73,16 @@ export default function NewPlanForm({
             </p>
           )}
 
+          {planTitleParam && (
+            <div className="mb-4 flex items-start gap-2 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2.5">
+              <span className="text-sm">📋</span>
+              <p className="text-xs text-indigo-700">
+                <span className="font-semibold">Seguimiento del plan:</span>{' '}
+                {planTitleParam}
+              </p>
+            </div>
+          )}
+
           <form ref={formRef} action={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -66,6 +93,7 @@ export default function NewPlanForm({
                   id="athlete_id"
                   name="athlete_id"
                   required
+                  defaultValue={athleteParam}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="">{t('selectAthlete')}</option>

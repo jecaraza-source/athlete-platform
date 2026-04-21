@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createTrainingSession } from './actions';
 
@@ -13,34 +14,33 @@ type Person = {
 export default function NewSessionForm({
   athletes,
   coaches,
-  defaultOpen = false,
-  initialAthleteId = '',
-  initialPlanTitle = '',
 }: {
   athletes: Person[];
   coaches: Person[];
-  defaultOpen?: boolean;
-  initialAthleteId?: string;
-  initialPlanTitle?: string;
 }) {
   const t = useTranslations('followUp.training');
   const tc = useTranslations('common');
-  const [open, setOpen] = useState(defaultOpen);
+
+  const searchParams = useSearchParams();
+  const newSessionParam = searchParams.get('new_session') === '1';
+  const athleteParam   = searchParams.get('athlete') ?? '';
+  const planTitleParam = decodeURIComponent(searchParams.get('plan_title') ?? '');
+
+  const [open, setOpen] = useState(newSessionParam);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Open and scroll into view when defaultOpen prop changes to true
+  // React to URL param changes (e.g. after router.push with ?new_session=1)
   useEffect(() => {
-    if (defaultOpen) {
+    if (newSessionParam) {
       setOpen(true);
-      // Small delay to allow the form to render before scrolling
       setTimeout(() => {
         wrapperRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 50);
+      }, 100);
     }
-  }, [defaultOpen]);
+  }, [newSessionParam]);
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -74,12 +74,12 @@ export default function NewSessionForm({
             </p>
           )}
 
-          {initialPlanTitle && (
+          {planTitleParam && (
             <div className="mb-4 flex items-start gap-2 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2.5">
               <span className="text-sm">📋</span>
               <p className="text-xs text-indigo-700">
                 <span className="font-semibold">Seguimiento del plan:</span>{' '}
-                {initialPlanTitle}
+                {planTitleParam}
               </p>
             </div>
           )}
@@ -94,7 +94,7 @@ export default function NewSessionForm({
                   id="athlete_id"
                   name="athlete_id"
                   required
-                  defaultValue={initialAthleteId}
+              defaultValue={athleteParam}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="">{t('selectAthlete')}</option>
@@ -198,7 +198,7 @@ export default function NewSessionForm({
                 id="notes"
                 name="notes"
                 rows={3}
-                defaultValue={initialPlanTitle ? `Seguimiento del plan: ${initialPlanTitle}` : ''}
+                defaultValue={planTitleParam ? `Seguimiento del plan: ${planTitleParam}` : ''}
                 placeholder={t('notesPlaceholder')}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />

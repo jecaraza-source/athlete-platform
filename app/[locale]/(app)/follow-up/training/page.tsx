@@ -28,15 +28,11 @@ type TrainingSession = {
 export default async function TrainingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ athlete?: string; new_session?: string; plan_title?: string }>;
+  searchParams: Promise<{ athlete?: string }>;
 }) {
   await requirePermission('view_athletes');
 
-  const {
-    athlete: selectedAthleteId = '',
-    new_session: openNewSession = '',
-    plan_title: linkedPlanTitle = '',
-  } = await searchParams;
+  const { athlete: selectedAthleteId = '' } = await searchParams;
 
   let sessionsQuery = supabaseAdmin
     .from('training_sessions')
@@ -93,9 +89,6 @@ export default async function TrainingPage({
       <NewSessionForm
         athletes={athletes}
         coaches={coaches}
-        defaultOpen={openNewSession === '1'}
-        initialAthleteId={selectedAthleteId}
-        initialPlanTitle={decodeURIComponent(linkedPlanTitle)}
       />
 
       {error && (
