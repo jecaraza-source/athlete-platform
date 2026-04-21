@@ -3,12 +3,23 @@
 import { useRef, useState, useTransition } from 'react';
 import { updateEvent, deleteEvent } from './actions';
 
-const EVENT_TYPES = [
-  'training', 'competition',
-  'meeting', 'medical', 'evaluation', 'other',
+const EVENT_TYPES: { value: string; label: string }[] = [
+  { value: 'training',    label: 'Entrenamiento' },
+  { value: 'competition', label: 'Competencia'   },
+  { value: 'meeting',     label: 'Reunión'        },
+  { value: 'medical',     label: 'Médico'         },
+  { value: 'evaluation',  label: 'Evaluación'    },
+  { value: 'other',       label: 'Otro'           },
 ];
 
-const STATUSES = ['scheduled', 'completed', 'cancelled'];
+const STATUSES: { value: string; label: string }[] = [
+  { value: 'scheduled',  label: 'Programado'  },
+  { value: 'completed',  label: 'Completado'  },
+  { value: 'cancelled',  label: 'Cancelado'   },
+];
+
+const EVENT_TYPE_LABEL = Object.fromEntries(EVENT_TYPES.map((t) => [t.value, t.label]));
+const STATUS_LABEL     = Object.fromEntries(STATUSES.map((s) => [s.value, s.label]));
 
 const TYPE_COLORS: Record<string, string> = {
   training:    'bg-blue-100 text-blue-700',
@@ -169,10 +180,10 @@ export default function EditEventCard({
             <h2 className="text-base font-semibold text-gray-900">{event.title}</h2>
             <div className="flex flex-wrap items-center gap-2 mt-1.5">
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${TYPE_COLORS[event.event_type] ?? 'bg-gray-100 text-gray-600'}`}>
-                {event.event_type}
+              {EVENT_TYPE_LABEL[event.event_type] ?? event.event_type}
               </span>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${STATUS_COLORS[event.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                {event.status}
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[event.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                {STATUS_LABEL[event.status] ?? event.status}
               </span>
             </div>
           </div>
@@ -181,7 +192,7 @@ export default function EditEventCard({
               onClick={openEdit}
               className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
             >
-              Edit
+              Editar
             </button>
 
             {!confirming ? (
@@ -189,17 +200,17 @@ export default function EditEventCard({
                 onClick={() => setConfirming(true)}
                 className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors"
               >
-                Delete
+              Eliminar
               </button>
             ) : (
               <span className="flex items-center gap-1.5 text-xs">
-                <span className="text-gray-500">Delete?</span>
+                <span className="text-gray-500">¿Eliminar?</span>
                 <button
                   onClick={handleDelete}
                   disabled={isPending}
                   className="font-semibold text-red-600 hover:underline disabled:opacity-50"
                 >
-                  {isPending ? 'Deleting…' : 'Yes'}
+                  {isPending ? 'Eliminando…' : 'Sí'}
                 </button>
                 <button
                   onClick={() => { setConfirming(false); setError(null); }}
@@ -213,17 +224,17 @@ export default function EditEventCard({
         </div>
 
         <div className="mt-3 text-sm text-gray-600 space-y-1.5">
-          <p><span className="font-medium text-gray-700">Start:</span> {formatDateTime(event.start_at)}</p>
-          <p><span className="font-medium text-gray-700">End:</span>   {formatDateTime(event.end_at)}</p>
+          <p><span className="font-medium text-gray-700">Inicio:</span> {formatDateTime(event.start_at)}</p>
+          <p><span className="font-medium text-gray-700">Fin:</span>   {formatDateTime(event.end_at)}</p>
           {event.sport_name && (
-            <p><span className="font-medium text-gray-700">Sport:</span> {event.sport_name}</p>
+            <p><span className="font-medium text-gray-700">Disciplina:</span> {event.sport_name}</p>
           )}
           {event.description && (
-            <p><span className="font-medium text-gray-700">Notes:</span> {event.description}</p>
+            <p><span className="font-medium text-gray-700">Descripción:</span> {event.description}</p>
           )}
           {participants.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-              <span className="font-medium text-gray-700 shrink-0">Participants:</span>
+              <span className="font-medium text-gray-700 shrink-0">Participantes:</span>
               {participants.map((a) => (
                 <span
                   key={a.id}
@@ -242,7 +253,7 @@ export default function EditEventCard({
   // ── Edit mode ───────────────────────────────────────────────────────────────
   return (
     <div className="rounded-xl border border-sky-200 bg-sky-50 p-5">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">Edit Event</h3>
+      <h3 className="text-sm font-semibold text-gray-900 mb-3">Editar Evento</h3>
 
       {error && (
         <p className="mb-3 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-700">{error}</p>
@@ -253,7 +264,7 @@ export default function EditEventCard({
           {/* Title */}
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium mb-1" htmlFor={`ee-title-${event.id}`}>
-              Title <span className="text-red-500">*</span>
+              Título <span className="text-red-500">*</span>
             </label>
             <input
               id={`ee-title-${event.id}`}
@@ -265,11 +276,11 @@ export default function EditEventCard({
             />
           </div>
 
-          {/* Sport */}
+          {/* Disciplina */}
           {sports.length > 0 && (
             <div>
               <label className="block text-xs font-medium mb-1" htmlFor={`ee-sport-${event.id}`}>
-                Sport
+                Disciplina
               </label>
               <select
                 id={`ee-sport-${event.id}`}
@@ -277,10 +288,10 @@ export default function EditEventCard({
                 defaultValue={event.sport_id ?? ''}
                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
               >
-                <option value="">All sports / General</option>
+                <option value="">General (sin disciplina)</option>
                 {sports.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name}{s.category_type === 'team' ? ' (team)' : ' (individual)'}
+                    {s.name}{s.category_type === 'team' ? ' (equipo)' : ' (individual)'}
                   </option>
                 ))}
               </select>
@@ -290,7 +301,7 @@ export default function EditEventCard({
           {/* Type */}
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor={`ee-type-${event.id}`}>
-              Type <span className="text-red-500">*</span>
+              Tipo <span className="text-red-500">*</span>
             </label>
             <select
               id={`ee-type-${event.id}`}
@@ -300,7 +311,7 @@ export default function EditEventCard({
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             >
               {EVENT_TYPES.map((t) => (
-                <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
           </div>
@@ -308,7 +319,7 @@ export default function EditEventCard({
           {/* Status */}
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor={`ee-status-${event.id}`}>
-              Status
+              Estado
             </label>
             <select
               id={`ee-status-${event.id}`}
@@ -317,7 +328,7 @@ export default function EditEventCard({
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             >
               {STATUSES.map((s) => (
-                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
           </div>
@@ -325,7 +336,7 @@ export default function EditEventCard({
           {/* Start */}
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor={`ee-start-${event.id}`}>
-              Start <span className="text-red-500">*</span>
+              Inicio <span className="text-red-500">*</span>
             </label>
             <input
               id={`ee-start-${event.id}`}
@@ -340,7 +351,7 @@ export default function EditEventCard({
           {/* End */}
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor={`ee-end-${event.id}`}>
-              End <span className="text-red-500">*</span>
+              Fin <span className="text-red-500">*</span>
             </label>
             <input
               id={`ee-end-${event.id}`}
@@ -355,14 +366,14 @@ export default function EditEventCard({
           {/* Description */}
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium mb-1" htmlFor={`ee-desc-${event.id}`}>
-              Description
+              Descripción
             </label>
             <textarea
               id={`ee-desc-${event.id}`}
               name="description"
               rows={2}
               defaultValue={event.description ?? ''}
-              placeholder="Optional notes…"
+              placeholder="Notas opcionales…"
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm resize-none focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             />
           </div>
@@ -370,14 +381,14 @@ export default function EditEventCard({
           {/* Participants */}
           {athletes.length > 0 && (
             <div className="sm:col-span-2">
-              <p className="block text-xs font-medium mb-2">Participants</p>
+              <p className="block text-xs font-medium mb-2">Participantes</p>
 
               {/* Mode radio */}
               <div className="flex flex-wrap gap-4 mb-3">
                 {([
-                  { value: 'none',       label: 'No specific athletes' },
-                  { value: 'individual', label: 'Individual athlete' },
-                  { value: 'group',      label: 'Group of athletes' },
+                  { value: 'none',       label: 'Sin atletas específicos' },
+                  { value: 'individual', label: 'Atleta individual' },
+                  { value: 'group',      label: 'Grupo de atletas' },
                 ] as { value: ParticipationMode; label: string }[]).map((opt) => (
                   <label key={opt.value} className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-gray-700">
                     <input
@@ -407,7 +418,7 @@ export default function EditEventCard({
                   required
                   className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm"
                 >
-                  <option value="">Select athlete…</option>
+                  <option value="">Seleccionar atleta…</option>
                   {athletes.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.first_name} {a.last_name}
@@ -426,7 +437,7 @@ export default function EditEventCard({
                       onChange={(e) => toggleAll(e.target.checked)}
                       className="h-3.5 w-3.5 rounded accent-sky-600"
                     />
-                    <span className="text-xs font-semibold text-gray-700">Select all athletes</span>
+                    <span className="text-xs font-semibold text-gray-700">Seleccionar todos los atletas</span>
                   </label>
                   {athletes.map((a) => (
                     <label key={a.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-sky-50 transition-colors">
@@ -447,7 +458,7 @@ export default function EditEventCard({
               {/* ── Notify participants ─────────────────────────────── */}
               {editMode !== 'none' && (
                 <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5">
-                  <p className="text-xs font-medium text-gray-700 mb-2">Notify participants of changes</p>
+                  <p className="text-xs font-medium text-gray-700 mb-2">Notificar cambios a participantes</p>
                   <div className="flex flex-wrap gap-5">
                     <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-700">
                       <input
@@ -465,7 +476,7 @@ export default function EditEventCard({
                         value="on"
                         className="h-3.5 w-3.5 rounded accent-sky-600"
                       />
-                      Push notification
+                      Notificación push
                     </label>
                   </div>
                 </div>
@@ -480,14 +491,14 @@ export default function EditEventCard({
             disabled={isPending}
             className="rounded-md bg-sky-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50 transition-colors"
           >
-            {isPending ? 'Saving…' : 'Save changes'}
+            {isPending ? 'Guardando…' : 'Guardar cambios'}
           </button>
           <button
             type="button"
             onClick={() => { setEditing(false); setError(null); }}
             className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium hover:bg-white transition-colors"
           >
-            Cancel
+            Cancelar
           </button>
         </div>
       </form>

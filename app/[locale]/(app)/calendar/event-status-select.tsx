@@ -4,9 +4,9 @@ import { useTransition } from 'react';
 import { updateEventStatus } from './actions';
 
 const STATUSES = [
-  { value: 'scheduled', label: 'Scheduled' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'scheduled', label: 'Programado' },
+  { value: 'completed', label: 'Completado' },
+  { value: 'cancelled', label: 'Cancelado'  },
 ];
 
 export default function EventStatusSelect({

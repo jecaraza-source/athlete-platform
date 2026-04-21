@@ -3,16 +3,20 @@
 import { useRef, useState, useTransition } from 'react';
 import { createEvent } from './actions';
 
-const EVENT_TYPES = [
-  'training',
-  'competition',
-  'meeting',
-  'medical',
-  'evaluation',
-  'other',
+const EVENT_TYPES: { value: string; label: string }[] = [
+  { value: 'training',    label: 'Entrenamiento' },
+  { value: 'competition', label: 'Competencia'   },
+  { value: 'meeting',     label: 'Reunión'        },
+  { value: 'medical',     label: 'Médico'         },
+  { value: 'evaluation',  label: 'Evaluación'    },
+  { value: 'other',       label: 'Otro'           },
 ];
 
-const STATUSES = ['scheduled', 'completed', 'cancelled'];
+const STATUSES: { value: string; label: string }[] = [
+  { value: 'scheduled',  label: 'Programado'  },
+  { value: 'completed',  label: 'Completado'  },
+  { value: 'cancelled',  label: 'Cancelado'   },
+];
 
 type Athlete = { id: string; first_name: string; last_name: string };
 type Sport  = { id: string; name: string; category_type: string };
@@ -73,14 +77,14 @@ export default function NewEventForm({
         onClick={() => setOpen(true)}
         className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
       >
-        + New event
+        + Nuevo evento
       </button>
     );
   }
 
   return (
     <div className="mt-4 rounded-md border border-gray-200 bg-white p-4">
-      <h3 className="font-semibold text-sm mb-3">New Event</h3>
+      <h3 className="font-semibold text-sm mb-3">Nuevo Evento</h3>
 
       {error && (
         <p className="mb-3 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-700">
@@ -93,33 +97,33 @@ export default function NewEventForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium mb-1" htmlFor="ev_title">
-              Title <span className="text-red-500">*</span>
+              Título <span className="text-red-500">*</span>
             </label>
             <input
               id="ev_title"
               name="title"
               type="text"
               required
-              placeholder="e.g. Morning training"
+              placeholder="ej. Entrenamiento matutino"
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
             />
           </div>
 
-          {/* Sport */}
+          {/* Disciplina */}
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor="ev_sport">
-              Sport
+              Disciplina
             </label>
             <select
               id="ev_sport"
               name="sport_id"
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
             >
-              <option value="">All sports / General</option>
+              <option value="">General (sin disciplina)</option>
               {sports.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
-                  {s.category_type === 'team' ? ' (team)' : ' (individual)'}
+                  {s.category_type === 'team' ? ' (equipo)' : ' (individual)'}
                 </option>
               ))}
             </select>
@@ -127,7 +131,7 @@ export default function NewEventForm({
 
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor="ev_type">
-              Type <span className="text-red-500">*</span>
+              Tipo <span className="text-red-500">*</span>
             </label>
             <select
               id="ev_type"
@@ -135,10 +139,10 @@ export default function NewEventForm({
               required
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
             >
-              <option value="">Select…</option>
+              <option value="">Seleccionar…</option>
               {EVENT_TYPES.map((t) => (
-                <option key={t} value={t} className="capitalize">
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                <option key={t.value} value={t.value}>
+                  {t.label}
                 </option>
               ))}
             </select>
@@ -146,7 +150,7 @@ export default function NewEventForm({
 
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor="ev_status">
-              Status
+              Estado
             </label>
             <select
               id="ev_status"
@@ -154,8 +158,8 @@ export default function NewEventForm({
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
             >
               {STATUSES.map((s) => (
-                <option key={s} value={s} className="capitalize">
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                <option key={s.value} value={s.value}>
+                  {s.label}
                 </option>
               ))}
             </select>
@@ -163,7 +167,7 @@ export default function NewEventForm({
 
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor="ev_start">
-              Start <span className="text-red-500">*</span>
+              Inicio <span className="text-red-500">*</span>
             </label>
             <input
               id="ev_start"
@@ -176,7 +180,7 @@ export default function NewEventForm({
 
           <div>
             <label className="block text-xs font-medium mb-1" htmlFor="ev_end">
-              End <span className="text-red-500">*</span>
+              Fin <span className="text-red-500">*</span>
             </label>
             <input
               id="ev_end"
@@ -189,13 +193,13 @@ export default function NewEventForm({
 
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium mb-1" htmlFor="ev_desc">
-              Description
+              Descripción
             </label>
             <textarea
               id="ev_desc"
               name="description"
               rows={2}
-              placeholder="Optional details…"
+              placeholder="Detalles opcionales…"
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm resize-none"
             />
           </div>
@@ -203,14 +207,14 @@ export default function NewEventForm({
           {/* ── Participants ───────────────────────────────────────── */}
           {athletes.length > 0 && (
             <div className="sm:col-span-2">
-              <p className="block text-xs font-medium mb-2">Participants</p>
+              <p className="block text-xs font-medium mb-2">Participantes</p>
 
               {/* Mode selector */}
               <div className="flex flex-wrap gap-4 mb-3">
                 {([
-                  { value: 'none',       label: 'No specific athletes' },
-                  { value: 'individual', label: 'Individual athlete' },
-                  { value: 'group',      label: 'Group of athletes' },
+                  { value: 'none',       label: 'Sin atletas específicos' },
+                  { value: 'individual', label: 'Atleta individual' },
+                  { value: 'group',      label: 'Grupo de atletas' },
                 ] as { value: ParticipationMode; label: string }[]).map((opt) => (
                   <label key={opt.value} className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-gray-700">
                     <input
@@ -233,7 +237,7 @@ export default function NewEventForm({
                   required
                   className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
                 >
-                  <option value="">Select athlete…</option>
+                  <option value="">Seleccionar atleta…</option>
                   {athletes.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.first_name} {a.last_name}
@@ -253,7 +257,7 @@ export default function NewEventForm({
                       onChange={(e) => toggleAll(e.target.checked)}
                       className="h-3.5 w-3.5 rounded accent-sky-600"
                     />
-                    <span className="text-xs font-semibold text-gray-700">Select all athletes</span>
+                    <span className="text-xs font-semibold text-gray-700">Seleccionar todos los atletas</span>
                   </label>
 
                   {/* Individual athletes */}
@@ -278,7 +282,7 @@ export default function NewEventForm({
               {/* ── Notify participants ─────────────────────────────── */}
               {mode !== 'none' && (
                 <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5">
-                  <p className="text-xs font-medium text-gray-700 mb-2">Notify participants</p>
+                  <p className="text-xs font-medium text-gray-700 mb-2">Notificar participantes</p>
                   <div className="flex flex-wrap gap-5">
                     <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-700">
                       <input
@@ -296,7 +300,7 @@ export default function NewEventForm({
                         value="on"
                         className="h-3.5 w-3.5 rounded accent-sky-600"
                       />
-                      Push notification
+                      Notificación push
                     </label>
                   </div>
                 </div>
@@ -311,14 +315,14 @@ export default function NewEventForm({
             disabled={isPending}
             className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {isPending ? 'Saving…' : 'Save event'}
+            {isPending ? 'Guardando…' : 'Guardar evento'}
           </button>
           <button
             type="button"
             onClick={() => { setOpen(false); setError(null); }}
             className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            Cancelar
           </button>
         </div>
       </form>
