@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.aodeporte.mobile",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "AO Deportes usa tu ubicación para mostrarte servicios deportivos, entrenamientos y eventos cercanos relevantes para tu actividad.",
         "NSCameraUsageDescription": "AO Deportes usa la cámara para actualizar tu foto de perfil.",
@@ -32,13 +32,12 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.aodeporte.mobile",
-      "versionCode": 2,
+      "versionCode": 3,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.POST_NOTIFICATIONS",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -47,6 +46,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "onesignal-expo-plugin",
+        {
+          "mode": "production"
+        }
+      ],
       [
         "expo-image-picker",
         {

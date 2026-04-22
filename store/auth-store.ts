@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { deactivateDeviceTokens } from '@/services/push';
 import type { ProfileSummary, Role, PermissionName } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -128,6 +129,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
+    // Deactivate tokens while the session is still valid so the RLS policy
+    // allows the UPDATE. OneSignal logout is handled by usePushNotifications
+    // when it detects profile → null.
+    const profileId = get().profile?.id;
+    if (profileId) {
+      await deactivateDeviceTokens(profileId).catch(console.warn);
+    }
     await supabase.auth.signOut();
     get().reset();
   },

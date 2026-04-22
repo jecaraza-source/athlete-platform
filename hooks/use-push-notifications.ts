@@ -4,170 +4,226 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { registerDeviceToken } from '@/services/push';
 import { useAuthStore } from '@/store';
-// Types only — no runtime import of expo-notifications at the top level.
 import type * as NotificationsType from 'expo-notifications';
-import type * as DeviceType from 'expo-device';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
 // OneSignal App ID — must match ONESIGNAL_APP_ID in the web server env.
 const ONESIGNAL_APP_ID = 'fdfdbad9-0741-44dc-a562-a71fd642c2c7';
 
-// Expo Go doesn’t support native push modules (SDK 53+).
+// Expo Go doesn't support native push modules (SDK 53+).
 const IS_EXPO_GO = Constants.appOwnership === 'expo';
 
+// Staff role codes — kept in sync with SYSTEM_ROLES in types/index.ts.
+const STAFF_ROLES = ['super_admin', 'admin', 'coach', 'staff', 'program_director'] as const;
+
+// ---------------------------------------------------------------------------
+// Lazy loader — prevents native module evaluation in Expo Go
+// ---------------------------------------------------------------------------
+
+type OSModule = typeof import('react-native-onesignal');
+
+function requireOneSignal(): OSModule | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('react-native-onesignal') as OSModule;
+  } catch {
+    return null;
+  }
+}
+
+// Guard: initialize() must only be called once per JS runtime session.
+let oneSignalReady = false;
+
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+
 export function usePushNotifications() {
-  const router = useRouter();
-  const { profile } = useAuthStore();
-  const notificationListener = useRef<NotificationsType.EventSubscription | null>(null);
-  const responseListener = useRef<NotificationsType.EventSubscription | null>(null);
+  const router  = useRouter();
+  const profile = useAuthStore((s) => s.profile);
+  const roles   = useAuthStore((s) => s.roles);
 
+  const notifRef    = useRef<NotificationsType.EventSubscription | null>(null);
+  const responseRef = useRef<NotificationsType.EventSubscription | null>(null);
+
+  // ── Effect 1: expo-notifications foreground handler (mount once) ─────────
   useEffect(() => {
-    // Skip in Expo Go — native push modules aren’t available there.
-    if (IS_EXPO_GO || !profile) return;
+    if (IS_EXPO_GO) return;
 
-    // Lazy-load so the modules are never evaluated in Expo Go.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Notifications = require('expo-notifications') as typeof NotificationsType;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Device = require('expo-device') as typeof DeviceType;
-
+    let N: typeof NotificationsType;
     try {
-      Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-          shouldShowAlert: true,
-          shouldPlaySound: true,
-          shouldSetBadge: true,
-          shouldShowBanner: true,
-          shouldShowList: true,
-        }),
-      });
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      N = require('expo-notifications') as typeof NotificationsType;
     } catch {
       return;
     }
 
-    registerForPushNotifications(Notifications, Device, profile.id);
-    initOneSignal(profile.id);
+    N.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
 
-    notificationListener.current = Notifications.addNotificationReceivedListener(() => {});
+    // Foreground: received but not interacted with.
+    notifRef.current = N.addNotificationReceivedListener(() => {});
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+    // Background / quit: tapped by the user → deep-link into the app.
+    responseRef.current = N.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as Record<string, unknown>;
-      const deepLink = data?.deep_link as string | undefined;
-      if (deepLink) {
-        const path = deepLink.replace(/^aodeporte:\/\//, '/');
-        router.push(path as never);
-      }
+      const link = data?.deep_link as string | undefined;
+      if (link) router.push(link.replace(/^aodeporte:\/\//, '/') as never);
     });
 
     return () => {
-      notificationListener.current?.remove();
-      responseListener.current?.remove();
+      notifRef.current?.remove();
+      responseRef.current?.remove();
+    };
+  // router is stable in expo-router — safe to omit.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Effect 2: OneSignal SDK init (once) + identity per profile ───────────
+  //
+  // Runs whenever the logged-in user changes:
+  //   profile === null  → user signed out → logout from OneSignal
+  //   profile !== null  → user signed in  → login + tags + token registration
+  useEffect(() => {
+    if (IS_EXPO_GO) return;
+
+    const sdk = requireOneSignal();
+    if (!sdk) return;
+    const { OneSignal } = sdk;
+
+    // Initialize the SDK exactly once per app session.
+    if (!oneSignalReady) {
+      OneSignal.initialize(ONESIGNAL_APP_ID);
+      oneSignalReady = true;
+      console.log('[push] OneSignal initialized');
+    }
+
+    if (!profile) {
+      // Signed out — disassociate this device from the previous user so they
+      // no longer receive targeted notifications after logging out.
+      try { OneSignal.logout(); } catch { /* best-effort */ }
+      return;
+    }
+
+    // Tie the OneSignal subscription to the app's internal user ID.
+    // The backend can now target a specific user via external_id without
+    // needing to look up the subscription/player ID.
+    OneSignal.login(profile.id);
+
+    // Segmentation tags — enables "send to all athletes" or "send to all staff"
+    // from the OneSignal dashboard or REST API.
+    const isStaff = roles.some((r) => (STAFF_ROLES as readonly string[]).includes(r.code));
+    OneSignal.User.addTags({
+      role:       isStaff ? 'staff' : 'athlete',
+      profile_id: profile.id,
+    });
+
+    // Permission prompt (iOS system dialog / Android 13+ dialog).
+    OneSignal.Notifications.requestPermission(true).catch(() => {});
+
+    // OneSignal click handler — notification tapped while app is foregrounded
+    // or from the notification tray. Mirrors the expo-notifications deep-link
+    // handler above so both delivery channels are covered.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleClick = (event: any) => {
+      const link = event?.notification?.additionalData?.deep_link as string | undefined;
+      if (link) router.push(link.replace(/^aodeporte:\/\//, '/') as never);
+    };
+    OneSignal.Notifications.addEventListener('click', handleClick);
+
+    // Register subscription ID + Expo fallback token in Supabase.
+    registerAllTokens(OneSignal, profile.id);
+
+    return () => {
+      OneSignal.Notifications.removeEventListener('click', handleClick);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
 }
 
 // ---------------------------------------------------------------------------
-// OneSignal initialisation
+// Token registration
 // ---------------------------------------------------------------------------
 
 /**
- * Initialise the OneSignal SDK and, once a player ID is available,
- * update push_device_tokens.onesignal_player_id for this profile.
- * This runs alongside the Expo token registration so both tokens are
- * stored — the web server’s cron prefers the OneSignal UUID for delivery.
+ * Save both delivery channels to `push_device_tokens`:
+ *   1. OneSignal subscription ID  — preferred; used by the web server's cron.
+ *   2. Expo push token            — fallback for direct Expo Push API delivery.
  */
-async function initOneSignal(profileId: string) {
+async function registerAllTokens(
+  OneSignal: OSModule['OneSignal'],
+  profileId: string,
+): Promise<void> {
+  // 1. OneSignal subscription ID
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { OneSignal } = require('react-native-onesignal') as {
-      OneSignal: {
-        initialize: (appId: string) => void;
-        Notifications: {
-          requestPermission: (fallback: boolean) => Promise<boolean>;
-        };
-        User: {
-          pushSubscription: {
-            getIdAsync: () => Promise<string | null | undefined>;
-            id: string | null | undefined;
-            addEventListener: (event: string, cb: (sub: { id?: string | null }) => void) => void;
-          };
-        };
-      };
-    };
-
-    OneSignal.initialize(ONESIGNAL_APP_ID);
-    await OneSignal.Notifications.requestPermission(true);
-
-    // Try to get the player ID immediately; if not yet available, listen for
-    // the subscription change event which fires once the SDK has registered.
-    const savePlayerId = async (playerId: string | null | undefined) => {
-      if (!playerId) return;
-      await registerDeviceToken({
-        profileId,
-        deviceToken:       playerId,  // also usable as device_token fallback
-        onesignalPlayerId: playerId,
-      });
-      console.log('[push] OneSignal player ID registered:', playerId.slice(0, 8) + '...');
+    const save = async (id: string | null | undefined) => {
+      if (!id) return;
+      await registerDeviceToken({ profileId, deviceToken: id, onesignalPlayerId: id });
+      console.log('[push] OneSignal subscription ID saved:', id.slice(0, 8) + '…');
     };
 
     const existingId = await OneSignal.User.pushSubscription.getIdAsync();
     if (existingId) {
-      await savePlayerId(existingId);
+      await save(existingId);
     } else {
-      // First launch: wait for the SDK to finish registering with OneSignal.
+      // First launch — SDK hasn't finished registering with OneSignal servers yet.
+      // PushSubscriptionChangedState wraps the new state in `.current`.
       OneSignal.User.pushSubscription.addEventListener('change', (sub) => {
-        savePlayerId(sub.id).catch(console.warn);
+        save(sub.current?.id).catch(console.warn);
       });
     }
   } catch (e) {
-    // OneSignal is unavailable (Expo Go, simulator without push entitlements).
-    console.warn('[push] OneSignal init skipped:', (e as Error).message);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Expo push token registration (kept as fallback)
-// ---------------------------------------------------------------------------
-
-async function registerForPushNotifications(
-  Notifications: typeof NotificationsType,
-  Device: typeof DeviceType,
-  profileId: string,
-) {
-  if (!Device.isDevice) return;
-
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-  if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-  if (finalStatus !== 'granted') return;
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#0a7ea4',
-    });
+    console.warn('[push] OneSignal subscription ID skipped:', (e as Error).message);
   }
 
+  // 2. Expo push token (fallback)
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const N = require('expo-notifications') as typeof import('expo-notifications');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const D = require('expo-device') as typeof import('expo-device');
+
+    if (!D.isDevice) return;
+
+    const { status: existing } = await N.getPermissionsAsync();
+    let finalStatus = existing;
+    if (existing !== 'granted') {
+      const { status } = await N.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') return;
+
+    if (Platform.OS === 'android') {
+      await N.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: N.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#0a7ea4',
+      });
+    }
+
     const projectId = (
       Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined
     )?.eas?.projectId;
-    const token = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId } : undefined,
-    );
-    // Register the Expo token as a fallback; onesignal_player_id is set separately
-    // by initOneSignal() once the OneSignal SDK finishes its registration.
+
+    const token = await N.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
     await registerDeviceToken({
       profileId,
       deviceToken: token.data,
-      deviceName:  Device.deviceName ?? undefined,
+      deviceName:  D.deviceName ?? undefined,
     });
+    console.log('[push] Expo push token saved');
   } catch (e) {
-    console.warn('[push] Could not get Expo push token:', e);
+    console.warn('[push] Expo push token skipped:', (e as Error).message);
   }
 }
