@@ -420,6 +420,14 @@ export default async function LandingPage({
         style={{ backgroundColor: '#1a1a1a', color: '#7a7a7a' }}
       >
         © {new Date().getFullYear()} AO Deportes. Todos los derechos reservados.
+        <span className="mx-2">·</span>
+        <Link
+          href={`/${locale}/privacy-policy`}
+          className="underline hover:text-white transition-colors"
+          style={{ color: '#7a7a7a' }}
+        >
+          Aviso de Privacidad
+        </Link>
       </footer>
     </div>
   );

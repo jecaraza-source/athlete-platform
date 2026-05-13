@@ -54,6 +54,7 @@ const PUBLIC_PATHS: string[] = [
   '/login',
   '/login/forgot-password',
   '/auth/confirm', // Supabase password-reset callback — user arrives unauthenticated with a ?code=
+  '/privacy-policy', // Public: required by App Store Connect & GDPR
 ];
 
 /**
