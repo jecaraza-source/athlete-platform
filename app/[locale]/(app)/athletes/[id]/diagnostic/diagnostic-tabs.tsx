@@ -56,6 +56,8 @@ type Props = {
   integratedResults: IntegratedResults | null;
   /** Panel de documentos pre-renderizado por el Server Component padre para cada rubro */
   attachmentPanels?: Partial<Record<DiagnosticSectionKey, ReactNode>>;
+  /** Panel de adjuntos para estudios de laboratorio y gabinete (sección médica) */
+  labStudiesPanel?: ReactNode;
 };
 
 // ---------------------------------------------------------------------------
@@ -114,6 +116,7 @@ export default function DiagnosticTabs({
   evaluations,
   integratedResults,
   attachmentPanels = {},
+  labStudiesPanel,
 }: Props) {
   type TabKey = DiagnosticSectionKey | 'resultado_integrado';
   const [activeTab, setActiveTab] = useState<TabKey>('medico');
@@ -222,6 +225,7 @@ export default function DiagnosticTabs({
               athleteId={athlete.id}
               sectionStatus={(sectionMap['medico']?.status as DiagnosticStatus) ?? 'pendiente'}
               existingData={evaluations.medico}
+              labStudiesPanel={labStudiesPanel}
             />
             {attachmentPanels['medico']}
           </>

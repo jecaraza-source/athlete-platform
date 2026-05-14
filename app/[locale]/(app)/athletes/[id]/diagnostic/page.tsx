@@ -93,6 +93,18 @@ export default async function DiagnosticPage({
     ])
   ) as Partial<Record<DiagnosticSectionKey, React.ReactNode>>;
 
+  // Panel específico para adjuntar estudios de laboratorio y gabinete (dentro del rubro médico)
+  const labStudiesPanel = (
+    <AttachmentsLoader
+      athleteId={id}
+      module="diagnostic"
+      sectionName="estudios_laboratorio"
+      relatedRecordId={sectionMap['medico']?.id}
+      title="Adjuntar estudios de laboratorio y gabinete"
+      defaultCollapsed={false}
+    />
+  );
+
   return (
     <main className="p-6 max-w-7xl mx-auto">
       <div className="print:hidden">
@@ -111,6 +123,7 @@ export default async function DiagnosticPage({
         }}
         integratedResults={integratedResults}
         attachmentPanels={attachmentPanels}
+        labStudiesPanel={labStudiesPanel}
       />
     </main>
   );

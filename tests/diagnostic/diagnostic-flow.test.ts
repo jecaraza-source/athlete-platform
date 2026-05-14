@@ -614,10 +614,116 @@ describe('8. Parseo de datos numéricos en la evaluación médica', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 9. INDEPENDENCIA DE TESTS
+// 9. NUEVOS CAMPOS — Historia Médica, Motivo de Consulta, Antecedentes
+//    Heredofamiliares y Estudios de Laboratorio y Gabinete
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('9. Independencia — cada test parte de estado fresco', () => {
+describe('9. Persistencia de los nuevos campos clínicos', () => {
+  it('debe guardar sport_medical_history y consultation_reason', async () => {
+    await saveMedicalSection(ATHLETE_ID, false, fd({
+      sport_medical_history: 'Practicante de atletismo desde los 12 años. Sin cirugías previas.',
+      consultation_reason:   'Evaluación médica inicial para integración al equipo nacional.',
+    }));
+    const eval_ = db.athlete_medical_evaluation[0] as Record<string, unknown>;
+    expect(eval_.sport_medical_history).toBe('Practicante de atletismo desde los 12 años. Sin cirugías previas.');
+    expect(eval_.consultation_reason).toBe('Evaluación médica inicial para integración al equipo nacional.');
+  });
+
+  it('debe guardar los cuatro campos de antecedentes heredofamiliares', async () => {
+    await saveMedicalSection(ATHLETE_ID, false, fd({
+      heredofamilial_pathological:     'Padre con HTA. Abuela materna con diabetes tipo 2.',
+      heredofamilial_non_pathological: 'Dieta balanceada en familia. Actividad física regular.',
+      heredofamilial_andrological:     'Sin antecedentes andrológicos relevantes.',
+      heredofamilial_gyneco_obstetric: 'N/A',
+    }));
+    const eval_ = db.athlete_medical_evaluation[0] as Record<string, unknown>;
+    expect(eval_.heredofamilial_pathological).toBe('Padre con HTA. Abuela materna con diabetes tipo 2.');
+    expect(eval_.heredofamilial_non_pathological).toBe('Dieta balanceada en familia. Actividad física regular.');
+    expect(eval_.heredofamilial_andrological).toBe('Sin antecedentes andrológicos relevantes.');
+    expect(eval_.heredofamilial_gyneco_obstetric).toBe('N/A');
+  });
+
+  it('debe guardar los cinco estudios de laboratorio y gabinete', async () => {
+    await saveMedicalSection(ATHLETE_ID, false, fd({
+      lab_biometria_hematica:  'Hb 14.2 g/dL, Hto 42%, Plaquetas 250 mil/µL. Normal.',
+      lab_quimica_sanguinea:   'Glucosa 88 mg/dL, Creatinina 0.9 mg/dL. Dentro de rangos.',
+      lab_electrocardiograma:  'Ritmo sinusal. FC 58 lpm. Sin alteraciones.',
+      lab_examen_orina:        'Color ámbar, densidad 1.020. Sin proteinuria ni hematuria.',
+      lab_densitometria_osea:  'T-score: +0.8. Densidad ósea normal para la edad.',
+    }));
+    const eval_ = db.athlete_medical_evaluation[0] as Record<string, unknown>;
+    expect(eval_.lab_biometria_hematica).toBe('Hb 14.2 g/dL, Hto 42%, Plaquetas 250 mil/µL. Normal.');
+    expect(eval_.lab_quimica_sanguinea).toBe('Glucosa 88 mg/dL, Creatinina 0.9 mg/dL. Dentro de rangos.');
+    expect(eval_.lab_electrocardiograma).toBe('Ritmo sinusal. FC 58 lpm. Sin alteraciones.');
+    expect(eval_.lab_examen_orina).toBe('Color ámbar, densidad 1.020. Sin proteinuria ni hematuria.');
+    expect(eval_.lab_densitometria_osea).toBe('T-score: +0.8. Densidad ósea normal para la edad.');
+  });
+
+  it('nuevos campos vacíos deben guardarse como null', async () => {
+    await saveMedicalSection(ATHLETE_ID, false, fd({
+      sport_medical_history:           '',
+      consultation_reason:             '',
+      heredofamilial_pathological:     '',
+      heredofamilial_non_pathological: '',
+      heredofamilial_andrological:     '',
+      heredofamilial_gyneco_obstetric: '',
+      lab_biometria_hematica:          '',
+      lab_quimica_sanguinea:           '',
+      lab_electrocardiograma:          '',
+      lab_examen_orina:                '',
+      lab_densitometria_osea:          '',
+    }));
+    const eval_ = db.athlete_medical_evaluation[0] as Record<string, unknown>;
+    expect(eval_.sport_medical_history).toBeNull();
+    expect(eval_.consultation_reason).toBeNull();
+    expect(eval_.heredofamilial_pathological).toBeNull();
+    expect(eval_.heredofamilial_non_pathological).toBeNull();
+    expect(eval_.heredofamilial_andrological).toBeNull();
+    expect(eval_.heredofamilial_gyneco_obstetric).toBeNull();
+    expect(eval_.lab_biometria_hematica).toBeNull();
+    expect(eval_.lab_quimica_sanguinea).toBeNull();
+    expect(eval_.lab_electrocardiograma).toBeNull();
+    expect(eval_.lab_examen_orina).toBeNull();
+    expect(eval_.lab_densitometria_osea).toBeNull();
+  });
+
+  it('upsert debe actualizar los nuevos campos sin crear registros duplicados', async () => {
+    await saveMedicalSection(ATHLETE_ID, false, fd({
+      sport_medical_history: 'Versión inicial.',
+      lab_biometria_hematica: 'Valores preliminares.',
+    }));
+    await saveMedicalSection(ATHLETE_ID, false, fd({
+      sport_medical_history: 'Versión actualizada con más detalle.',
+      lab_biometria_hematica: 'Valores corregidos tras revisión.',
+    }));
+    expect(db.athlete_medical_evaluation).toHaveLength(1); // sin duplicados
+    const eval_ = db.athlete_medical_evaluation[0] as Record<string, unknown>;
+    expect(eval_.sport_medical_history).toBe('Versión actualizada con más detalle.');
+    expect(eval_.lab_biometria_hematica).toBe('Valores corregidos tras revisión.');
+  });
+
+  it('nuevos campos coexisten correctamente con los campos originales', async () => {
+    await saveMedicalSection(ATHLETE_ID, false, fd({
+      weight_kg:             '70.0',
+      diagnosis:             'Sin hallazgos patológicos.',
+      sport_medical_history: 'Atleta activo desde los 10 años.',
+      consultation_reason:   'Incorporación a la selección.',
+      lab_biometria_hematica:'Valores normales.',
+    }));
+    const eval_ = db.athlete_medical_evaluation[0] as Record<string, unknown>;
+    expect(eval_.weight_kg).toBe(70.0);
+    expect(eval_.diagnosis).toBe('Sin hallazgos patológicos.');
+    expect(eval_.sport_medical_history).toBe('Atleta activo desde los 10 años.');
+    expect(eval_.consultation_reason).toBe('Incorporación a la selección.');
+    expect(eval_.lab_biometria_hematica).toBe('Valores normales.');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. INDEPENDENCIA DE TESTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('10. Independencia — cada test parte de estado fresco', () => {
   it('test A: save borrador médico', async () => {
     await saveMedicalSection(ATHLETE_ID, false, fd({}));
     expect(getDiagnostic().overall_status).toBe('en_proceso');
@@ -643,7 +749,7 @@ describe('9. Independencia — cada test parte de estado fresco', () => {
 // 10. RESUMEN: FLUJO COMPLETO DE PRINCIPIO A FIN
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('10. Resumen — flujo completo E2E simulado', () => {
+describe('11. Resumen — flujo completo E2E simulado', () => {
   it('debe completar el ciclo completo: alta → borrador → completar 5 rubros → resultado integrado', async () => {
     // ── Paso 1: Estado inicial tras alta de atleta ──────────────
     expect(getDiagnostic().overall_status).toBe('pendiente');

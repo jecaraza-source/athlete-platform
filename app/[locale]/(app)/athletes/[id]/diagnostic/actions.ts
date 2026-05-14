@@ -173,9 +173,20 @@ function extractMedicalPayload(formData: FormData) {
     recovery_strategies:      str(formData, 'recovery_strategies'),
     training_load_control:    str(formData, 'training_load_control'),
     follow_up_schedule:       str(formData, 'follow_up_schedule'),
-    monitoring_notes:         str(formData, 'monitoring_notes'),
-    observations:             str(formData, 'observations'),
-    updated_at:               new Date().toISOString(),
+    monitoring_notes:                    str(formData, 'monitoring_notes'),
+    observations:                        str(formData, 'observations'),
+    sport_medical_history:               str(formData, 'sport_medical_history'),
+    consultation_reason:                 str(formData, 'consultation_reason'),
+    heredofamilial_pathological:         str(formData, 'heredofamilial_pathological'),
+    heredofamilial_non_pathological:     str(formData, 'heredofamilial_non_pathological'),
+    heredofamilial_andrological:         str(formData, 'heredofamilial_andrological'),
+    heredofamilial_gyneco_obstetric:     str(formData, 'heredofamilial_gyneco_obstetric'),
+    lab_biometria_hematica:              str(formData, 'lab_biometria_hematica'),
+    lab_quimica_sanguinea:               str(formData, 'lab_quimica_sanguinea'),
+    lab_electrocardiograma:              str(formData, 'lab_electrocardiograma'),
+    lab_examen_orina:                    str(formData, 'lab_examen_orina'),
+    lab_densitometria_osea:              str(formData, 'lab_densitometria_osea'),
+    updated_at:                          new Date().toISOString(),
   };
 }
 

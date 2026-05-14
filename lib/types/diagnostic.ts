@@ -88,6 +88,21 @@ export type MedicalEvaluation = {
   follow_up_schedule: string | null;
   monitoring_notes: string | null;
   observations: string | null;
+  // Historia Médica Deportiva
+  sport_medical_history: string | null;
+  // Motivo de Consulta
+  consultation_reason: string | null;
+  // Antecedentes Heredofamiliares
+  heredofamilial_pathological: string | null;
+  heredofamilial_non_pathological: string | null;
+  heredofamilial_andrological: string | null;
+  heredofamilial_gyneco_obstetric: string | null;
+  // Estudios de Laboratorio y Gabinete
+  lab_biometria_hematica: string | null;
+  lab_quimica_sanguinea: string | null;
+  lab_electrocardiograma: string | null;
+  lab_examen_orina: string | null;
+  lab_densitometria_osea: string | null;
 };
 
 export type NutritionEvaluation = {

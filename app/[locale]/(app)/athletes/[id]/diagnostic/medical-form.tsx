@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useRef, useState, useTransition, type ReactNode } from 'react';
 import { saveMedicalSection } from './actions';
 import type { DiagnosticStatus, MedicalEvaluation } from '@/lib/types/diagnostic';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/types/diagnostic';
@@ -65,10 +65,12 @@ export default function MedicalForm({
   athleteId,
   sectionStatus,
   existingData,
+  labStudiesPanel,
 }: {
   athleteId: string;
   sectionStatus: DiagnosticStatus;
   existingData: MedicalEvaluation | null;
+  labStudiesPanel?: ReactNode;
 }) {
   const [error, setError]           = useState<string | null>(null);
   const [success, setSuccess]       = useState<string | null>(null);
@@ -106,8 +108,61 @@ export default function MedicalForm({
       {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>}
 
       <form ref={formRef}>
-        {/* 1. Historia Clínica Deportiva — Evaluación Antropométrica */}
-        <SectionTitle>1. Evaluación Antropométrica</SectionTitle>
+        {/* 1. Historia Médica Deportiva */}
+        <SectionTitle>1. Historia Médica Deportiva</SectionTitle>
+        <Textarea
+          label="Historia médica deportiva"
+          name="sport_medical_history"
+          defaultValue={d?.sport_medical_history}
+          placeholder="Antecedentes deportivos relevantes, historial médico general, enfermedades previas, cirugías, tratamientos…"
+          rows={5}
+        />
+
+        {/* 2. Motivo de Consulta */}
+        <SectionTitle>2. Motivo de Consulta</SectionTitle>
+        <Textarea
+          label="Motivo de consulta"
+          name="consultation_reason"
+          defaultValue={d?.consultation_reason}
+          placeholder="Describe el motivo principal de la consulta médica inicial…"
+          rows={4}
+        />
+
+        {/* 3. Antecedentes Heredofamiliares */}
+        <SectionTitle>3. Antecedentes Heredofamiliares</SectionTitle>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Textarea
+            label="Antecedentes Patológicos"
+            name="heredofamilial_pathological"
+            defaultValue={d?.heredofamilial_pathological}
+            placeholder="Enfermedades hereditarias, crónicas o patológicas en familiares directos…"
+            rows={4}
+          />
+          <Textarea
+            label="Antecedentes No Patológicos"
+            name="heredofamilial_non_pathological"
+            defaultValue={d?.heredofamilial_non_pathological}
+            placeholder="Hábitos alimenticios, actividad física, estilo de vida familiar…"
+            rows={4}
+          />
+          <Textarea
+            label="Antecedentes Andrológicos"
+            name="heredofamilial_andrological"
+            defaultValue={d?.heredofamilial_andrological}
+            placeholder="Antecedentes andrológicos relevantes (aplica para pacientes masculinos)…"
+            rows={4}
+          />
+          <Textarea
+            label="Antecedentes Gineco-Obstétricos"
+            name="heredofamilial_gyneco_obstetric"
+            defaultValue={d?.heredofamilial_gyneco_obstetric}
+            placeholder="Antecedentes ginecológicos y obstétricos (aplica para pacientes femeninas)…"
+            rows={4}
+          />
+        </div>
+
+        {/* 4. Evaluación Antropométrica */}
+        <SectionTitle>4. Evaluación Antropométrica</SectionTitle>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <InputField label="Peso corporal (kg)" name="weight_kg" type="number" step="0.1" defaultValue={d?.weight_kg} placeholder="ej. 72.5" />
           <InputField label="Talla (cm)" name="height_cm" type="number" step="0.1" defaultValue={d?.height_cm} placeholder="ej. 175.0" />
@@ -115,22 +170,22 @@ export default function MedicalForm({
           <InputField label="% Grasa corporal" name="body_fat_pct" type="number" step="0.1" defaultValue={d?.body_fat_pct} placeholder="ej. 15.2" />
         </div>
 
-        {/* 2. Signos Vitales */}
-        <SectionTitle>2. Evaluación de Signos Vitales</SectionTitle>
+        {/* 5. Signos Vitales */}
+        <SectionTitle>5. Evaluación de Signos Vitales</SectionTitle>
         <div className="grid grid-cols-2 gap-3">
           <InputField label="Frecuencia cardíaca en reposo (bpm)" name="heart_rate_rest" type="number" defaultValue={d?.heart_rate_rest} placeholder="ej. 62" />
           <InputField label="Presión arterial" name="blood_pressure" defaultValue={d?.blood_pressure} placeholder="ej. 120/80 mmHg" />
         </div>
 
-        {/* 3. Evaluación Cardiovascular */}
-        <SectionTitle>3. Evaluación Cardiovascular</SectionTitle>
+        {/* 6. Evaluación Cardiovascular */}
+        <SectionTitle>6. Evaluación Cardiovascular</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Textarea label="Electrocardiograma en reposo" name="ecg_rest" defaultValue={d?.ecg_rest} placeholder="Hallazgos ECG en reposo…" />
           <Textarea label="Electrocardiograma en esfuerzo" name="ecg_effort" defaultValue={d?.ecg_effort} placeholder="Hallazgos ECG en esfuerzo…" />
         </div>
 
-        {/* 4. Evaluación Musculoesquelética y Postural */}
-        <SectionTitle>4. Evaluación Musculoesquelética y Postural</SectionTitle>
+        {/* 7. Evaluación Musculoesquelética y Postural */}
+        <SectionTitle>7. Evaluación Musculoesquelética y Postural</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Textarea label="Fuerza muscular" name="muscle_strength" defaultValue={d?.muscle_strength} placeholder="Valoración de fuerza…" />
           <Textarea label="Flexibilidad" name="flexibility" defaultValue={d?.flexibility} placeholder="Valoración de flexibilidad…" />
@@ -138,8 +193,8 @@ export default function MedicalForm({
           <Textarea label="Integridad articular" name="joint_integrity" defaultValue={d?.joint_integrity} placeholder="Pruebas de integridad articular…" />
         </div>
 
-        {/* 5. Evaluación Funcional */}
-        <SectionTitle>5. Evaluación Funcional Básica</SectionTitle>
+        {/* 8. Evaluación Funcional */}
+        <SectionTitle>8. Evaluación Funcional Básica</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Textarea label="Pruebas de fuerza" name="strength_tests" defaultValue={d?.strength_tests} placeholder="Resultados de pruebas de fuerza…" />
           <Textarea label="Resistencia" name="resistance_tests" defaultValue={d?.resistance_tests} placeholder="Resultados de pruebas de resistencia…" />
@@ -147,8 +202,8 @@ export default function MedicalForm({
           <Textarea label="Equilibrio y coordinación" name="balance_coordination" defaultValue={d?.balance_coordination} placeholder="Resultados de equilibrio y coordinación…" />
         </div>
 
-        {/* 6. Antecedentes de Lesiones */}
-        <SectionTitle>6. Antecedentes de Lesiones</SectionTitle>
+        {/* 9. Antecedentes de Lesiones */}
+        <SectionTitle>9. Antecedentes de Lesiones</SectionTitle>
         <Textarea
           label="Historial de lesiones (tipo, gravedad, recurrencia, tratamiento, secuelas)"
           name="injury_history"
@@ -157,22 +212,68 @@ export default function MedicalForm({
           rows={4}
         />
 
-        {/* 7. Resultados */}
-        <SectionTitle>7. Resultados</SectionTitle>
+        {/* 10. Estudios de Laboratorio y Gabinete */}
+        <SectionTitle>10. Estudios de Laboratorio y Gabinete</SectionTitle>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Textarea
+            label="Biometría Hemática"
+            name="lab_biometria_hematica"
+            defaultValue={d?.lab_biometria_hematica}
+            placeholder="Resultados e interpretación de la biometría hemática…"
+            rows={4}
+          />
+          <Textarea
+            label="Química Sanguínea"
+            name="lab_quimica_sanguinea"
+            defaultValue={d?.lab_quimica_sanguinea}
+            placeholder="Resultados e interpretación de la química sanguínea…"
+            rows={4}
+          />
+          <Textarea
+            label="Electrocardiograma"
+            name="lab_electrocardiograma"
+            defaultValue={d?.lab_electrocardiograma}
+            placeholder="Resultados e interpretación del electrocardiograma…"
+            rows={4}
+          />
+          <Textarea
+            label="Examen General de Orina"
+            name="lab_examen_orina"
+            defaultValue={d?.lab_examen_orina}
+            placeholder="Resultados e interpretación del examen general de orina…"
+            rows={4}
+          />
+          <Textarea
+            label="Densitometría Ósea"
+            name="lab_densitometria_osea"
+            defaultValue={d?.lab_densitometria_osea}
+            placeholder="Resultados e interpretación de la densitometría ósea…"
+            rows={4}
+          />
+        </div>
+        {/* Panel de documentos de estudios — pasado como ReactNode desde el Server Component padre */}
+        {labStudiesPanel && (
+          <div className="mt-4">
+            {labStudiesPanel}
+          </div>
+        )}
+
+        {/* 11. Resultados */}
+        <SectionTitle>11. Resultados</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Textarea label="Informe de resultados integrados" name="clinical_result" defaultValue={d?.clinical_result} placeholder="Informe con información clínica, funcional y deportiva…" rows={4} />
           <Textarea label="Emisión de diagnóstico" name="diagnosis" defaultValue={d?.diagnosis} placeholder="Diagnóstico médico inicial…" rows={4} />
         </div>
 
-        {/* 8. Factores de Riesgo */}
-        <SectionTitle>8. Detección de Factores de Riesgo</SectionTitle>
+        {/* 12. Factores de Riesgo */}
+        <SectionTitle>12. Detección de Factores de Riesgo</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Textarea label="Valoración del historial de lesiones (musculares, ligamentarias, fracturas, tendinopatías)" name="injury_risk_factors" defaultValue={d?.injury_risk_factors} placeholder="Factores de riesgo por historial de lesiones…" rows={3} />
           <Textarea label="Condiciones médicas relevantes (cardiovasculares, respiratorias, metabólicas)" name="medical_conditions" defaultValue={d?.medical_conditions} placeholder="Condiciones médicas relevantes detectadas…" rows={3} />
         </div>
 
-        {/* 9. Integración Diagnóstica */}
-        <SectionTitle>9. Integración Diagnóstica</SectionTitle>
+        {/* 13. Integración Diagnóstica */}
+        <SectionTitle>13. Integración Diagnóstica</SectionTitle>
         <div className="space-y-3">
           <Textarea label="Correlación de historia clínica, exploración, estudios y estudios de gabinete" name="diagnostic_integration" defaultValue={d?.diagnostic_integration} placeholder="Integración diagnóstica interdisciplinaria…" rows={4} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -194,8 +295,8 @@ export default function MedicalForm({
           </div>
         </div>
 
-        {/* 10. Plan Médico Individual */}
-        <SectionTitle>10. Plan Médico Individual del Atleta (PMIA)</SectionTitle>
+        {/* 14. Plan Médico Individual */}
+        <SectionTitle>14. Plan Médico Individual del Atleta (PMIA)</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Textarea label="Plan de prevención de lesiones" name="injury_prevention_plan" defaultValue={d?.injury_prevention_plan} placeholder="Estrategias preventivas individualizadas…" />
           <Textarea label="Recomendaciones médicas individualizadas" name="medical_recommendations" defaultValue={d?.medical_recommendations} placeholder="Recomendaciones específicas…" />
@@ -205,8 +306,8 @@ export default function MedicalForm({
           <Textarea label="Programación de seguimiento médico" name="follow_up_schedule" defaultValue={d?.follow_up_schedule} placeholder="Calendario de revisiones médicas…" />
         </div>
 
-        {/* 11. Monitoreo continuo */}
-        <SectionTitle>11. Monitoreo Continuo del Estado de Salud</SectionTitle>
+        {/* 15. Monitoreo continuo */}
+        <SectionTitle>15. Monitoreo Continuo del Estado de Salud</SectionTitle>
         <Textarea
           label="Notas de monitoreo (lesiones deportivas, evaluación en entrenamientos, ajustes de tratamiento)"
           name="monitoring_notes"
