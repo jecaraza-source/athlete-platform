@@ -43,6 +43,7 @@ vi.mock('@/lib/supabase-admin', () => ({
 
 vi.mock('@/lib/rbac/server', () => ({
   assertPermission: vi.fn().mockResolvedValue(null), // always permit by default
+  getCurrentUser:   vi.fn().mockResolvedValue({ profile: { id: 'profile-1' } }),
 }));
 
 vi.mock('next/cache', () => ({
