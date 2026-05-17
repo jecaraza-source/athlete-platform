@@ -58,6 +58,14 @@ const mainLinks = [
   },
 ];
 
+// Finanzas link (staff-only, requires view_finances permission — checked server-side)
+const financesLink = {
+  href: '/finances' as const,
+  key: 'finances',
+  inactive: 'bg-green-50  text-green-700  hover:bg-green-100  hover:text-green-800',
+  active:   'bg-green-100 text-green-900',
+};
+
 // Sub-links shown inside the Communications accordion
 const commsLinks = [
   { href: '/admin/tickets' as const, key: 'tickets' },
@@ -82,9 +90,12 @@ const adminLink = {
 
 export default function NavLinks({
   showAdmin = false,
+  showFinances = false,
   isAthlete = false,
 }: {
   showAdmin?: boolean;
+  /** When true, shows the Finanzas link (user has view_finances permission). */
+  showFinances?: boolean;
   /** When true, hides staff-only sections (athlete list, follow-up, communications). */
   isAthlete?: boolean;
 }) {
@@ -176,6 +187,16 @@ export default function NavLinks({
               </div>
             )}
           </div>
+        )}
+
+        {/* ── Finanzas — visible solo con permiso view_finances ───────── */}
+        {!isAthlete && showFinances && (
+          <Link
+            href={financesLink.href}
+            className={linkClass(financesLink.href, financesLink.inactive, financesLink.active)}
+          >
+            {t(financesLink.key as Parameters<typeof t>[0])}
+          </Link>
         )}
       </div>
 

@@ -86,6 +86,11 @@ export const PERMISSION_NAMES = [
   'manage_notification_templates',
   'manage_ticket_emails',
   'view_notification_logs',
+  // Finances (migration 033)
+  'view_finances',
+  'manage_finances',
+  'approve_finances',
+  'view_finance_reports',
 ] as const;
 export type PermissionName = (typeof PERMISSION_NAMES)[number];
 
