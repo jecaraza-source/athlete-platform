@@ -48,3 +48,14 @@ app-example
 /ios
 /android
 .vercel
+
+# Build artifacts
+*.aab
+app bundle/
+
+# Firebase credentials
+*.json
+!package.json
+!tsconfig*.json
+!app.json
+!eas.json
