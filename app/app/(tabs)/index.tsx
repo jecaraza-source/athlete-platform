@@ -21,6 +21,7 @@ export default function DashboardScreen() {
   const colors = Colors[scheme];
   const router = useRouter();
   const { profile, isStaff, isAthlete, fullName, roles, isInitialized, athleteId } = useAuthStore();
+  const canViewFinances = useAuthStore((s) => s.permissions.has('view_finances'));
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -230,6 +231,34 @@ export default function DashboardScreen() {
                 <Text style={[styles.quickSub, { color: colors.icon }]}>Sesiones · Diagnóstico</Text>
               </TouchableOpacity>
             </View>
+          </>
+        )}
+
+        {/* Finance Reports — staff with view_finances */}
+        {isStaff() && canViewFinances && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 8 }]}>Finanzas</Text>
+            <TouchableOpacity
+              onPress={() => router.push('/app/finances' as never)}
+              style={[
+                styles.protocolCard,
+                { backgroundColor: scheme === 'dark' ? '#1e2022' : '#f0fdf4' },
+              ]}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.protocolIcon, { backgroundColor: '#dcfce7' }]}>
+                <Ionicons name="bar-chart-outline" size={20} color="#15803d" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.protocolTitle, { color: colors.text }]}>
+                  Reportes financieros
+                </Text>
+                <Text style={[styles.protocolSub, { color: colors.icon }]}>
+                  Presupuesto · Gastos · Pagos · Top 10
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.icon} />
+            </TouchableOpacity>
           </>
         )}
 

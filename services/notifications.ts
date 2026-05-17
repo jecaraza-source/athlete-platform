@@ -4,7 +4,7 @@ import type { PushJob } from '@/types';
 export type NotifyOptions = {
   notifyPush:     boolean;
   notifyEmail:    boolean;
-  entityType:     'event' | 'ticket' | 'training';
+  entityType:     'event' | 'ticket' | 'training' | 'finance';
   entityId:       string;
   /** Push notification title */
   pushTitle:      string;

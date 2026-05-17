@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, PRIMARY } from '@/constants/theme';
 import { useAuthStore } from '@/store';
 import { countPendingNotifications } from '@/services/notifications';
+import { countPendingApprovals } from '@/services/finance-approvals';
 import { useRealtimeNotificationBadge } from '@/hooks/use-realtime';
 
 function LogoHeader() {
@@ -30,6 +31,10 @@ export default function TabsLayout() {
   const showTraining    = permissions.has('view_training') || permissions.has('manage_training');
   // Ticket create button: visible only to users who can open tickets
   const canCreateTicket = permissions.has('create_tickets');
+  // Finance reports: visible to staff with view_finances
+  const showFinances    = permissions.has('view_finances');
+  // Approvals: visible to staff with approve_finances
+  const showApprovals   = permissions.has('approve_finances');
 
   // Notification badge — counts unread push_jobs (read_at IS NULL).
   // Refreshed on mount, on profile change, and on every incoming Realtime event.
@@ -42,8 +47,20 @@ export default function TabsLayout() {
       .catch(() => setNotifBadge(undefined));
   }, [profile?.id]);
 
+  // Approval badge — counts expenses in 'submitted' status.
+  // Refreshed on mount and whenever the profile changes.
+  const [approvalBadge, setApprovalBadge] = useState<number | undefined>(undefined);
+
+  const refreshApprovalBadge = useCallback(() => {
+    if (!showApprovals) { setApprovalBadge(undefined); return; }
+    countPendingApprovals()
+      .then((n) => setApprovalBadge(n > 0 ? n : undefined))
+      .catch(() => setApprovalBadge(undefined));
+  }, [showApprovals]);
+
   // Initial load
   useEffect(() => { refreshBadge(); }, [refreshBadge]);
+  useEffect(() => { refreshApprovalBadge(); }, [refreshApprovalBadge]);
 
   // Live update: fires when a new push_job is delivered to this profile
   useRealtimeNotificationBadge(refreshBadge);
@@ -158,6 +175,32 @@ export default function TabsLayout() {
           title: 'Perfil',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* Approvals — visible only to staff with approve_finances */}
+      <Tabs.Screen
+        name="approvals"
+        options={{
+          title: 'Autorizar',
+          href: showApprovals ? undefined : null,
+          tabBarBadge: approvalBadge,
+          tabBarBadgeStyle: { fontSize: 10, minWidth: 18, height: 18 },
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="shield-checkmark-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* Finance reports — visible only to staff with view_finances */}
+      <Tabs.Screen
+        name="finances"
+        options={{
+          title: 'Finanzas',
+          href: showFinances ? undefined : null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bar-chart-outline" size={size} color={color} />
           ),
         }}
       />

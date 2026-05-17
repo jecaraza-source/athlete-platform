@@ -54,6 +54,12 @@ export default function RootLayout() {
           reset();
         } else if (event === 'TOKEN_REFRESHED') {
           setSession(session);
+        } else if ((event as string) === 'TOKEN_REFRESH_FAILURE') {
+          // The stored refresh token is expired or has been revoked server-side.
+          // Sign out (clears AsyncStorage) then reset the store so the redirect
+          // guard sends the user to the login screen.
+          supabase.auth.signOut().catch(() => null);
+          reset();
         }
       }
     );

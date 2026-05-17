@@ -26,6 +26,12 @@ vi.mock('@/lib/supabase', () => ({
   },
 }));
 
+// @/services/push imports react-native which uses Flow syntax — stub it out
+// so the Vitest/Rolldown Node parser never sees the native module.
+vi.mock('@/services/push', () => ({
+  deactivateDeviceTokens: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { useAuthStore } from '@/store/auth-store';
 import { supabase } from '@/lib/supabase';
 
