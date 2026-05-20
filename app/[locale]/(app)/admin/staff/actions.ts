@@ -5,7 +5,9 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/rbac/server';
 import { SECTION_KEYS } from '@/lib/types/diagnostic';
 
-/** Crea o recupera la fila de athletes y devuelve su ID. */
+/** Crea o recupera la fila de athletes y devuelve su ID.
+ * Falls back gracefully when optional columns (discipline, disability_status)
+ * have not yet been added via migration — e.g. when added manually. */
 async function ensureAthleteRow(
   profileId: string,
   firstName: string,
@@ -21,21 +23,53 @@ async function ensureAthleteRow(
 
   if (existing) return { athleteId: existing.id };
 
+  // Try with all extended fields first
   const { data, error } = await supabaseAdmin
     .from('athletes')
     .insert({
-      profile_id:       profileId,
-      first_name:       firstName,
-      last_name:        lastName,
-      discipline:       discipline,
+      profile_id:        profileId,
+      first_name:        firstName,
+      last_name:         lastName,
+      discipline:        discipline,
       disability_status: disabilityStatus,
-      status:           'active',
+      status:            'active',
     })
     .select('id')
     .single();
 
-  if (error) return { error: error.message };
-  return { athleteId: data.id };
+  if (!error) return { athleteId: data.id };
+
+  // One or both extended columns don't exist yet — retry with only discipline
+  if (error.message.includes('does not exist')) {
+    const { data: d2, error: e2 } = await supabaseAdmin
+      .from('athletes')
+      .insert({
+        profile_id:  profileId,
+        first_name:  firstName,
+        last_name:   lastName,
+        discipline:  discipline,
+        status:      'active',
+      })
+      .select('id')
+      .single();
+
+    if (!e2) return { athleteId: d2.id };
+
+    // discipline column also missing — insert base row only
+    if (e2.message.includes('does not exist')) {
+      const { data: d3, error: e3 } = await supabaseAdmin
+        .from('athletes')
+        .insert({ profile_id: profileId, first_name: firstName, last_name: lastName, status: 'active' })
+        .select('id')
+        .single();
+      if (e3) return { error: e3.message };
+      return { athleteId: d3.id };
+    }
+
+    return { error: e2.message };
+  }
+
+  return { error: error.message };
 }
 
 /**

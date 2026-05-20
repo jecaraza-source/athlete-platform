@@ -96,29 +96,31 @@ export default function NewStaffForm({
                 />
               </div>
 
-              {hasExtendedColumns && (
-                presetRole ? (
-                  <input type="hidden" name="role" value={presetRole} />
-                ) : (
-                  <div>
-                    <label className="block text-sm font-medium mb-1" htmlFor="role">
-                      {t('roleLabel')} <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="role"
-                      name="role"
-                      required
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    >
-                      <option value="">{t('selectRole')}</option>
-                      {roles.map((r) => (
-                        <option key={r.value} value={r.value}>
-                          {r.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )
+              {/* Always submit the preset role, regardless of extended-column availability */}
+              {presetRole && (
+                <input type="hidden" name="role" value={presetRole} />
+              )}
+
+              {/* Role selector only when no preset and extended columns exist */}
+              {!presetRole && hasExtendedColumns && (
+                <div>
+                  <label className="block text-sm font-medium mb-1" htmlFor="role">
+                    {t('roleLabel')} <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="role"
+                    name="role"
+                    required
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">{t('selectRole')}</option>
+                    {roles.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
 
               {hasExtendedColumns && (
