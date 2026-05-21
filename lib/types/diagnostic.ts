@@ -284,6 +284,7 @@ export const DISCIPLINES = [
   { value: 'judo',               label: 'Judo',                         block: 'Combate' },
   { value: 'karate',             label: 'Karate',                       block: 'Combate' },
   { value: 'taekwondo',          label: 'Tae Kwon Do',                  block: 'Combate' },
+  { value: 'boxeo',              label: 'Boxeo',                        block: 'Combate' },
   { value: 'atletismo',          label: 'Atletismo',                    block: 'Resistencia' },
   { value: 'natacion',           label: 'Natación',                     block: 'Resistencia' },
   { value: 'canotaje',           label: 'Canotaje',                     block: 'Resistencia' },
