@@ -1,16 +1,17 @@
 import Image from 'next/image';
 import { ReactNode } from 'react';
-import { getCurrentUser, hasRole } from '@/lib/rbac/server';
+import { getCurrentUser, hasRole, hasPermission } from '@/lib/rbac/server';
 import SignOutButton from './sign-out-button';
 import NavLinks from './nav-links';
 import LanguageSwitcher from './language-switcher';
 
 export default async function AppShell({ children }: { children: ReactNode }) {
-  // getCurrentUser() is memoized — hasRole() reuses the same resolved data.
-  const [currentUser, showAdmin, isAthlete] = await Promise.all([
+  // getCurrentUser() is memoized — hasRole/hasPermission() reuse the same resolved data.
+  const [currentUser, showAdmin, isAthlete, showFinances] = await Promise.all([
     getCurrentUser(),
     hasRole('super_admin', 'admin', 'program_director'),
     hasRole('athlete'),
+    hasPermission('view_finances'),
   ]);
 
   const profile  = currentUser?.profile ?? null;
@@ -34,7 +35,7 @@ export default async function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Navigation */}
-        <NavLinks showAdmin={showAdmin} isAthlete={isAthlete} />
+        <NavLinks showAdmin={showAdmin} showFinances={showFinances} isAthlete={isAthlete} />
 
         {/* Footer */}
         <div className="border-t border-gray-200">

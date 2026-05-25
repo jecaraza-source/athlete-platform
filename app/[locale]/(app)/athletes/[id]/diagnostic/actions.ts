@@ -141,7 +141,8 @@ async function updateSectionStatus(
 // Rubro Médico
 // ---------------------------------------------------------------------------
 
-function extractMedicalPayload(formData: FormData) {
+/** Fields present since the initial schema (always safe to upsert). */
+function extractMedicalBasePayload(formData: FormData) {
   return {
     weight_kg:                num(formData, 'weight_kg'),
     height_cm:                num(formData, 'height_cm'),
@@ -173,20 +174,26 @@ function extractMedicalPayload(formData: FormData) {
     recovery_strategies:      str(formData, 'recovery_strategies'),
     training_load_control:    str(formData, 'training_load_control'),
     follow_up_schedule:       str(formData, 'follow_up_schedule'),
-    monitoring_notes:                    str(formData, 'monitoring_notes'),
-    observations:                        str(formData, 'observations'),
-    sport_medical_history:               str(formData, 'sport_medical_history'),
-    consultation_reason:                 str(formData, 'consultation_reason'),
-    heredofamilial_pathological:         str(formData, 'heredofamilial_pathological'),
-    heredofamilial_non_pathological:     str(formData, 'heredofamilial_non_pathological'),
-    heredofamilial_andrological:         str(formData, 'heredofamilial_andrological'),
-    heredofamilial_gyneco_obstetric:     str(formData, 'heredofamilial_gyneco_obstetric'),
-    lab_biometria_hematica:              str(formData, 'lab_biometria_hematica'),
-    lab_quimica_sanguinea:               str(formData, 'lab_quimica_sanguinea'),
-    lab_electrocardiograma:              str(formData, 'lab_electrocardiograma'),
-    lab_examen_orina:                    str(formData, 'lab_examen_orina'),
-    lab_densitometria_osea:              str(formData, 'lab_densitometria_osea'),
-    updated_at:                          new Date().toISOString(),
+    monitoring_notes:         str(formData, 'monitoring_notes'),
+    observations:             str(formData, 'observations'),
+    updated_at:               new Date().toISOString(),
+  };
+}
+
+/** Fields added in migration 031 — may not exist if migration hasn't been applied. */
+function extractMedicalExtendedPayload(formData: FormData) {
+  return {
+    sport_medical_history:           str(formData, 'sport_medical_history'),
+    consultation_reason:             str(formData, 'consultation_reason'),
+    heredofamilial_pathological:     str(formData, 'heredofamilial_pathological'),
+    heredofamilial_non_pathological: str(formData, 'heredofamilial_non_pathological'),
+    heredofamilial_andrological:     str(formData, 'heredofamilial_andrological'),
+    heredofamilial_gyneco_obstetric: str(formData, 'heredofamilial_gyneco_obstetric'),
+    lab_biometria_hematica:          str(formData, 'lab_biometria_hematica'),
+    lab_quimica_sanguinea:           str(formData, 'lab_quimica_sanguinea'),
+    lab_electrocardiograma:          str(formData, 'lab_electrocardiograma'),
+    lab_examen_orina:                str(formData, 'lab_examen_orina'),
+    lab_densitometria_osea:          str(formData, 'lab_densitometria_osea'),
   };
 }
 
@@ -201,16 +208,26 @@ export async function saveMedicalSection(
   const section = await ensureSectionRecord(athleteId, 'medico');
   if (!section) return { error: 'No se pudo inicializar la sección médica.' };
 
-  const payload = extractMedicalPayload(formData);
+  const base     = extractMedicalBasePayload(formData);
+  const extended = extractMedicalExtendedPayload(formData);
+  const row      = { diagnostic_section_id: section.id, athlete_id: athleteId };
 
+  // Try with all fields (requires migration 031 to have been applied)
   const { error } = await supabaseAdmin
     .from('athlete_medical_evaluation')
-    .upsert(
-      { diagnostic_section_id: section.id, athlete_id: athleteId, ...payload },
-      { onConflict: 'diagnostic_section_id' },
-    );
+    .upsert({ ...row, ...base, ...extended }, { onConflict: 'diagnostic_section_id' });
 
-  if (error) return { error: error.message };
+  if (error) {
+    // Migration 031 not yet applied — fall back to base fields only
+    if (error.message.includes('does not exist')) {
+      const { error: baseError } = await supabaseAdmin
+        .from('athlete_medical_evaluation')
+        .upsert({ ...row, ...base }, { onConflict: 'diagnostic_section_id' });
+      if (baseError) return { error: baseError.message };
+    } else {
+      return { error: error.message };
+    }
+  }
 
   await updateSectionStatus(section.id, section.diagnostic_id, athleteId, complete);
   await logAction(athleteId, section.diagnostic_id, 'medico', complete ? 'rubro_completado' : 'borrador_guardado');
