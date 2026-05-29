@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, useColorScheme,
-  TouchableOpacity, Alert, ActivityIndicator,
+  TouchableOpacity, Alert, ActivityIndicator, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +23,7 @@ import {
   listAthleteAttachments, uploadAthleteAttachment, type AthleteAttachment,
 } from '@/services/attachments';
 import { AttachmentItem } from '@/components/attachments/attachment-item';
+import { DiagnosticSectionDetail } from '@/components/athletes/DiagnosticSectionDetail';
 import { useAuthStore } from '@/store';
 import type { Athlete, AthleteInitialDiagnostic, AthleteSection, DiagnosticStatus, DiagnosticSectionKey } from '@/types';
 import { SECTION_LABELS, DIAGNOSTIC_STATUS_LABELS, SECTION_KEYS, ATHLETE_STATUS_LABELS } from '@/types';
@@ -103,10 +104,15 @@ export default function AthleteDetailScreen() {
 
   // Edit actions (upload docs, update diagnostic) gated by edit_athletes permission
   const canEditAthletes = useAuthStore((s) => s.hasPermission('edit_athletes'));
+  // Staff guard: show evaluation detail only to non-athletes
+  const currentIsAthlete = useAuthStore((s) => s.isAthlete());
+  const canViewEvalDetail = !currentIsAthlete;
 
   // Track which section is being edited (null = none)
-  const [editingSection, setEditingSection] = useState<DiagnosticSectionKey | null>(null);
-  const [savingSection,  setSavingSection]  = useState(false);
+  const [editingSection,  setEditingSection]  = useState<DiagnosticSectionKey | null>(null);
+  const [savingSection,   setSavingSection]   = useState(false);
+  // Track which section's evaluation detail is expanded (staff only)
+  const [expandedSection, setExpandedSection] = useState<DiagnosticSectionKey | null>(null);
 
   async function handleSectionStatus(section: DiagnosticSectionKey, newStatus: DiagnosticStatus) {
     if (!athlete) return;
@@ -153,10 +159,13 @@ export default function AthleteDetailScreen() {
       return;
     }
 
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permiso necesario', 'Necesitamos acceso a tu galería para agregar imágenes.');
-      return;
+    // Android uses the system Photo Picker (no manifest permission needed).
+    if (Platform.OS === 'ios') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso necesario', 'Necesitamos acceso a tu galería para agregar imágenes.');
+        return;
+      }
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -567,6 +576,7 @@ export default function AthleteDetailScreen() {
 
                   return (
                     <Card key={key} style={{ ...styles.sectionCard, borderLeftColor: sc.border, borderLeftWidth: 4 }}>
+                      {/* Header row: section badge + status + action buttons */}
                       <View style={styles.sectionRow}>
                         <View style={[styles.sectionBadge, { backgroundColor: sc.bg }]}>
                           <Text style={[styles.sectionBadgeText, { color: sc.text }]}>
@@ -579,6 +589,7 @@ export default function AthleteDetailScreen() {
                             bg={statusC.bg}
                             color={statusC.text}
                           />
+                          {/* Edit status button (staff with edit_athletes) */}
                           {canEditAthletes && (
                             <TouchableOpacity
                               onPress={() => setEditingSection(isEditing ? null : key)}
@@ -589,6 +600,24 @@ export default function AthleteDetailScreen() {
                                 name={isEditing ? 'chevron-up' : 'create-outline'}
                                 size={16}
                                 color={colors.icon}
+                              />
+                            </TouchableOpacity>
+                          )}
+                          {/* Expand/collapse evaluation detail (staff only, not athletes) */}
+                          {canViewEvalDetail && sec && (
+                            <TouchableOpacity
+                              onPress={() =>
+                                setExpandedSection(
+                                  expandedSection === key ? null : key
+                                )
+                              }
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              style={{ marginLeft: 6 }}
+                            >
+                              <Ionicons
+                                name={expandedSection === key ? 'chevron-up-circle' : 'eye-outline'}
+                                size={16}
+                                color={sc.text}
                               />
                             </TouchableOpacity>
                           )}
@@ -633,6 +662,14 @@ export default function AthleteDetailScreen() {
                             ]}
                           />
                         </View>
+                      )}
+
+                      {/* ── Evaluation detail — staff only, on demand ── */}
+                      {canViewEvalDetail && expandedSection === key && sec && (
+                        <DiagnosticSectionDetail
+                          section={key}
+                          sectionId={sec.id}
+                        />
                       )}
                     </Card>
                   );

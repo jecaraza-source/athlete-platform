@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, useColorScheme,
-  Alert, TouchableOpacity, ActivityIndicator, Image,
+  Alert, TouchableOpacity, ActivityIndicator, Image, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -80,14 +80,18 @@ export default function ProfileScreen() {
       return;
     }
 
-    const { status } =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permiso necesario',
-        'Necesitamos acceso a tu galería para cambiar la foto de perfil.',
-      );
-      return;
+    // On iOS we must request gallery permission before showing the picker.
+    // On Android, expo-image-picker uses the system Photo Picker (PickVisualMedia)
+    // which manages its own access – no manifest permission is required.
+    if (Platform.OS === 'ios') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permiso necesario',
+          'Necesitamos acceso a tu galería para cambiar la foto de perfil.',
+        );
+        return;
+      }
     }
 
     Alert.alert(
@@ -120,13 +124,17 @@ export default function ProfileScreen() {
     authUserId: string,
     useCamera: boolean,
   ) {
-    const perm = useCamera
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    // Camera always requires explicit permission on both platforms.
+    // Library picker on Android uses the system Photo Picker – no permission needed.
+    if (useCamera || Platform.OS === 'ios') {
+      const perm = useCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (perm.status !== 'granted') {
-      Alert.alert('Permiso denegado', 'Habilita el permiso en Ajustes del dispositivo.');
-      return;
+      if (perm.status !== 'granted') {
+        Alert.alert('Permiso denegado', 'Habilita el permiso en Ajustes del dispositivo.');
+        return;
+      }
     }
 
     const pickerResult = await (useCamera

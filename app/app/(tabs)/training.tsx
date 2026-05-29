@@ -110,10 +110,13 @@ function SessionCard({
     try {
       let files: UploadableFile[] = [];
       if (source === 'gallery') {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permiso necesario', 'Se necesita acceso a la galería para adjuntar fotos.');
-          return;
+        // Android uses the system Photo Picker (no manifest permission needed).
+        if (Platform.OS === 'ios') {
+          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (status !== 'granted') {
+            Alert.alert('Permiso necesario', 'Se necesita acceso a la galería para adjuntar fotos.');
+            return;
+          }
         }
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ['images'],
@@ -589,10 +592,13 @@ function NewSessionForm({
 
   // ── File pickers ────────────────────────────────────────────────────────
   async function pickFromGallery() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permiso necesario', 'Se necesita acceso a la galería para adjuntar fotos.');
-      return;
+    // Android uses the system Photo Picker (no manifest permission needed).
+    if (Platform.OS === 'ios') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso necesario', 'Se necesita acceso a la galería para adjuntar fotos.');
+        return;
+      }
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],

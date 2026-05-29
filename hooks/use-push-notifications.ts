@@ -77,6 +77,11 @@ export function usePushNotifications() {
     // Background / quit: tapped by the user → deep-link into the app.
     responseRef.current = N.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as Record<string, unknown>;
+      // Newsletter approval notification: navigate to newsletter screen
+      if (data?.type === 'newsletter_approval') {
+        router.push('/app/newsletter' as never);
+        return;
+      }
       const link = data?.deep_link as string | undefined;
       if (link) router.push(link.replace(/^aodeporte:\/\//, '/') as never);
     });
@@ -136,7 +141,13 @@ export function usePushNotifications() {
     // handler above so both delivery channels are covered.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleClick = (event: any) => {
-      const link = event?.notification?.additionalData?.deep_link as string | undefined;
+      const data = event?.notification?.additionalData as Record<string, unknown> | undefined;
+      // Newsletter approval: navigate to newsletter admin screen
+      if (data?.type === 'newsletter_approval') {
+        router.push('/app/newsletter' as never);
+        return;
+      }
+      const link = data?.deep_link as string | undefined;
       if (link) router.push(link.replace(/^aodeporte:\/\//, '/') as never);
     };
     OneSignal.Notifications.addEventListener('click', handleClick);

@@ -15,6 +15,7 @@ import { countOpenTickets } from '@/services/tickets';
 import { getDiagnostic, getDiagnosticSections } from '@/services/diagnostic';
 import type { AthleteInitialDiagnostic, AthleteSection } from '@/types';
 import { DIAGNOSTIC_STATUS_LABELS, SECTION_LABELS } from '@/types';
+import NewsletterCard from '@/components/newsletter/NewsletterCard';
 
 export default function DashboardScreen() {
   const scheme = useColorScheme() ?? 'light';
@@ -119,6 +120,9 @@ export default function DashboardScreen() {
             <Text style={[styles.roleText, { color: PRIMARY }]}>{roleLabel}</Text>
           </View>
         </View>
+
+        {/* Newsletter card — visible to all roles */}
+        <NewsletterCard />
 
         {/* Staff dashboard */}
         {isStaff() && (

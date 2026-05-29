@@ -42,6 +42,20 @@ export default function AppLayout() {
         options={{ title: 'Protocolos', headerBackTitle: 'Inicio' }}
       />
 
+      {/* Newsletter */}
+      <Stack.Screen
+        name="newsletter/index"
+        options={{ title: 'Newsletter de hoy', headerBackTitle: 'Inicio' }}
+      />
+      <Stack.Screen
+        name="newsletter/historial"
+        options={{ title: 'Historial de Newsletters', headerBackTitle: 'Newsletter' }}
+      />
+      <Stack.Screen
+        name="newsletter/[id]"
+        options={{ title: 'Newsletter', headerBackTitle: 'Historial' }}
+      />
+
       {/* Create calendar event */}
       <Stack.Screen
         name="calendar/create"
