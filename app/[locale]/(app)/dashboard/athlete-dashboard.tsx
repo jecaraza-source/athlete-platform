@@ -12,8 +12,10 @@
 
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
+import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { AvatarUploader } from '@/components/avatar/avatar-uploader';
+import NewsletterHomeCard from '@/components/newsletter/NewsletterHomeCard';
 import {
   SECTION_KEYS,
   SECTION_LABELS,
@@ -184,6 +186,11 @@ export default async function AthleteDashboard({ user }: Props) {
           </span>
         </div>
       </div>
+
+      {/* ── Newsletter ──────────────────────────────────────────────────── */}
+      <Suspense fallback={null}>
+        <NewsletterHomeCard />
+      </Suspense>
 
       {/* ── Mi Diagnóstico Inicial ────────────────────────────────────────── */}
       <section className="mb-8">
