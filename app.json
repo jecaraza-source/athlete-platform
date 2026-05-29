@@ -85,8 +85,7 @@
           "sounds": []
         }
       ],
-      "expo-web-browser",
-      "react-native-webview"
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
