@@ -209,48 +209,65 @@ export function buildEmailHTML(
         <table width="600" cellpadding="0" cellspacing="0" role="presentation"
           style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
 
-          <!-- Header -->
+          <!-- Logo section -->
           <tr>
-            <td style="background-color: ${BRAND_RED}; padding: 28px 32px; text-align: center;">
+            <td style="
+              background-color: #ffffff;
+              padding: 28px 32px 20px;
+              text-align: center;
+              border-bottom: 3px solid ${BRAND_RED};
+            ">
+              <!-- Logo -->
+              <img
+                src="${appUrl}/logo.png"
+                alt="AO Deportes"
+                width="110"
+                height="110"
+                style="
+                  display: block;
+                  margin: 0 auto 12px;
+                  width: 110px;
+                  height: 110px;
+                  border: 0;
+                  border-radius: 12px;
+                  object-fit: contain;
+                "
+              />
+              <!-- Brand name -->
               <p style="
-                margin: 0 0 4px 0;
+                margin: 0;
+                font-family: Georgia, 'Times New Roman', serif;
+                font-size: 22px;
+                font-weight: bold;
+                color: ${BRAND_RED};
+                letter-spacing: 1px;
+              ">AO Deportes</p>
+              <p style="
+                margin: 4px 0 0 0;
                 font-family: Georgia, 'Times New Roman', serif;
                 font-size: 11px;
                 font-weight: bold;
                 text-transform: uppercase;
                 letter-spacing: 2px;
-                color: rgba(255,255,255,0.75);
-              ">AO Deportes · ${audienciaLabel}</p>
-              <h1 style="
-                margin: 0;
-                font-family: Georgia, 'Times New Roman', serif;
-                font-size: 26px;
-                font-weight: bold;
-                color: #ffffff;
-                line-height: 1.2;
-              ">Newsletter Diario</h1>
-              <p style="
-                margin: 8px 0 0 0;
-                font-family: Georgia, 'Times New Roman', serif;
-                font-size: 13px;
-                color: rgba(255,255,255,0.85);
-              ">${today}</p>
+                color: #888888;
+              ">Newsletter ${audienciaLabel} &middot; ${today}</p>
             </td>
           </tr>
 
-          <!-- Subject bar -->
+          <!-- Red header band -->
           <tr>
-            <td style="background-color: ${BRAND_DARK}; padding: 14px 32px; text-align: center;">
-              <p style="
+            <td style="background-color: ${BRAND_RED}; padding: 20px 32px; text-align: center;">
+              <h1 style="
                 margin: 0;
                 font-family: Georgia, 'Times New Roman', serif;
-                font-size: 16px;
+                font-size: 22px;
                 font-weight: bold;
                 color: #ffffff;
                 line-height: 1.3;
-              ">${content.asunto}</p>
+              ">${content.asunto}</h1>
             </td>
           </tr>
+
 
           <!-- Intro -->
           <tr>
