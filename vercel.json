@@ -15,6 +15,14 @@
     {
       "path": "/api/cron/process-ticket-automation",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/newsletter-generate",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/newsletter-send",
+      "schedule": "0 13 * * *"
     }
   ]
 }

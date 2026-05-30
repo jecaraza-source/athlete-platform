@@ -1,9 +1,11 @@
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
+import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requireAuthenticated } from '@/lib/rbac/server';
 import AthleteDashboard from './athlete-dashboard';
 import { AvatarUploader } from '@/components/avatar/avatar-uploader';
+import NewsletterHomeCard from '@/components/newsletter/NewsletterHomeCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -185,6 +187,11 @@ export default async function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* Newsletter home card */}
+      <Suspense fallback={null}>
+        <NewsletterHomeCard />
+      </Suspense>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c) => (

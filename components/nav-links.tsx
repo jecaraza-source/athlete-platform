@@ -70,6 +70,7 @@ const financesLink = {
 const commsLinks = [
   { href: '/admin/tickets' as const, key: 'tickets' },
   { href: '/admin/notificaciones' as const, key: 'notifications' },
+  { href: '/admin/notificaciones/newsletter' as const, key: 'newsletter' },
 ];
 
 const COMMS_ROOTS = commsLinks.map((l) => l.href);
