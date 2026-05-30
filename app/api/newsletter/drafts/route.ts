@@ -56,7 +56,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   let query = supabaseAdmin
     .from('newsletter_drafts')
     .select(
-      'id, audiencia, asunto, preview_text, intro, status, scheduled_for, ' +
+      'id, audiencia, asunto, preview_text, intro, tips_json, html_content, ' +
+      'status, scheduled_for, recipient_ids, ' +
       'approved_by, approved_at, approval_note, rejected_reason, ' +
       'onesignal_id, recipient_count, sent_at, created_at, updated_at',
       { count: 'exact' }

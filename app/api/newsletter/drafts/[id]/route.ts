@@ -1,7 +1,7 @@
 // =============================================================================
 // app/api/newsletter/drafts/[id]/route.ts
-// PATCH — Update tips_json (and rebuild html_content) for a pending draft.
-// Only staff roles with newsletter.manage or newsletter.approve can edit.
+// GET  — Fetch a single draft by ID (all fields incl. html_content).
+// PATCH — Update tips_json and rebuild html_content for a pending draft.
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -17,6 +17,40 @@ const MANAGE_ROLES = new Set([
   'coach', 'medic', 'physio', 'psychologist', 'nutritionist',
 ]);
 
+// ── GET ──────────────────────────────────────────────────────────────────────
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const { id } = await params;
+
+  const user = await getCurrentUser();
+  if (!user?.profile) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const hasAccess =
+    user.permissions.has('newsletter.view') ||
+    user.permissions.has('newsletter.manage') ||
+    user.roles.some((r) => MANAGE_ROLES.has(r.code));
+
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('newsletter_drafts')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data)  return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  return NextResponse.json({ ok: true, data });
+}
+
+// ── PATCH ─────────────────────────────────────────────────────────────────────
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

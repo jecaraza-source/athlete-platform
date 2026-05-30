@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
+// We always resolve to 'individual' with an explicit list when the new
+// multi-select is used. The legacy single-audience mode is preserved for
+// backward compatibility when no profiles are loaded yet.
 export type AudienciaType = 'all' | 'atleta' | 'coach' | 'staff' | 'individual';
 
 export type RecipientProfile = {
@@ -18,21 +21,44 @@ export type RecipientProfile = {
 
 export type RecipientSelection = {
   audiencia:    AudienciaType;
-  recipientIds: string[];       // only relevant when audiencia='individual'
+  recipientIds: string[];
   count:        number;
 };
 
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
+// Segment → display config
+const SEGMENTS = [
+  { key: 'staff',  label: 'Staff & Admin', icon: '🏥', color: 'blue'   },
+  { key: 'coach',  label: 'Coaches',       icon: '🎽', color: 'purple' },
+  { key: 'atleta', label: 'Atletas',       icon: '🏃', color: 'green'  },
+] as const;
 
-const AUDIENCE_OPTIONS: { value: AudienciaType; label: string; description: string; icon: string }[] = [
-  { value: 'all',        label: 'Todos',       description: 'Todos los usuarios con newsletter activo', icon: '👥' },
-  { value: 'atleta',     label: 'Atletas',     description: 'Atletas y tutores',                        icon: '🏃' },
-  { value: 'coach',      label: 'Coaches',     description: 'Entrenadores únicamente',                  icon: '🎽' },
-  { value: 'staff',      label: 'Staff',       description: 'Todo el personal técnico y administrativo', icon: '🏥' },
-  { value: 'individual', label: 'Individual',  description: 'Selecciona personas específicas',           icon: '👤' },
-];
+type SegmentKey = typeof SEGMENTS[number]['key'];
+
+// role values that belong to each segment (mirrors backend)
+const SEGMENT_ROLES: Record<SegmentKey, string[]> = {
+  staff:  ['super_admin', 'admin', 'program_director', 'event_coordinator',
+           'medic', 'physio', 'psychologist', 'nutritionist'],
+  coach:  ['coach'],
+  atleta: ['athlete', 'guardian'],
+};
+
+function profileBelongsToSegment(role: string | null, seg: SegmentKey): boolean {
+  return !!(role && SEGMENT_ROLES[seg].includes(role));
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  super_admin:       'Super Admin',
+  admin:             'Admin',
+  program_director:  'Director',
+  event_coordinator: 'Coordinador',
+  coach:             'Coach',
+  medic:             'Médico',
+  physio:            'Fisioterapeuta',
+  psychologist:      'Psicólogo',
+  nutritionist:      'Nutricionista',
+  athlete:           'Atleta',
+  guardian:          'Tutor',
+};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -45,212 +71,287 @@ export default function RecipientSelector({
   defaultAudiencia?: AudienciaType;
   onChange:          (selection: RecipientSelection) => void;
 }) {
-  const [audiencia, setAudiencia]           = useState<AudienciaType>(defaultAudiencia);
-  const [count, setCount]                   = useState<number | null>(null);
-  const [loadingCount, setLoadingCount]     = useState(false);
+  // ── State ────────────────────────────────────────────────────────────────
+  // All profiles loaded from the API
+  const [allProfiles,    setAllProfiles]    = useState<RecipientProfile[]>([]);
+  const [loadingList,    setLoadingList]    = useState(true);
+  // Selected profile IDs (Set for O(1) lookup)
+  const [selectedIds,    setSelectedIds]    = useState<Set<string>>(new Set());
+  // Active segment filters (checkboxes — combinables)
+  const [activeSegments, setActiveSegments] = useState<Set<SegmentKey>>(new Set<SegmentKey>());
+  // selectAll flag
+  const [allSelected,    setAllSelected]    = useState(false);
+  // Search query for the profile list
+  const [searchQuery,    setSearchQuery]    = useState('');
 
-  // Individual selection state
-  const [searchQuery, setSearchQuery]       = useState('');
-  const [searchResults, setSearchResults]   = useState<RecipientProfile[]>([]);
-  const [searching, setSearching]           = useState(false);
-  const [selectedProfiles, setSelectedProfiles] = useState<RecipientProfile[]>([]);
-
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Fetch count when audience changes (or when selected profiles change)
-  const fetchCount = useCallback(async (
-    aud: AudienciaType,
-    ids: string[]
-  ) => {
-    setLoadingCount(true);
-    try {
-      const params = new URLSearchParams({ audiencia: aud });
-      if (aud === 'individual' && ids.length > 0) {
-        params.set('ids', ids.join(','));
-      }
-      const res  = await fetch(`/api/newsletter/recipients/count?${params}`);
-      const data = await res.json() as { count?: number };
-      setCount(data.count ?? 0);
-    } catch {
-      setCount(null);
-    } finally {
-      setLoadingCount(false);
-    }
+  // ── Load all profiles on mount ────────────────────────────────────────────
+  useEffect(() => {
+    setLoadingList(true);
+    fetch('/api/newsletter/recipients/list?limit=500')
+      .then((r) => r.json())
+      .then((data: { profiles?: RecipientProfile[] }) => {
+        setAllProfiles(data.profiles ?? []);
+      })
+      .catch(() => setAllProfiles([]))
+      .finally(() => setLoadingList(false));
   }, []);
 
-  useEffect(() => {
-    const ids = selectedProfiles.map((p) => p.id);
-    fetchCount(audiencia, ids);
-    onChange({ audiencia, recipientIds: ids, count: count ?? 0 });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audiencia, selectedProfiles.length]);
+  // ── Derived: which profiles are visible in the list ───────────────────────
+  const filteredProfiles = allProfiles.filter((p) => {
+    const matchesSearch =
+      searchQuery.length < 2 ||
+      `${p.first_name} ${p.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.email?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
 
-  // Update parent when count resolves
-  useEffect(() => {
-    if (count !== null) {
-      onChange({
-        audiencia,
-        recipientIds: selectedProfiles.map((p) => p.id),
-        count,
-      });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [count]);
+    if (!matchesSearch) return false;
 
-  // Debounced search for individual profiles
-  useEffect(() => {
-    if (audiencia !== 'individual' || searchQuery.length < 2) {
-      setSearchResults([]);
-      return;
+    // If segment filters active, only show profiles in those segments
+    if (activeSegments.size > 0) {
+      return [...activeSegments].some((seg) => profileBelongsToSegment(p.role, seg));
     }
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res  = await fetch(
-          `/api/newsletter/recipients/count?audiencia=individual&q=${encodeURIComponent(searchQuery)}`
-        );
-        const data = await res.json() as { profiles?: RecipientProfile[] };
-        // Filter out already-selected profiles
-        const selected = new Set(selectedProfiles.map((p) => p.id));
-        setSearchResults((data.profiles ?? []).filter((p) => !selected.has(p.id)));
-      } catch {
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
+    return true;
+  });
+
+  // ── Notify parent whenever selection changes ──────────────────────────────
+  useEffect(() => {
+    const ids = [...selectedIds];
+    onChange({
+      audiencia:    ids.length === allProfiles.length && allProfiles.length > 0
+                      ? 'all'
+                      : 'individual',
+      recipientIds: ids,
+      count:        ids.length,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIds]);
+
+  // ── Segment toggle ────────────────────────────────────────────────────────
+  function toggleSegment(seg: SegmentKey) {
+    setActiveSegments((prev) => {
+      const next = new Set(prev);
+      if (next.has(seg)) {
+        next.delete(seg);
+        // Deselect profiles that ONLY belong to this segment (not to remaining)
+        const remaining = [...next];
+        setSelectedIds((ids) => {
+          const updated = new Set(ids);
+          allProfiles.forEach((p) => {
+            if (
+              profileBelongsToSegment(p.role, seg) &&
+              !remaining.some((r) => profileBelongsToSegment(p.role, r))
+            ) {
+              updated.delete(p.id);
+            }
+          });
+          return updated;
+        });
+      } else {
+        next.add(seg);
+        // Select all profiles in this segment
+        setSelectedIds((ids) => {
+          const updated = new Set(ids);
+          allProfiles.forEach((p) => {
+            if (profileBelongsToSegment(p.role, seg)) updated.add(p.id);
+          });
+          return updated;
+        });
       }
-    }, 350);
-    return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, audiencia]);
-
-  function addProfile(profile: RecipientProfile) {
-    if (selectedProfiles.some((p) => p.id === profile.id)) return;
-    const next = [...selectedProfiles, profile];
-    setSelectedProfiles(next);
-    setSearchResults((prev) => prev.filter((p) => p.id !== profile.id));
-    fetchCount('individual', next.map((p) => p.id));
+      return next;
+    });
+    setAllSelected(false);
   }
 
-  function removeProfile(id: string) {
-    const next = selectedProfiles.filter((p) => p.id !== id);
-    setSelectedProfiles(next);
-    fetchCount('individual', next.map((p) => p.id));
+  // ── Select/deselect all ───────────────────────────────────────────────────
+  function handleSelectAll() {
+    if (allSelected) {
+      setSelectedIds(new Set());
+      setActiveSegments(new Set());
+      setAllSelected(false);
+    } else {
+      setSelectedIds(new Set(allProfiles.map((p) => p.id)));
+      setActiveSegments(new Set(SEGMENTS.map((s) => s.key)));
+      setAllSelected(true);
+    }
   }
 
+  // ── Individual profile toggle ─────────────────────────────────────────────
+  function toggleProfile(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setAllSelected(false);
+  }
+
+  // ── Segment state helpers ─────────────────────────────────────────────────
+  function segmentCount(seg: SegmentKey) {
+    return allProfiles.filter((p) => profileBelongsToSegment(p.role, seg)).length;
+  }
+  function segmentSelectedCount(seg: SegmentKey) {
+    return allProfiles.filter(
+      (p) => profileBelongsToSegment(p.role, seg) && selectedIds.has(p.id)
+    ).length;
+  }
+
+  const totalSelected = selectedIds.size;
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3">
-      {/* Section title */}
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-        Destinatarios
-      </p>
-
-      {/* Audience pills */}
-      <div className="flex flex-wrap gap-2">
-        {AUDIENCE_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => {
-              setAudiencia(opt.value);
-              setSearchQuery('');
-              setSearchResults([]);
-              setSelectedProfiles([]);
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-              audiencia === opt.value
-                ? 'bg-teal-600 text-white border-teal-600'
-                : 'border-gray-300 text-gray-600 hover:border-teal-400 hover:text-teal-700'
-            }`}
-          >
-            <span>{opt.icon}</span>
-            {opt.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Description + live count */}
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-gray-500">
-          {AUDIENCE_OPTIONS.find((o) => o.value === audiencia)?.description}
-        </span>
-        <span className={`font-semibold ${count === 0 ? 'text-amber-600' : 'text-teal-700'}`}>
-          {loadingCount ? (
-            <span className="text-gray-400">Calculando…</span>
-          ) : count !== null ? (
-            `${count.toLocaleString('es-MX')} destinatario${count !== 1 ? 's' : ''}`
-          ) : null}
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Destinatarios
+        </p>
+        <span
+          className={`text-xs font-semibold ${
+            totalSelected === 0 ? 'text-amber-600' : 'text-teal-700'
+          }`}
+        >
+          {totalSelected === 0
+            ? 'Sin selección'
+            : `${totalSelected.toLocaleString('es-MX')} seleccionado${totalSelected !== 1 ? 's' : ''}`}
         </span>
       </div>
 
-      {/* Individual profile picker */}
-      {audiencia === 'individual' && (
-        <div className="space-y-2">
-          {/* Search input */}
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por nombre o correo…"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 pr-8"
-            />
-            {searching && (
-              <span className="absolute right-3 top-2.5 text-gray-400 text-xs">…</span>
-            )}
-          </div>
+      {/* Segment shortcuts (combinables via checkboxes) */}
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+          Selección rápida por grupo
+        </p>
 
-          {/* Search results */}
-          {searchResults.length > 0 && (
-            <div className="rounded-md border border-gray-200 bg-white divide-y divide-gray-50 max-h-40 overflow-y-auto shadow-sm">
-              {searchResults.map((p) => (
-                <button
+        {/* "Todo el equipo" — selects/clears all */}
+        <label className="flex items-center gap-2.5 cursor-pointer group">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={handleSelectAll}
+            className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+          />
+          <span className="text-sm font-semibold text-gray-800 group-hover:text-teal-700">
+            👥 Todo el equipo
+          </span>
+          <span className="ml-auto text-xs text-gray-400">
+            {loadingList ? '…' : allProfiles.length}
+          </span>
+        </label>
+
+        {/* Segment checkboxes */}
+        {SEGMENTS.map((seg) => {
+          const total    = segmentCount(seg.key);
+          const selected = segmentSelectedCount(seg.key);
+          const checked  = selected > 0 && selected === total;
+          const partial  = selected > 0 && selected < total;
+
+          return (
+            <label key={seg.key} className="flex items-center gap-2.5 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={checked}
+                ref={(el) => {
+                  if (el) el.indeterminate = partial;
+                }}
+                onChange={() => toggleSegment(seg.key)}
+                className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+              />
+              <span className="text-sm text-gray-700 group-hover:text-teal-700">
+                {seg.icon} {seg.label}
+              </span>
+              <span className="ml-auto text-xs text-gray-400">
+                {loadingList ? '…' : `${selected}/${total}`}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+
+      {/* Profile list with individual checkboxes */}
+      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+        {/* Search input */}
+        <div className="border-b border-gray-100 px-3 py-2">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar por nombre, correo o rol…"
+            className="w-full text-sm outline-none bg-transparent placeholder-gray-400"
+          />
+        </div>
+
+        {/* Profile list */}
+        <div className="max-h-52 overflow-y-auto divide-y divide-gray-50">
+          {loadingList ? (
+            <div className="py-6 text-center text-xs text-gray-400">Cargando personas…</div>
+          ) : filteredProfiles.length === 0 ? (
+            <div className="py-6 text-center text-xs text-gray-400">
+              {searchQuery.length > 0 ? 'Sin resultados' : 'No hay perfiles disponibles'}
+            </div>
+          ) : (
+            filteredProfiles.map((p) => {
+              const checked = selectedIds.has(p.id);
+              return (
+                <label
                   key={p.id}
-                  type="button"
-                  onClick={() => addProfile(p)}
-                  className="w-full text-left flex items-center gap-3 px-3 py-2 hover:bg-teal-50 transition-colors"
+                  className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
+                    checked ? 'bg-teal-50' : 'hover:bg-gray-50'
+                  }`}
                 >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleProfile(p.id)}
+                    className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer shrink-0"
+                  />
+                  {/* Avatar */}
                   <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold shrink-0">
-                    {(p.first_name[0] ?? '') + (p.last_name[0] ?? '')}
+                    {(p.first_name[0] ?? '').toUpperCase()}{(p.last_name[0] ?? '').toUpperCase()}
                   </div>
+                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-800 truncate">
                       {p.first_name} {p.last_name}
                     </p>
-                    <p className="text-xs text-gray-400 truncate">{p.email ?? p.role}</p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {p.role ? (ROLE_LABELS[p.role] ?? p.role) : ''}
+                      {p.email ? ` · ${p.email}` : ''}
+                    </p>
                   </div>
-                  <span className="text-teal-500 text-lg">+</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Selected profiles */}
-          {selectedProfiles.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {selectedProfiles.map((p) => (
-                <span
-                  key={p.id}
-                  className="inline-flex items-center gap-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-full px-2.5 py-0.5 text-xs font-medium"
-                >
-                  {p.first_name} {p.last_name}
-                  <button
-                    type="button"
-                    onClick={() => removeProfile(p.id)}
-                    className="ml-0.5 text-teal-400 hover:text-teal-700"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-
-          {selectedProfiles.length === 0 && searchQuery.length < 2 && (
-            <p className="text-xs text-gray-400">Escribe al menos 2 caracteres para buscar.</p>
+                </label>
+              );
+            })
           )}
         </div>
-      )}
+
+        {/* Footer: select all visible / clear */}
+        {filteredProfiles.length > 0 && (
+          <div className="border-t border-gray-100 px-3 py-1.5 flex items-center justify-between bg-gray-50">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedIds((prev) => {
+                  const next = new Set(prev);
+                  filteredProfiles.forEach((p) => next.add(p.id));
+                  return next;
+                });
+              }}
+              className="text-xs text-teal-600 hover:text-teal-800 font-medium"
+            >
+              Seleccionar {filteredProfiles.length} visible{filteredProfiles.length !== 1 ? 's' : ''}
+            </button>
+            {totalSelected > 0 && (
+              <button
+                type="button"
+                onClick={() => { setSelectedIds(new Set()); setActiveSegments(new Set()); setAllSelected(false); }}
+                className="text-xs text-red-500 hover:text-red-700 font-medium"
+              >
+                Limpiar selección
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

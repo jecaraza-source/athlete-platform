@@ -59,14 +59,13 @@ export default function NewsletterPreviewPanel({
     count:        0,
   });
 
-  // Fetch full html_content on mount
+  // Fetch full html_content directly by draft ID
   useEffect(() => {
     setLoadingHtml(true);
-    fetch(`/api/newsletter/drafts?status=pending&limit=100`)
+    fetch(`/api/newsletter/drafts/${draft.id}`)
       .then((r) => r.json())
-      .then((data: { data?: Array<{ id: string; html_content?: string }> }) => {
-        const found = data.data?.find((d) => d.id === draft.id);
-        setHtmlContent(found?.html_content ?? null);
+      .then((data: { data?: { html_content?: string } }) => {
+        setHtmlContent(data.data?.html_content ?? null);
       })
       .catch(() => setHtmlContent(null))
       .finally(() => setLoadingHtml(false));
@@ -79,8 +78,8 @@ export default function NewsletterPreviewPanel({
         draftId:      draft.id,
         action:       'approved',
         note:         note.trim() || undefined,
-        audiencia:    recipients.audiencia !== draft.audiencia ? recipients.audiencia : undefined,
-        recipientIds: recipients.audiencia === 'individual' ? recipients.recipientIds : undefined,
+        audiencia:    recipients.audiencia,
+        recipientIds: recipients.recipientIds.length > 0 ? recipients.recipientIds : undefined,
       };
       const res = await fetch('/api/newsletter/approve', {
         method:  'POST',
@@ -109,7 +108,7 @@ export default function NewsletterPreviewPanel({
         action:       'approved',
         note:         note.trim() || undefined,
         audiencia:    recipients.audiencia,
-        recipientIds: recipients.audiencia === 'individual' ? recipients.recipientIds : undefined,
+        recipientIds: recipients.recipientIds.length > 0 ? recipients.recipientIds : undefined,
       };
       const approveRes  = await fetch('/api/newsletter/approve', {
         method:  'POST',
@@ -313,12 +312,7 @@ export default function NewsletterPreviewPanel({
           ) : (
             <div className="space-y-2">
               {/* Recipient count warning */}
-              {recipients.count === 0 && recipients.audiencia !== 'individual' && (
-                <p className="text-xs text-amber-600 font-medium">
-                  ⚠ Sin destinatarios para esta audiencia
-                </p>
-              )}
-              {recipients.audiencia === 'individual' && recipients.recipientIds.length === 0 && (
+              {recipients.count === 0 && (
                 <p className="text-xs text-amber-600 font-medium">
                   ⚠ Selecciona al menos un destinatario
                 </p>
@@ -328,7 +322,7 @@ export default function NewsletterPreviewPanel({
                 <button
                   type="button"
                   onClick={() => setConfirmAction('approved')}
-                  disabled={recipients.count === 0 && recipients.recipientIds.length === 0}
+                  disabled={recipients.count === 0}
                   className="flex-1 px-3 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-40"
                 >
                   ✓ Aprobar y programar
@@ -337,7 +331,7 @@ export default function NewsletterPreviewPanel({
                 <button
                   type="button"
                   onClick={() => setConfirmAction('approve-send')}
-                  disabled={recipients.count === 0 && recipients.recipientIds.length === 0}
+                  disabled={recipients.count === 0}
                   className="flex-1 px-3 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-md transition-colors disabled:opacity-40"
                 >
                   🚀 Aprobar y enviar ahora
