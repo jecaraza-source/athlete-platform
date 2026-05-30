@@ -222,15 +222,13 @@ export function buildEmailHTML(
                 src="${appUrl}/logo.png"
                 alt="AO Deportes"
                 width="110"
-                height="110"
                 style="
                   display: block;
                   margin: 0 auto 12px;
                   width: 110px;
-                  height: 110px;
+                  height: auto;
                   border: 0;
                   border-radius: 12px;
-                  object-fit: contain;
                 "
               />
               <!-- Brand name -->
