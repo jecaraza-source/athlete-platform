@@ -3,6 +3,8 @@
 import { useState, useEffect, useTransition } from 'react';
 import type { NewsletterDraft, Tip }           from '@/lib/newsletter/types';
 import NewsletterTipEditor                     from './NewsletterTipEditor';
+import RecipientSelector                       from './RecipientSelector';
+import type { RecipientSelection, AudienciaType } from './RecipientSelector';
 
 type DraftRow = Omit<NewsletterDraft, 'tips_json' | 'html_content'> & {
   tips_json: Tip[];
@@ -45,10 +47,17 @@ export default function NewsletterPreviewPanel({
   const [view, setView]                   = useState<'preview' | 'edit'>('preview');
   const [isPending, startTransition]      = useTransition();
 
-  const [confirmAction, setConfirmAction] = useState<'approved' | 'rejected' | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'approved' | 'rejected' | 'approve-send' | null>(null);
   const [note, setNote]                   = useState('');
   const [error, setError]                 = useState<string | null>(null);
   const [success, setSuccess]             = useState<string | null>(null);
+
+  // Recipient selection state
+  const [recipients, setRecipients]       = useState<RecipientSelection>({
+    audiencia:    draft.audiencia as AudienciaType,
+    recipientIds: [],
+    count:        0,
+  });
 
   // Fetch full html_content on mount
   useEffect(() => {
@@ -66,10 +75,17 @@ export default function NewsletterPreviewPanel({
   function handleApprove() {
     setError(null);
     startTransition(async () => {
+      const body: Record<string, unknown> = {
+        draftId:      draft.id,
+        action:       'approved',
+        note:         note.trim() || undefined,
+        audiencia:    recipients.audiencia !== draft.audiencia ? recipients.audiencia : undefined,
+        recipientIds: recipients.audiencia === 'individual' ? recipients.recipientIds : undefined,
+      };
       const res = await fetch('/api/newsletter/approve', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ draftId: draft.id, action: 'approved', note: note.trim() || undefined }),
+        body:    JSON.stringify(body),
       });
       const data = await res.json() as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
@@ -77,6 +93,49 @@ export default function NewsletterPreviewPanel({
       } else {
         setSuccess('Newsletter aprobado y programado ✓');
         setTimeout(() => onAction(draft.id, 'approved'), 1000);
+      }
+      setConfirmAction(null);
+      setNote('');
+    });
+  }
+
+  // Approve + send immediately in sequence
+  function handleApproveAndSendNow() {
+    setError(null);
+    startTransition(async () => {
+      // Step 1: approve (with audience override)
+      const approveBody: Record<string, unknown> = {
+        draftId:      draft.id,
+        action:       'approved',
+        note:         note.trim() || undefined,
+        audiencia:    recipients.audiencia,
+        recipientIds: recipients.audiencia === 'individual' ? recipients.recipientIds : undefined,
+      };
+      const approveRes  = await fetch('/api/newsletter/approve', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(approveBody),
+      });
+      const approveData = await approveRes.json() as { ok?: boolean; error?: string };
+      if (!approveRes.ok || !approveData.ok) {
+        setError(approveData.error ?? 'Error al aprobar');
+        setConfirmAction(null);
+        setNote('');
+        return;
+      }
+
+      // Step 2: send immediately
+      const sendRes  = await fetch('/api/newsletter/send-now', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ draftId: draft.id }),
+      });
+      const sendData = await sendRes.json() as { ok?: boolean; recipientCount?: number; error?: string };
+      if (!sendRes.ok || !sendData.ok) {
+        setError(sendData.error ?? 'Error al enviar');
+      } else {
+        setSuccess(`✓ Enviado a ${sendData.recipientCount?.toLocaleString('es-MX') ?? '?'} destinatarios`);
+        setTimeout(() => onAction(draft.id, 'approved'), 1500);
       }
       setConfirmAction(null);
       setNote('');
@@ -195,14 +254,26 @@ export default function NewsletterPreviewPanel({
 
       {/* Action footer — only for pending + authorized */}
       {canApprove && draft.status === 'pending' && (
-        <div className="p-4 border-t border-gray-100 bg-gray-50 space-y-3">
+        <div className="p-4 border-t border-gray-100 bg-gray-50 space-y-4">
+          {/* Recipient selector */}
+          {!success && (
+            <div className="rounded-lg border border-gray-200 bg-white p-3">
+              <RecipientSelector
+                defaultAudiencia={draft.audiencia as AudienciaType}
+                onChange={setRecipients}
+              />
+            </div>
+          )}
+
           {success ? (
             <p className="text-sm font-medium text-green-700">{success}</p>
           ) : confirmAction ? (
             <div className="space-y-2">
               <p className="text-sm font-medium text-gray-700">
                 {confirmAction === 'approved'
-                  ? '¿Aprobar y programar este newsletter?'
+                  ? `¿Aprobar y programar para ${recipients.count.toLocaleString('es-MX')} destinatarios?`
+                  : confirmAction === 'approve-send'
+                  ? `¿Aprobar y enviar AHORA a ${recipients.count.toLocaleString('es-MX')} destinatarios?`
                   : 'Motivo del rechazo (obligatorio):'}
               </p>
               <textarea
@@ -217,11 +288,15 @@ export default function NewsletterPreviewPanel({
                 <button
                   type="button"
                   disabled={isPending}
-                  onClick={confirmAction === 'approved' ? handleApprove : handleReject}
+                onClick={
+                    confirmAction === 'approved'     ? handleApprove
+                  : confirmAction === 'approve-send' ? handleApproveAndSendNow
+                  : handleReject
+                }
                   className={`px-4 py-2 text-sm font-medium rounded-md disabled:opacity-50 ${
-                    confirmAction === 'approved'
-                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                      : 'bg-red-600 hover:bg-red-700 text-white'
+                    confirmAction === 'approved'     ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : confirmAction === 'approve-send' ? 'bg-teal-600 hover:bg-teal-700 text-white'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
                   }`}
                 >
                   {isPending ? 'Procesando…' : 'Confirmar'}
@@ -236,21 +311,46 @@ export default function NewsletterPreviewPanel({
               </div>
             </div>
           ) : (
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmAction('approved')}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
-              >
-                ✓ Aprobar y programar
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmAction('rejected')}
-                className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 rounded-md transition-colors"
-              >
-                ✕ Rechazar
-              </button>
+            <div className="space-y-2">
+              {/* Recipient count warning */}
+              {recipients.count === 0 && recipients.audiencia !== 'individual' && (
+                <p className="text-xs text-amber-600 font-medium">
+                  ⚠ Sin destinatarios para esta audiencia
+                </p>
+              )}
+              {recipients.audiencia === 'individual' && recipients.recipientIds.length === 0 && (
+                <p className="text-xs text-amber-600 font-medium">
+                  ⚠ Selecciona al menos un destinatario
+                </p>
+              )}
+              <div className="flex gap-2">
+                {/* Approve + schedule (tomorrow 7am) */}
+                <button
+                  type="button"
+                  onClick={() => setConfirmAction('approved')}
+                  disabled={recipients.count === 0 && recipients.recipientIds.length === 0}
+                  className="flex-1 px-3 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-40"
+                >
+                  ✓ Aprobar y programar
+                </button>
+                {/* Approve + send immediately */}
+                <button
+                  type="button"
+                  onClick={() => setConfirmAction('approve-send')}
+                  disabled={recipients.count === 0 && recipients.recipientIds.length === 0}
+                  className="flex-1 px-3 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-md transition-colors disabled:opacity-40"
+                >
+                  🚀 Aprobar y enviar ahora
+                </button>
+                {/* Reject */}
+                <button
+                  type="button"
+                  onClick={() => setConfirmAction('rejected')}
+                  className="px-3 py-2 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 rounded-md transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -42,14 +42,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // 3. Parse body
-  let body: { draftId?: string; action?: string; note?: string };
+  let body: {
+    draftId?:      string;
+    action?:       string;
+    note?:         string;
+    // Optional: override audience + recipients at approval time
+    audiencia?:    string;
+    recipientIds?: string[];
+  };
   try {
-    body = (await req.json()) as { draftId?: string; action?: string; note?: string };
+    body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { draftId, action, note } = body;
+  const { draftId, action, note, audiencia: newAudiencia, recipientIds } = body;
 
   if (!draftId || !action) {
     return NextResponse.json({ error: 'draftId and action are required' }, { status: 400 });
@@ -85,13 +92,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const now = new Date().toISOString();
   const actorRole = user.roles[0]?.code ?? 'unknown';
 
+  // Build update payload, optionally overriding audience + recipients
   const updatePayload =
     action === 'approved'
       ? {
-          status:       'approved',
-          approved_by:  user.profile.id,
-          approved_at:  now,
+          status:        'approved',
+          approved_by:   user.profile.id,
+          approved_at:   now,
           approval_note: note?.trim() ?? null,
+          // Update audience if explicitly changed
+          ...(newAudiencia ? { audiencia: newAudiencia } : {}),
+          ...(recipientIds ? { recipient_ids: recipientIds } : {}),
         }
       : {
           status:           'rejected',
@@ -114,7 +125,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     actor_id:   user.profile.id,
     actor_role: actorRole,
     note:       note?.trim() ?? null,
-    metadata:   { audiencia: draft.audiencia },
+    metadata:   {
+      audiencia:      newAudiencia ?? draft.audiencia,
+      recipient_count: recipientIds?.length ?? null,
+    },
   });
 
   return NextResponse.json({ ok: true, draftId, action });
