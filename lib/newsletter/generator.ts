@@ -213,35 +213,26 @@ export function buildEmailHTML(
           <tr>
             <td style="
               background-color: #ffffff;
-              padding: 28px 32px 20px;
+              padding: 24px 32px 18px;
               text-align: center;
               border-bottom: 3px solid ${BRAND_RED};
             ">
-              <!-- Logo -->
+              <!-- Logo: AO Deporte brand logo (includes text) -->
               <img
                 src="${appUrl}/logo.png"
                 alt="AO Deportes"
-                width="110"
+                width="180"
                 style="
                   display: block;
-                  margin: 0 auto 12px;
-                  width: 110px;
+                  margin: 0 auto 10px;
+                  width: 180px;
                   height: auto;
                   border: 0;
-                  border-radius: 12px;
                 "
               />
-              <!-- Brand name -->
+              <!-- Newsletter category + date -->
               <p style="
                 margin: 0;
-                font-family: Georgia, 'Times New Roman', serif;
-                font-size: 22px;
-                font-weight: bold;
-                color: ${BRAND_RED};
-                letter-spacing: 1px;
-              ">AO Deportes</p>
-              <p style="
-                margin: 4px 0 0 0;
                 font-family: Georgia, 'Times New Roman', serif;
                 font-size: 11px;
                 font-weight: bold;

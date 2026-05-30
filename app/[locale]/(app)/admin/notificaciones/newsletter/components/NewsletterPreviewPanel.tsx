@@ -167,6 +167,27 @@ export default function NewsletterPreviewPanel({
     setView('preview');
   }
 
+  // Rebuild HTML using current tips + updated template (adds logo, etc.)
+  function handleRegenerateHtml() {
+    setLoadingHtml(true);
+    fetch(`/api/newsletter/drafts/${draft.id}`)
+      .then((r) => r.json())
+      .then(async (data: { data?: { tips_json?: unknown; html_content?: string } }) => {
+        const tips = data.data?.tips_json;
+        if (!tips) { setLoadingHtml(false); return; }
+        // PATCH with existing tips to rebuild HTML with current template
+        const res = await fetch(`/api/newsletter/drafts/${draft.id}`, {
+          method:  'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ tips }),
+        });
+        const result = await res.json() as { html_content?: string };
+        if (result.html_content) setHtmlContent(result.html_content);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingHtml(false));
+  }
+
   const scheduledLabel = draft.scheduled_for
     ? new Date(draft.scheduled_for).toLocaleString('es-MX', {
         weekday: 'long', day: 'numeric', month: 'long',
@@ -198,26 +219,36 @@ export default function NewsletterPreviewPanel({
           )}
         </div>
 
-        {/* View toggle */}
-        <div className="flex rounded-md border border-gray-200 overflow-hidden shrink-0">
+        {/* View toggle + regenerate */}
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
-            onClick={() => setView('preview')}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              view === 'preview' ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-gray-50'
-            }`}
+            onClick={handleRegenerateHtml}
+            title="Reconstruye el HTML con el template actual (incluye logo)"
+            className="text-[11px] text-gray-400 hover:text-teal-700 font-medium px-2 py-1 rounded border border-gray-200 hover:border-teal-300 transition-colors"
           >
-            Preview
+            ↺ Regenerar
           </button>
-          <button
-            type="button"
-            onClick={() => setView('edit')}
-            className={`px-3 py-1.5 text-xs font-medium border-l border-gray-200 transition-colors ${
-              view === 'edit' ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            Editar tips
-          </button>
+          <div className="flex rounded-md border border-gray-200 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setView('preview')}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                view === 'preview' ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('edit')}
+              className={`px-3 py-1.5 text-xs font-medium border-l border-gray-200 transition-colors ${
+                view === 'edit' ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Editar tips
+            </button>
+          </div>
         </div>
       </div>
 
