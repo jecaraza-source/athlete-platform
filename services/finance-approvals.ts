@@ -149,15 +149,24 @@ export async function processExpenseApproval(
   performedBy: string,          // profiles.id of the approver
   notes?:      string | null,
 ): Promise<{ error: string | null }> {
-  // 1. Update the expense status
-  const { error: updateError } = await supabase
+  // 1. Update the expense status — SELECT the updated row to verify it worked
+  const { data: updated, error: updateError } = await supabase
     .from('finance_expenses')
     .update({ status: action })
-    .eq('id', expenseId);
+    .eq('id', expenseId)
+    .select('id, status');
 
   if (updateError) {
     console.warn('[finance-approvals] update status error:', updateError.message);
     return { error: updateError.message };
+  }
+
+  // Detect silent RLS block: update returned no rows → policy denied
+  if (!updated || updated.length === 0) {
+    console.warn('[finance-approvals] update returned 0 rows — RLS may have blocked it');
+    return {
+      error: 'Sin permisos para actualizar este gasto. Contacta al administrador del sistema.',
+    };
   }
 
   // 2. Record the approval action (best-effort — non-fatal on failure)
@@ -172,6 +181,7 @@ export async function processExpenseApproval(
 
   if (insertError) {
     console.warn('[finance-approvals] insert record error:', insertError.message);
+    // Non-fatal: status was already updated successfully
   }
 
   return { error: null };
