@@ -185,9 +185,13 @@ export default function NewStaffForm({
                   name="email"
                   type="email"
                   required
-                  placeholder="e.g. maria@example.com"
+                  placeholder="nombre@aodeporte.com"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
+                <p className="mt-1 text-xs text-gray-400">
+                  Atletas, staff y admins: obligatorio <strong>@aodeporte.com</strong>.
+                  Solo entrenadores externos pueden usar correo personal.
+                </p>
               </div>
 
               {hasExtendedColumns && (

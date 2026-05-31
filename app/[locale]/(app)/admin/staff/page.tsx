@@ -7,8 +7,13 @@ import type { Profile } from './staff-card';
 
 export const dynamic = 'force-dynamic';
 
-const ADMIN_ROLES = ['super_admin', 'admin'];
-const STAFF_ROLES = ['psychologist', 'trainer', 'nutritionist', 'physio'];
+const ADMIN_ROLES = ['super_admin', 'admin', 'program_director'];
+const STAFF_ROLES = [
+  'psychologist', 'trainer', 'nutritionist', 'physio',
+  'medic',   // was falling through to "Otros" — fixed
+  'coach',   // external trainers — show in staff section
+  'event_coordinator',
+];
 
 const MIGRATION_SQL = `
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role      text;

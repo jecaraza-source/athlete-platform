@@ -121,17 +121,41 @@ async function assignRbacRole(profileId: string, roleCode: string): Promise<void
   }
 }
 
+// Roles that require @aodeporte.com domain.
+// Coaches (external trainers) are exempt — they use personal emails.
+const AODEPORTE_REQUIRED_ROLES = new Set([
+  'super_admin', 'admin', 'program_director', 'event_coordinator',
+  'psychologist', 'trainer', 'nutritionist', 'physio', 'medic',
+  'athlete',
+]);
+
+const REQUIRED_DOMAIN = 'aodeporte.com';
+
+function validateEmailDomain(email: string, role: string | null): string | null {
+  if (!role || !AODEPORTE_REQUIRED_ROLES.has(role)) return null;
+  if (!email.toLowerCase().endsWith(`@${REQUIRED_DOMAIN}`)) {
+    return `El correo para este rol debe usar el dominio @${REQUIRED_DOMAIN} (ej: nombre@aodeporte.com). Solo los entrenadores externos pueden usar correos personales.`;
+  }
+  return null;
+}
+
 export async function createProfile(formData: FormData) {
   await requirePermission('manage_users');
 
   const email = (formData.get('email') as string)?.trim();
   if (!email) return { error: 'Email is required to create a new profile.' };
 
+  const role = (formData.get('role') as string) || null;
+
+  // Domain validation
+  const domainError = validateEmailDomain(email, role);
+  if (domainError) return { error: domainError };
+
   const profileFields = {
     first_name: formData.get('first_name') as string,
     last_name:  formData.get('last_name')  as string,
     email,
-    role:      (formData.get('role')      as string) || null,
+    role,
     phone:     (formData.get('phone')     as string) || null,
     specialty: (formData.get('specialty') as string) || null,
   };
@@ -285,11 +309,20 @@ export async function updateProfile(id: string, formData: FormData) {
     last_name: formData.get('last_name') as string,
   };
 
+  const role  = (formData.get('role')  as string) || null;
+  const email = (formData.get('email') as string) || null;
+
+  // Domain validation on update
+  if (email && role) {
+    const domainError = validateEmailDomain(email, role);
+    if (domainError) return { error: domainError };
+  }
+
   const full = {
     ...base,
-    role: (formData.get('role') as string) || null,
-    email: (formData.get('email') as string) || null,
-    phone: (formData.get('phone') as string) || null,
+    role,
+    email,
+    phone:     (formData.get('phone')     as string) || null,
     specialty: (formData.get('specialty') as string) || null,
   };
 
