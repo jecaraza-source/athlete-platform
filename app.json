@@ -2,7 +2,7 @@
   "expo": {
     "name": "AO Deportes",
     "slug": "ao-deportes",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "aodeporte",
@@ -17,7 +17,7 @@
         "NSCameraUsageDescription": "AO Deportes usa la cámara para actualizar tu foto de perfil.",
         "NSPhotoLibraryUsageDescription": "AO Deportes accede a tu galería para seleccionar tu foto de perfil.",
         "NSPhotoLibraryAddUsageDescription": "AO Deportes puede guardar fotos en tu galería.",
-        "CFBundleShortVersionString": "1.2.0",
+        "CFBundleShortVersionString": "1.2.1",
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
           "remote-notification",
@@ -33,7 +33,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.aodeporte.mobile",
-      "versionCode": 9,
+      "versionCode": 10,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.POST_NOTIFICATIONS"
