@@ -13,7 +13,7 @@
  *  6. Top 10 gastos  (ranked list)
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, useColorScheme,
   RefreshControl, TouchableOpacity, Dimensions,
@@ -60,6 +60,49 @@ const METHOD_LABEL: Record<string, string> = {
   card:     'Tarjeta',
   other:    'Otro',
 };
+
+// ─── Period helpers ───────────────────────────────────────────────────────────
+
+type PeriodKey = 'week' | 'biweek' | 'month' | 'prev-month';
+
+const PERIOD_LABELS: Record<PeriodKey, string> = {
+  week:        'Esta semana',
+  biweek:      'Esta quincena',
+  month:       'Este mes',
+  'prev-month':'Mes anterior',
+};
+
+function padZ(n: number) { return String(n).padStart(2, '0'); }
+function fmtD(d: Date) { return `${d.getFullYear()}-${padZ(d.getMonth()+1)}-${padZ(d.getDate())}`; }
+
+function getPeriodRange(p: PeriodKey): { from: string; to: string } {
+  const today = new Date();
+  if (p === 'week') {
+    const day = today.getDay();
+    const mon = new Date(today);
+    mon.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+    return { from: fmtD(mon), to: fmtD(today) };
+  }
+  if (p === 'biweek') {
+    const d = today.getDate();
+    const y = today.getFullYear();
+    const m = padZ(today.getMonth() + 1);
+    if (d <= 15) return { from: `${y}-${m}-01`, to: `${y}-${m}-15` };
+    const last = new Date(y, today.getMonth() + 1, 0).getDate();
+    return { from: `${y}-${m}-16`, to: `${y}-${m}-${last}` };
+  }
+  if (p === 'month') {
+    const y = today.getFullYear();
+    const m = padZ(today.getMonth() + 1);
+    return { from: `${y}-${m}-01`, to: fmtD(today) };
+  }
+  // prev-month
+  const prev = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const last = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+  const y = prev.getFullYear();
+  const m = padZ(prev.getMonth() + 1);
+  return { from: `${y}-${m}-01`, to: `${y}-${m}-${last}` };
+}
 
 // Palette for categories without a DB colour
 const PIE_COLORS = [
@@ -194,6 +237,9 @@ export default function FinancesScreen() {
   const [loading, setLoading]   = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError]       = useState<string | null>(null);
+  // Period selector
+  const [period, setPeriod]     = useState<PeriodKey>('month');
+  const periodRange             = useMemo(() => getPeriodRange(period), [period]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -246,6 +292,38 @@ export default function FinancesScreen() {
     : 0;
   const totalExpenses = r.by_status.reduce((s, x) => s + x.total, 0);
 
+  // ── Period filtered data ───────────────────────────────────────────────────
+  const { from: pFrom, to: pTo } = periodRange;
+
+  const periodExpenses = useMemo(() =>
+    r.raw_expenses.filter(e =>
+      e.expense_date && e.expense_date >= pFrom && e.expense_date <= pTo
+    ), [r.raw_expenses, pFrom, pTo]);
+
+  const periodPayments = useMemo(() =>
+    r.raw_payments.filter(p =>
+      p.payment_date && p.payment_date >= pFrom && p.payment_date <= pTo
+    ), [r.raw_payments, pFrom, pTo]);
+
+  const periodTotal   = useMemo(() => periodExpenses.reduce((s, e) => s + e.amount, 0), [periodExpenses]);
+  const periodPaid    = useMemo(() => periodExpenses.filter(e => e.status === 'paid').reduce((s, e) => s + e.amount, 0), [periodExpenses]);
+  const periodPending = useMemo(() => periodExpenses.filter(e => ['submitted','approved'].includes(e.status)).reduce((s, e) => s + e.amount, 0), [periodExpenses]);
+  const periodPayTotal = useMemo(() => periodPayments.reduce((s, p) => s + p.amount, 0), [periodPayments]);
+  const periodPct     = summary.total_budget > 0 ? Math.round((periodTotal / summary.total_budget) * 100) : 0;
+
+  const periodByCategory = useMemo(() => {
+    const map = new Map<string, { name: string; color: string | null; total: number }>();
+    for (const e of periodExpenses) {
+      const prev = map.get(e.category_name) ?? { name: e.category_name, color: e.category_color, total: 0 };
+      map.set(e.category_name, { ...prev, total: prev.total + e.amount });
+    }
+    return [...map.values()].sort((a, b) => b.total - a.total).slice(0, 8);
+  }, [periodExpenses]);
+
+  const periodTop10 = useMemo(() =>
+    [...periodExpenses].sort((a, b) => b.amount - a.amount).slice(0, 10),
+    [periodExpenses]);
+
   return (
     <SafeAreaView style={[sc.safe, { backgroundColor: colors.background }]} edges={['bottom']}>
       <ScrollView
@@ -254,8 +332,121 @@ export default function FinancesScreen() {
         showsVerticalScrollIndicator={false}
       >
 
+        {/* ── PERIOD SELECTOR ──────────────────────────────────────────── */}
+        <View style={sc.periodRow}>
+          {(Object.keys(PERIOD_LABELS) as PeriodKey[]).map(p => (
+            <TouchableOpacity
+              key={p}
+              onPress={() => setPeriod(p)}
+              style={[
+                sc.periodBtn,
+                period === p && { backgroundColor: PRIMARY },
+              ]}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                sc.periodBtnText,
+                { color: period === p ? '#fff' : colors.icon },
+              ]}>
+                {PERIOD_LABELS[p]}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── REPORTE DEL PERÍODO ─────────────────────────────────────────── */}
+        <Card style={[
+          sc.periodCard,
+          { borderColor: PRIMARY + '30', backgroundColor: scheme === 'dark' ? '#0a1a28' : '#f0f7ff' },
+        ]}>
+          <Text style={[sc.periodCardTitle, { color: PRIMARY }]}>
+            📊 Reporte del período
+          </Text>
+          <Text style={[sc.periodCardSub, { color: colors.icon }]}>
+            {pFrom} → {pTo} · {periodExpenses.length} gastos
+          </Text>
+
+          {/* Period KPIs */}
+          <View style={sc.kpiRow}>
+            <KPICard label="Gastos del período" value={fmtShort(periodTotal)} sub={`${periodExpenses.length} registros`} accent={PRIMARY} />
+            <KPICard label="Pagos realizados"   value={fmtShort(periodPayTotal)} sub={`${periodPayments.length} pagos`} accent="#0891b2" />
+          </View>
+          <View style={sc.kpiRow}>
+            <KPICard label="Pendientes de pago" value={fmtShort(periodPending)} sub="Aprobados sin pagar" accent="#d97706" />
+            <KPICard label="% del presupuesto"  value={`${periodPct}%`} sub={fmtShort(summary.total_budget)} accent={periodPct > 90 ? '#dc2626' : '#16a34a'} />
+          </View>
+
+          {/* Presupuesto global bars */}
+          <View style={[sc.budgetBars, { backgroundColor: scheme === 'dark' ? '#1e2a3a' : '#e8f4ff' }]}>
+            <Text style={[sc.budgetBarsTitle, { color: colors.icon }]}>Presupuesto global</Text>
+            <View style={[sc.execTrack, { backgroundColor: scheme === 'dark' ? '#2a2d2f' : '#dbeafe', marginTop: 6 }]}>
+              <View
+                style={[
+                  sc.execFill,
+                  {
+                    width: `${Math.min(100, exercisedPct)}%` as never,
+                    backgroundColor: exercisedPct > 90 ? '#dc2626' : exercisedPct > 70 ? '#d97706' : '#16a34a',
+                  },
+                ]}
+              />
+            </View>
+            <View style={sc.execFooter}>
+              <Text style={[sc.execFooterText, { color: colors.icon }]}>{exercisedPct}% ejercido · {fmtShort(summary.total_exercised)}</Text>
+              <Text style={[sc.execFooterText, { color: colors.icon }]}>disponible: {fmtShort(Math.max(0, summary.total_available))}</Text>
+            </View>
+          </View>
+
+          {/* By category in period */}
+          {periodByCategory.length > 0 && (
+            <>
+              <Text style={[sc.periodCardSection, { color: colors.icon }]}>Gastos por categoría</Text>
+              {periodByCategory.map((c, i) => (
+                <View key={c.name} style={sc.catRow}>
+                  <ColorDot color={c.color ?? PIE_COLORS[i % PIE_COLORS.length]} />
+                  <Text style={[sc.catName, { color: colors.text }]} numberOfLines={1}>{c.name}</Text>
+                  <Text style={[sc.catPct, { color: colors.icon }]}>
+                    {periodTotal > 0 ? Math.round((c.total / periodTotal) * 100) : 0}%
+                  </Text>
+                  <Text style={[sc.catAmt, { color: colors.text }]}>{fmtShort(c.total)}</Text>
+                </View>
+              ))}
+            </>
+          )}
+
+          {/* Top expenses in period */}
+          {periodTop10.length > 0 && (
+            <>
+              <Text style={[sc.periodCardSection, { color: colors.icon }]}>Principales gastos del período</Text>
+              {periodTop10.map((e, i) => (
+                <View key={e.id} style={sc.periodExpRow}>
+                  <Text style={[sc.periodExpRank, { color: colors.icon }]}>{i + 1}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[sc.periodExpTitle, { color: colors.text }]} numberOfLines={1}>{e.title}</Text>
+                    <Text style={[sc.periodExpMeta, { color: colors.icon }]}>
+                      {e.category_name}{e.disciplina ? ` · ${e.disciplina}` : ''} · {STATUS_LABEL[e.status] ?? e.status}
+                    </Text>
+                  </View>
+                  <Text style={[sc.periodExpAmt, { color: colors.text }]}>{fmtShort(e.amount)}</Text>
+                </View>
+              ))}
+              <View style={[sc.periodTotalRow, { borderTopColor: colors.icon + '30' }]}>
+                <Text style={[{ flex: 1, fontSize: 12, fontWeight: '600', color: colors.icon }]}>Total top {periodTop10.length}</Text>
+                <Text style={[{ fontSize: 13, fontWeight: '700', color: colors.text }]}>
+                  {fmtShort(periodTop10.reduce((s, e) => s + e.amount, 0))}
+                </Text>
+              </View>
+            </>
+          )}
+
+          {periodExpenses.length === 0 && (
+            <Text style={[sc.periodEmpty, { color: colors.icon }]}>
+              Sin gastos registrados en este período
+            </Text>
+          )}
+        </Card>
+
         {/* ── 1. Presupuesto global ─────────────────────────────────────── */}
-        <SectionHeader title="Presupuesto global" />
+        <SectionHeader title="Resumen global" />
 
         <View style={sc.kpiRow}>
           <KPICard
@@ -560,6 +751,46 @@ const sc = StyleSheet.create({
 
   // Timestamp
   timestamp: { fontSize: 11, textAlign: 'center', marginTop: 16 },
+
+  // Period selector
+  periodRow: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14,
+  },
+  periodBtn: {
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 20, borderWidth: 1, borderColor: '#cbd5e1',
+  },
+  periodBtnText: { fontSize: 12, fontWeight: '600' },
+
+  // Period card
+  periodCard: {
+    marginBottom: 4, borderWidth: 1.5,
+  },
+  periodCardTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
+  periodCardSub:   { fontSize: 11, marginBottom: 14 },
+  periodCardSection: {
+    fontSize: 11, fontWeight: '700', textTransform: 'uppercase',
+    letterSpacing: 0.8, marginTop: 14, marginBottom: 8,
+  },
+
+  // Budget bar inside period card
+  budgetBars: { borderRadius: 10, padding: 12, marginBottom: 4 },
+  budgetBarsTitle: { fontSize: 11, fontWeight: '600' },
+
+  // Period expense rows
+  periodExpRow: {
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 7,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e2e8f0',
+  },
+  periodExpRank:  { width: 22, fontSize: 11, fontWeight: '700' },
+  periodExpTitle: { fontSize: 13, fontWeight: '500', marginBottom: 2 },
+  periodExpMeta:  { fontSize: 10, lineHeight: 14 },
+  periodExpAmt:   { fontSize: 13, fontWeight: '700', marginLeft: 8 },
+  periodTotalRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    paddingTop: 10, marginTop: 4, borderTopWidth: 1,
+  },
+  periodEmpty: { textAlign: 'center', fontSize: 13, fontStyle: 'italic', marginTop: 8 },
 
   // Access denied / error
   centered:     { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },

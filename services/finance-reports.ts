@@ -50,6 +50,7 @@ export type TopExpense = {
   amount:         number;
   status:         string;
   disciplina:     string | null;
+  expense_date:   string | null;
   category_name:  string;
   category_color: string | null;
 };
@@ -67,7 +68,10 @@ export type FinanceMobileReport = {
   by_payment_method: MethodRow[];
   by_disciplina:     DisciplinaRow[];
   top_expenses:      TopExpense[];
-  fetched_at:        string;   // ISO timestamp so the UI can show "updated X"
+  // Raw arrays for client-side period filtering
+  raw_expenses:      TopExpense[];
+  raw_payments:      { amount: number; payment_method: string; payment_date: string | null }[];
+  fetched_at:        string;
 };
 
 // ---------------------------------------------------------------------------
@@ -75,18 +79,20 @@ export type FinanceMobileReport = {
 // ---------------------------------------------------------------------------
 
 type RawExpense = {
-  id:          string;
-  title:       string;
-  amount:      number;
-  status:      string;
-  disciplina:  string | null;
-  category_id: string;
-  category:    { name: string; color: string | null } | { name: string; color: string | null }[] | null;
+  id:           string;
+  title:        string;
+  amount:       number;
+  status:       string;
+  disciplina:   string | null;
+  expense_date: string | null;
+  category_id:  string;
+  category:     { name: string; color: string | null } | { name: string; color: string | null }[] | null;
 };
 
 type RawPayment = {
   amount:         number;
   payment_method: string;
+  payment_date:   string | null;
 };
 
 type RawBudget = {
@@ -123,6 +129,8 @@ const EMPTY_REPORT: FinanceMobileReport = {
   by_payment_method: [],
   by_disciplina:     [],
   top_expenses:      [],
+  raw_expenses:      [],
+  raw_payments:      [],
   fetched_at:        new Date().toISOString(),
 };
 
@@ -143,13 +151,13 @@ export async function getFinanceReport(): Promise<FinanceMobileReport> {
       supabase
         .from('finance_expenses')
         .select(
-          'id, title, amount, status, disciplina, category_id, ' +
+          'id, title, amount, status, disciplina, expense_date, category_id, ' +
           'category:finance_expense_categories(name, color)'
         ),
 
       supabase
         .from('finance_payments')
-        .select('amount, payment_method'),
+        .select('amount, payment_method, payment_date'),
     ]);
 
     const budgets  = (budgetsRes.data  ?? []) as RawBudget[];
@@ -204,21 +212,28 @@ export async function getFinanceReport(): Promise<FinanceMobileReport> {
       .slice(0, 10);
 
     // ── Top expenses ──────────────────────────────────────────────────────────
-    const top_expenses: TopExpense[] = [...expenses]
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 10)
-      .map((e) => {
-        const cat = categoryFromRow(e.category);
-        return {
-          id:             e.id,
-          title:          e.title,
-          amount:         e.amount,
-          status:         e.status,
-          disciplina:     e.disciplina,
-          category_name:  cat.name,
-          category_color: cat.color,
-        };
-      });
+    // All expenses mapped (for raw access + top 10)
+    const allMapped: TopExpense[] = expenses.map((e) => {
+      const cat = categoryFromRow(e.category);
+      return {
+        id:             e.id,
+        title:          e.title,
+        amount:         e.amount,
+        status:         e.status,
+        disciplina:     e.disciplina,
+        expense_date:   e.expense_date,
+        category_name:  cat.name,
+        category_color: cat.color,
+      };
+    });
+
+    const top_expenses = [...allMapped].sort((a, b) => b.amount - a.amount).slice(0, 10);
+
+    const raw_payments = payments.map(p => ({
+      amount:         p.amount,
+      payment_method: p.payment_method,
+      payment_date:   p.payment_date,
+    }));
 
     return {
       summary: {
@@ -234,6 +249,8 @@ export async function getFinanceReport(): Promise<FinanceMobileReport> {
       by_payment_method,
       by_disciplina,
       top_expenses,
+      raw_expenses:  allMapped,
+      raw_payments,
       fetched_at: new Date().toISOString(),
     };
   } catch (err) {
