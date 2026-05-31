@@ -54,4 +54,7 @@ export type NewsletterDraft = {
   sent_at: string | null;
   created_at: string;
   updated_at: string;
+  // Optional free-text notice/announcement section
+  custom_message_title: string | null;
+  custom_message:       string | null;
 };

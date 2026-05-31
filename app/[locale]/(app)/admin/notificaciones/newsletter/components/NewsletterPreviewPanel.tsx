@@ -3,12 +3,15 @@
 import { useState, useEffect, useTransition } from 'react';
 import type { NewsletterDraft, Tip }           from '@/lib/newsletter/types';
 import NewsletterTipEditor                     from './NewsletterTipEditor';
+import NewsletterMessageEditor                 from './NewsletterMessageEditor';
 import RecipientSelector                       from './RecipientSelector';
 import type { RecipientSelection, AudienciaType } from './RecipientSelector';
 
 type DraftRow = Omit<NewsletterDraft, 'tips_json' | 'html_content'> & {
   tips_json: Tip[];
 };
+
+type ViewMode = 'preview' | 'edit' | 'message';
 
 const STATUS_CLASSES: Record<string, string> = {
   pending:   'bg-yellow-100 text-yellow-800',
@@ -44,7 +47,7 @@ export default function NewsletterPreviewPanel({
   const [htmlContent, setHtmlContent]     = useState<string | null>(null);
   const [loadingHtml, setLoadingHtml]     = useState(true);
 
-  const [view, setView]                   = useState<'preview' | 'edit'>('preview');
+  const [view, setView]                   = useState<ViewMode>('preview');
   const [isPending, startTransition]      = useTransition();
 
   const [confirmAction, setConfirmAction] = useState<'approved' | 'rejected' | 'approve-send' | null>(null);
@@ -248,11 +251,20 @@ export default function NewsletterPreviewPanel({
             >
               Editar tips
             </button>
+            <button
+              type="button"
+              onClick={() => setView('message')}
+              className={`px-3 py-1.5 text-xs font-medium border-l border-gray-200 transition-colors relative ${
+                view === 'message' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              📢 Comunicado
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Body: preview or tip editor */}
+      {/* Body: preview, tip editor, or message editor */}
       {view === 'preview' ? (
         <div className="bg-gray-50" style={{ height: '520px' }}>
           {loadingHtml ? (
@@ -272,12 +284,24 @@ export default function NewsletterPreviewPanel({
             </div>
           )}
         </div>
-      ) : (
+      ) : view === 'edit' ? (
         <div className="p-4">
           <NewsletterTipEditor
             draftId={draft.id}
             initialTips={draft.tips_json}
             onSaved={handleTipsSaved}
+          />
+        </div>
+      ) : (
+        <div className="p-4">
+          <NewsletterMessageEditor
+            draftId={draft.id}
+            initialTitle={draft.custom_message_title ?? null}
+            initialBody={draft.custom_message ?? null}
+            onSaved={(newHtml) => {
+              setHtmlContent(newHtml);
+              setView('preview');
+            }}
           />
         </div>
       )}

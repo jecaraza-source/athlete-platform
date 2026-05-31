@@ -71,21 +71,32 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  let body: { tips?: Tip[] };
+  let body: {
+    tips?:                 Tip[];
+    custom_message_title?: string | null;
+    custom_message?:       string | null;
+  };
   try {
-    body = (await req.json()) as { tips?: Tip[] };
+    body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  if (!body.tips || !Array.isArray(body.tips) || body.tips.length !== 3) {
+  const hasTipsUpdate    = body.tips !== undefined;
+  const hasMessageUpdate = body.custom_message !== undefined || body.custom_message_title !== undefined;
+
+  if (hasTipsUpdate && (!Array.isArray(body.tips) || body.tips.length !== 3)) {
     return NextResponse.json({ error: 'Exactly 3 tips required' }, { status: 400 });
+  }
+
+  if (!hasTipsUpdate && !hasMessageUpdate) {
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
   }
 
   // Fetch existing draft
   const { data: draft, error: fetchErr } = await supabaseAdmin
     .from('newsletter_drafts')
-    .select('id, status, audiencia, asunto, preview_text, intro')
+    .select('id, status, audiencia, asunto, preview_text, intro, tips_json, custom_message_title, custom_message')
     .eq('id', draftId)
     .maybeSingle();
 
@@ -97,19 +108,39 @@ export async function PATCH(
     return NextResponse.json({ error: `Draft is ${draft.status}, cannot edit` }, { status: 409 });
   }
 
-  // Rebuild HTML with new tips
+  // Resolve final values (merge incoming with existing)
+  const finalTips    = hasTipsUpdate    ? body.tips!          : (draft.tips_json as Tip[]);
+  const finalMsgTitle = hasMessageUpdate && body.custom_message_title !== undefined
+    ? body.custom_message_title
+    : (draft.custom_message_title as string | null);
+  const finalMsg = hasMessageUpdate && body.custom_message !== undefined
+    ? body.custom_message
+    : (draft.custom_message as string | null);
+
+  // Rebuild HTML with current tips + custom message
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aodeporte.com';
   const content = {
     asunto:  draft.asunto,
     preview: draft.preview_text ?? '',
     intro:   draft.intro ?? '',
-    tips:    body.tips,
+    tips:    finalTips,
   };
-  const html_content = buildEmailHTML(content, draft.audiencia as NewsletterAudiencia, appUrl);
+  const html_content = buildEmailHTML(
+    content,
+    draft.audiencia as NewsletterAudiencia,
+    appUrl,
+    finalMsg ? { title: finalMsgTitle ?? undefined, body: finalMsg } : undefined
+  );
+
+  // Build update payload
+  const updateData: Record<string, unknown> = { html_content };
+  if (hasTipsUpdate)    updateData.tips_json             = finalTips;
+  if (hasMessageUpdate) updateData.custom_message_title  = finalMsgTitle;
+  if (hasMessageUpdate) updateData.custom_message         = finalMsg;
 
   const { error: updateErr } = await supabaseAdmin
     .from('newsletter_drafts')
-    .update({ tips_json: body.tips, html_content })
+    .update(updateData)
     .eq('id', draftId);
 
   if (updateErr) {

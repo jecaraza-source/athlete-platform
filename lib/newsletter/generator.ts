@@ -131,7 +131,8 @@ const BRAND_DARK = '#1a1a1a';
 export function buildEmailHTML(
   content: NewsletterContent,
   audiencia: NewsletterAudiencia,
-  appUrl: string
+  appUrl: string,
+  customMessage?: { title?: string | null; body?: string | null }
 ): string {
   const audienciaLabel = audiencia === 'atleta' ? 'Atletas' : 'Coaches';
   const tipsHtml = content.tips.map((tip: Tip) => /* html */`
@@ -305,6 +306,41 @@ export function buildEmailHTML(
               </table>
             </td>
           </tr>
+
+          <!-- Custom message (optional notice / reminder) -->
+          ${customMessage?.body ? `
+          <tr>
+            <td style="padding: 8px 32px 20px 32px;">
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                  <td style="
+                    background-color: #eff6ff;
+                    border-left: 4px solid #3b82f6;
+                    border-radius: 0 8px 8px 0;
+                    padding: 18px 20px;
+                  ">
+                    <p style="
+                      margin: 0 0 6px 0;
+                      font-family: Georgia, 'Times New Roman', serif;
+                      font-size: 11px;
+                      font-weight: bold;
+                      text-transform: uppercase;
+                      letter-spacing: 1px;
+                      color: #1d4ed8;
+                    ">📢 ${customMessage.title || 'Aviso'}</p>
+                    <p style="
+                      margin: 0;
+                      font-family: Georgia, 'Times New Roman', serif;
+                      font-size: 15px;
+                      color: #1e3a5f;
+                      line-height: 1.6;
+                      white-space: pre-line;
+                    ">${customMessage.body}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>` : ''}
 
           <!-- CTA -->
           <tr>
