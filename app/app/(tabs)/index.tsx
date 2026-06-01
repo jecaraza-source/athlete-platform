@@ -121,9 +121,6 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Newsletter card — visible to all roles */}
-        <NewsletterCard />
-
         {/* Staff dashboard */}
         {isStaff() && (
           <>
@@ -289,6 +286,9 @@ export default function DashboardScreen() {
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.icon} />
         </TouchableOpacity>
+
+        {/* Newsletter card — visible to all roles */}
+        <NewsletterCard />
 
       </ScrollView>
     </View>
