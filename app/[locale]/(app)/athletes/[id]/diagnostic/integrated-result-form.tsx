@@ -238,8 +238,52 @@ export default function IntegratedResultForm({
 
   const hasEvalData = Object.values(evaluations).some(Boolean);
 
+  const printFields = [
+    { label: 'Resumen general del diagnóstico inicial',       value: fields.overall_summary },
+    { label: 'Resumen del diagnóstico médico',               value: fields.medical_summary },
+    { label: 'Resumen del diagnóstico nutricional',           value: fields.nutritional_summary },
+    { label: 'Resumen del diagnóstico psicológico',          value: fields.psychological_summary },
+    { label: 'Perfil deportivo del atleta',                   value: fields.sport_profile },
+    { label: 'Resumen del diagnóstico fisioterapéutico',     value: fields.physiotherapy_summary },
+    { label: 'Resultado Integrado Interdisciplinario Final',  value: fields.interdisciplinary_result },
+  ].filter((f) => f.value.trim().length > 0);
+
   return (
     <div>
+      {/* ── PRINT VIEW — hidden on screen, visible only when printing ── */}
+      <div className="hidden print:block font-sans text-gray-900">
+        <div className="border-b-2 border-gray-800 pb-3 mb-6">
+          <h2 className="text-xl font-bold tracking-tight">Resultado Integrado Interdisciplinario</h2>
+          {d?.generated_at && (
+            <p className="text-xs text-gray-500 mt-1">
+              Generado: {new Date(d.generated_at).toLocaleString('es-MX')}
+            </p>
+          )}
+          <p className="text-[9pt] text-gray-400 mt-1 italic">
+            Este documento es un resumen asistido por IA basado en los diagnósticos capturados por los profesionales de cada rama.
+            Debe ser revisado y validado por el equipo médico-deportivo antes de su uso oficial.
+          </p>
+        </div>
+        {printFields.length === 0 ? (
+          <p className="text-sm text-gray-500 italic">Sin información capturada.</p>
+        ) : (
+          <div className="space-y-6">
+            {printFields.map((f, i) => (
+              <div key={i} style={{ breakInside: 'avoid' }}>
+                <p className="text-[9pt] font-bold uppercase tracking-widest text-gray-500 border-b border-gray-200 pb-1 mb-2">
+                  {f.label}
+                </p>
+                <p className="text-[10pt] text-gray-900 whitespace-pre-wrap leading-relaxed">
+                  {f.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── SCREEN VIEW ── */}
+      <div className="print:hidden">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-bold text-gray-800">Resultado Integrado Interdisciplinario</h2>
         {!sectionsComplete && (
@@ -354,7 +398,18 @@ export default function IntegratedResultForm({
           </p>
         </div>
 
-        <div className="flex justify-end pt-4 border-t border-gray-100">
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Imprimir / Guardar PDF
+          </button>
           <button
             type="button"
             disabled={isPending}
@@ -365,6 +420,7 @@ export default function IntegratedResultForm({
           </button>
         </div>
       </form>
+      </div>{/* end print:hidden */}
     </div>
   );
 }
