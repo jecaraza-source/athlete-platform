@@ -275,6 +275,7 @@ export default function DiagnosticTabs({
             athleteId={athlete.id}
             existingData={integratedResults}
             sectionsComplete={isComplete}
+            evaluations={evaluations}
           />
         )}
       </div>
