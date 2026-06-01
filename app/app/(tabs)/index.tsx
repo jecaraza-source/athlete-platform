@@ -288,6 +288,7 @@ export default function DashboardScreen() {
         </TouchableOpacity>
 
         {/* Newsletter card — visible to all roles */}
+        <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 8 }]}>Newsletter</Text>
         <NewsletterCard />
 
       </ScrollView>
