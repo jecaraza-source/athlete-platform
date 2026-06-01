@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { saveIntegratedResult } from './actions';
+import { saveIntegratedResult, generateAIDiagnosticText } from './actions';
 import type {
   IntegratedResults,
   MedicalEvaluation,
@@ -180,10 +180,36 @@ export default function IntegratedResultForm({
   const [success, setSuccess]       = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [autoFilled, setAutoFilled] = useState(false);
+  const [aiPending, setAiPending]   = useState<'overall' | 'interdisciplinary' | null>(null);
+  const [aiError, setAiError]       = useState<string | null>(null);
   const formRef                     = useRef<HTMLFormElement>(null);
 
   function set(key: keyof Fields) {
     return (v: string) => setFields((prev) => ({ ...prev, [key]: v }));
+  }
+
+  // Build sections payload from evaluations (reuse buildAutoFill output)
+  function buildSectionsPayload() {
+    const filled = buildAutoFill(evaluations);
+    return {
+      medical:       filled.medical_summary       ?? '',
+      nutritional:   filled.nutritional_summary   ?? '',
+      psychological: filled.psychological_summary ?? '',
+      sport:         filled.sport_profile         ?? '',
+      physiotherapy: filled.physiotherapy_summary ?? '',
+    };
+  }
+
+  async function handleAIGenerate(type: 'overall' | 'interdisciplinary') {
+    setAiError(null);
+    setAiPending(type);
+    const result = await generateAIDiagnosticText(type, buildSectionsPayload());
+    setAiPending(null);
+    if (result.error) { setAiError(result.error); return; }
+    if (result.text) {
+      const key = type === 'overall' ? 'overall_summary' : 'interdisciplinary_result';
+      setFields((prev) => ({ ...prev, [key]: result.text! }));
+    }
   }
 
   function handleAutoFill() {
@@ -258,8 +284,9 @@ export default function IntegratedResultForm({
         </p>
       )}
 
-      {error   && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      {success && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>}
+      {aiError  && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">⚠️ {aiError}</p>}
+      {error    && <p className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {success  && <p className="mb-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>}
 
       {d?.generated_at && (
         <p className="text-xs text-gray-400 mb-4">
@@ -268,9 +295,25 @@ export default function IntegratedResultForm({
       )}
 
       <form ref={formRef} className="space-y-4">
-        <Textarea label="Resumen general del diagnóstico inicial" name="overall_summary"
-          value={fields.overall_summary} onChange={set('overall_summary')}
-          placeholder="Síntesis del estado integral del atleta desde todas las especialidades…" rows={5} />
+        {/* ── Resumen general + botón IA */}
+        <div>
+          <div className="flex items-center justify-between mb-0.5">
+            <label className="block text-xs font-medium text-gray-600">Resumen general del diagnóstico inicial</label>
+            {hasEvalData && (
+              <button type="button" disabled={!!aiPending} onClick={() => handleAIGenerate('overall')}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-md transition-colors disabled:opacity-50">
+                {aiPending === 'overall' ? <>⏳ Generando…</> : <>✨ Generar con IA</>}
+              </button>
+            )}
+          </div>
+          <textarea name="overall_summary" rows={5} value={fields.overall_summary}
+            onChange={(e) => set('overall_summary')(e.target.value)}
+            placeholder="Síntesis del estado integral del atleta desde todas las especialidades…"
+            className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          <p className="mt-1 text-xs text-gray-400 italic">
+            ℹ️ Texto generado por IA con base en los diagnósticos capturados por los profesionales de cada rama. Revisar y validar antes de guardar.
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Textarea label="Resumen del diagnóstico médico" name="medical_summary"
@@ -291,18 +334,24 @@ export default function IntegratedResultForm({
           value={fields.physiotherapy_summary} onChange={set('physiotherapy_summary')}
           placeholder="Diagnóstico funcional y plan de rehabilitación…" />
 
+        {/* ── Resultado integrado final + botón IA */}
         <div className="rounded-lg border-2 border-emerald-200 bg-emerald-50 p-4">
-          <label className="block text-sm font-semibold text-emerald-800 mb-1.5">
-            Resultado Integrado Interdisciplinario Final
-          </label>
-          <textarea
-            name="interdisciplinary_result"
-            rows={6}
-            value={fields.interdisciplinary_result}
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-sm font-semibold text-emerald-800">Resultado Integrado Interdisciplinario Final</span>
+            {hasEvalData && (
+              <button type="button" disabled={!!aiPending} onClick={() => handleAIGenerate('interdisciplinary')}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-md transition-colors disabled:opacity-50">
+                {aiPending === 'interdisciplinary' ? <>⏳ Generando…</> : <>✨ Generar con IA</>}
+              </button>
+            )}
+          </div>
+          <textarea name="interdisciplinary_result" rows={6} value={fields.interdisciplinary_result}
             onChange={(e) => set('interdisciplinary_result')(e.target.value)}
             placeholder="Conclusión interdisciplinaria: integración de todos los rubros, recomendaciones de trabajo conjunto, prioridades de atención y pronóstico de rendimiento del atleta…"
-            className="w-full rounded-md border border-emerald-300 bg-white px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
+            className="w-full rounded-md border border-emerald-300 bg-white px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          <p className="mt-2 text-xs text-emerald-700/70 italic">
+            ℹ️ Texto generado por IA con base en los diagnósticos capturados por los profesionales de cada rama. Revisar y validar antes de guardar.
+          </p>
         </div>
 
         <div className="flex justify-end pt-4 border-t border-gray-100">

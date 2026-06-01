@@ -1,5 +1,6 @@
 'use server';
 
+import Anthropic from '@anthropic-ai/sdk';
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { assertPermission } from '@/lib/rbac/server';
@@ -483,6 +484,78 @@ export async function savePhysioSection(
   revalidatePath(`/athletes/${athleteId}/diagnostic`);
   revalidatePath(`/athletes/${athleteId}`);
   return { error: null };
+}
+
+// ---------------------------------------------------------------------------
+// Generación IA — Resultado integrado
+// ---------------------------------------------------------------------------
+
+type AISections = {
+  medical:       string;
+  nutritional:   string;
+  psychological: string;
+  sport:         string;
+  physiotherapy: string;
+};
+
+/**
+ * Generates the overall_summary or interdisciplinary_result field using
+ * Claude claude-3-5-haiku-20241022. The model receives the extracted section summaries
+ * and returns a synthesized text in Spanish.
+ */
+export async function generateAIDiagnosticText(
+  type: 'overall' | 'interdisciplinary',
+  sections: AISections,
+): Promise<{ text: string | null; error: string | null }> {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return { text: null, error: 'Sin permisos.' };
+
+  const hasSections = Object.values(sections).some((s) => s.trim().length > 0);
+  if (!hasSections) return { text: null, error: 'No hay información de diagnósticos para procesar.' };
+
+  const sectionBlock = [
+    sections.medical       ? `=== MÉDICO ===\n${sections.medical}`       : '',
+    sections.nutritional   ? `=== NUTRICIÓN ===\n${sections.nutritional}`   : '',
+    sections.psychological ? `=== PSICOLOGÍA ===\n${sections.psychological}` : '',
+    sections.sport         ? `=== ENTRENADOR ===\n${sections.sport}`         : '',
+    sections.physiotherapy ? `=== FISIOTERAPIA ===\n${sections.physiotherapy}` : '',
+  ].filter(Boolean).join('\n\n');
+
+  const prompts: Record<typeof type, string> = {
+    overall: `Eres un asistente médico especializado en deporte de alto rendimiento.
+Se te proporcionan los diagnósticos realizados por el equipo multidisciplinario del atleta.
+Genera un RESUMEN GENERAL conciso (máximo 180 palabras) que sintetice el estado integral del atleta desde todas las especialidades.
+El resumen debe ser claro, profesional y en español. No incluyas introducciones, solo el texto del resumen.
+
+${sectionBlock}`,
+
+    interdisciplinary: `Eres un asistente médico especializado en deporte de alto rendimiento.
+Se te proporcionan los diagnósticos realizados por el equipo multidisciplinario del atleta.
+Genera el RESULTADO INTEGRADO INTERDISCIPLINARIO FINAL (máximo 280 palabras) que incluya:
+1. Conclusión interdisciplinaria que integre todos los rubros
+2. Recomendaciones de trabajo conjunto entre las especialidades
+3. Prioridades de atención inmediata
+4. Pronóstico de rendimiento del atleta
+
+El texto debe ser profesional, en español, y apto para incluirse en el expediente médico-deportivo.
+No incluyas numeración ni encabezados, solo el texto corrido.
+
+${sectionBlock}`,
+  };
+
+  try {
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const message = await client.messages.create({
+      model:      'claude-3-5-haiku-20241022',
+      max_tokens: 600,
+      messages:   [{ role: 'user', content: prompts[type] }],
+    });
+    const text = (message.content[0] as { type: string; text: string }).text?.trim() ?? null;
+    return { text, error: null };
+  } catch (e) {
+    console.error('[generateAIDiagnosticText]', e);
+    return { text: null, error: 'Error al conectar con el servicio de IA. Intenta de nuevo.' };
+  }
 }
 
 // ---------------------------------------------------------------------------
