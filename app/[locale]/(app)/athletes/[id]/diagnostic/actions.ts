@@ -530,15 +530,17 @@ ${sectionBlock}`,
 
     interdisciplinary: `Eres un asistente médico especializado en deporte de alto rendimiento.
 Se te proporcionan los diagnósticos realizados por el equipo multidisciplinario del atleta.
-Genera el RESULTADO INTEGRADO INTERDISCIPLINARIO FINAL lo más completo, detallado y extenso posible, incluyendo:
-- Conclusión interdisciplinaria que integre en profundidad todos los rubros (médico, nutricional, psicológico, entrenamiento y fisioterapia)
-- Hallazgos transversales y correlaciones entre especialidades
-- Recomendaciones detalladas de trabajo conjunto e intercomunicación entre las especialidades
-- Prioridades de atención inmediata y a mediano plazo
-- Plan de seguimiento y puntos de control sugeridos
-- Pronóstico de rendimiento deportivo del atleta con base en los diagnósticos
+Genera el RESULTADO INTEGRADO INTERDISCIPLINARIO FINAL en exactamente 7 párrafos bien desarrollados, siguiendo esta estructura:
 
-El texto debe ser exhaustivo, profesional, en español, y apto para incluirse formalmente en el expediente médico-deportivo. Usa párrafos bien estructurados sin numeración ni encabezados.
+Párrafo 1: Correlaciones entre especialidades — hallazgos transversales que conectan los rubros médico, nutricional, psicológico, de entrenamiento y fisioterapia.
+Párrafo 2: Correlaciones adicionales y patrones integrales identificados entre las áreas de atención.
+Párrafo 3: Recomendaciones generales de trabajo conjunto e intercomunicación entre las especialidades.
+Párrafo 4: Recomendaciones específicas por especialidad y prioridades de atención inmediata.
+Párrafo 5: Plan de seguimiento — periodicidad de valoraciones, puntos de control y criterios de avance.
+Párrafo 6: Indicadores de éxito y ajustes esperados en el plan a mediano plazo.
+Párrafo 7: Pronóstico de rendimiento deportivo del atleta con base en los diagnósticos integrados.
+
+Cada párrafo debe ser denso, detallado y profesional. No incluyas títulos, numeración ni encabezados; solo texto corrido en español, apto para el expediente médico-deportivo.
 
 ${sectionBlock}`,
   };
