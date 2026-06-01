@@ -255,6 +255,39 @@ export default function FinancesScreen() {
     }
   }, []);
 
+  // ── ALL useMemo hooks must be BEFORE any early returns (Rules of Hooks) ─────
+  const { from: pFrom, to: pTo } = periodRange;
+  // Use safe access so these work before report is loaded
+  const rawExpenses = report?.raw_expenses ?? [];
+  const rawPayments = report?.raw_payments ?? [];
+
+  const periodExpenses = useMemo(() =>
+    rawExpenses.filter(e =>
+      e.expense_date && e.expense_date >= pFrom && e.expense_date <= pTo
+    ), [rawExpenses, pFrom, pTo]);
+
+  const periodPayments = useMemo(() =>
+    rawPayments.filter(p =>
+      p.payment_date && p.payment_date >= pFrom && p.payment_date <= pTo
+    ), [rawPayments, pFrom, pTo]);
+
+  const periodTotal    = useMemo(() => periodExpenses.reduce((s, e) => s + e.amount, 0), [periodExpenses]);
+  const periodPending  = useMemo(() => periodExpenses.filter(e => ['submitted','approved'].includes(e.status)).reduce((s, e) => s + e.amount, 0), [periodExpenses]);
+  const periodPayTotal = useMemo(() => periodPayments.reduce((s, p) => s + p.amount, 0), [periodPayments]);
+
+  const periodByCategory = useMemo(() => {
+    const map = new Map<string, { name: string; color: string | null; total: number }>();
+    for (const e of periodExpenses) {
+      const prev = map.get(e.category_name) ?? { name: e.category_name, color: e.category_color, total: 0 };
+      map.set(e.category_name, { ...prev, total: prev.total + e.amount });
+    }
+    return [...map.values()].sort((a, b) => b.total - a.total).slice(0, 8);
+  }, [periodExpenses]);
+
+  const periodTop10 = useMemo(() =>
+    [...periodExpenses].sort((a, b) => b.amount - a.amount).slice(0, 10),
+    [periodExpenses]);
+
   useEffect(() => {
     if (!hasPermission) { setLoading(false); return; }
     load();
@@ -262,13 +295,9 @@ export default function FinancesScreen() {
 
   const onRefresh = () => { setRefreshing(true); load(); };
 
-  // ── Permission guard ────────────────────────────────────────────────────
+  // ── Early returns (safe now that all hooks are above) ───────────────────
   if (!hasPermission) return <AccessDenied />;
-
-  // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) return <Loading fullScreen />;
-
-  // ── Error banner (inline, with retry) ────────────────────────────────────
   if (error && !report) {
     return (
       <View style={sc.centered}>
@@ -285,44 +314,14 @@ export default function FinancesScreen() {
     );
   }
 
+  // Regular derived values (not hooks) — safe after early returns
   const r = report!;
   const { summary } = r;
   const exercisedPct = summary.total_budget > 0
     ? Math.round((summary.total_exercised / summary.total_budget) * 100)
     : 0;
   const totalExpenses = r.by_status.reduce((s, x) => s + x.total, 0);
-
-  // ── Period filtered data ───────────────────────────────────────────────────
-  const { from: pFrom, to: pTo } = periodRange;
-
-  const periodExpenses = useMemo(() =>
-    r.raw_expenses.filter(e =>
-      e.expense_date && e.expense_date >= pFrom && e.expense_date <= pTo
-    ), [r.raw_expenses, pFrom, pTo]);
-
-  const periodPayments = useMemo(() =>
-    r.raw_payments.filter(p =>
-      p.payment_date && p.payment_date >= pFrom && p.payment_date <= pTo
-    ), [r.raw_payments, pFrom, pTo]);
-
-  const periodTotal   = useMemo(() => periodExpenses.reduce((s, e) => s + e.amount, 0), [periodExpenses]);
-  const periodPaid    = useMemo(() => periodExpenses.filter(e => e.status === 'paid').reduce((s, e) => s + e.amount, 0), [periodExpenses]);
-  const periodPending = useMemo(() => periodExpenses.filter(e => ['submitted','approved'].includes(e.status)).reduce((s, e) => s + e.amount, 0), [periodExpenses]);
-  const periodPayTotal = useMemo(() => periodPayments.reduce((s, p) => s + p.amount, 0), [periodPayments]);
   const periodPct     = summary.total_budget > 0 ? Math.round((periodTotal / summary.total_budget) * 100) : 0;
-
-  const periodByCategory = useMemo(() => {
-    const map = new Map<string, { name: string; color: string | null; total: number }>();
-    for (const e of periodExpenses) {
-      const prev = map.get(e.category_name) ?? { name: e.category_name, color: e.category_color, total: 0 };
-      map.set(e.category_name, { ...prev, total: prev.total + e.amount });
-    }
-    return [...map.values()].sort((a, b) => b.total - a.total).slice(0, 8);
-  }, [periodExpenses]);
-
-  const periodTop10 = useMemo(() =>
-    [...periodExpenses].sort((a, b) => b.amount - a.amount).slice(0, 10),
-    [periodExpenses]);
 
   return (
     <SafeAreaView style={[sc.safe, { backgroundColor: colors.background }]} edges={['bottom']}>
