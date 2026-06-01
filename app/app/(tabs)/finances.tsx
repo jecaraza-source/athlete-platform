@@ -28,6 +28,7 @@ import {
   getFinanceReport,
   type FinanceMobileReport,
 } from '@/services/finance-reports';
+import ApprovalsSection from '@/components/finance/ApprovalsSection';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -330,6 +331,9 @@ export default function FinancesScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
+
+        {/* ── GASTOS POR AUTORIZAR (collapsible, only when pending) ─── */}
+        <ApprovalsSection />
 
         {/* ── PERIOD SELECTOR ──────────────────────────────────────────── */}
         <View style={sc.periodRow}>
