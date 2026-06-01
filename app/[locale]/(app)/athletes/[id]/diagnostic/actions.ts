@@ -546,7 +546,7 @@ ${sectionBlock}`,
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const message = await client.messages.create({
-      model:      'claude-3-5-sonnet-20240620',
+      model:      'claude-opus-4-7',
       max_tokens: 600,
       messages:   [{ role: 'user', content: prompts[type] }],
     });
