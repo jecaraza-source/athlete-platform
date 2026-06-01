@@ -306,7 +306,7 @@ export default function IntegratedResultForm({
               </button>
             )}
           </div>
-          <textarea name="overall_summary" rows={5} value={fields.overall_summary}
+          <textarea name="overall_summary" rows={12} value={fields.overall_summary}
             onChange={(e) => set('overall_summary')(e.target.value)}
             placeholder="Síntesis del estado integral del atleta desde todas las especialidades…"
             className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500" />
@@ -345,7 +345,7 @@ export default function IntegratedResultForm({
               </button>
             )}
           </div>
-          <textarea name="interdisciplinary_result" rows={6} value={fields.interdisciplinary_result}
+          <textarea name="interdisciplinary_result" rows={16} value={fields.interdisciplinary_result}
             onChange={(e) => set('interdisciplinary_result')(e.target.value)}
             placeholder="Conclusión interdisciplinaria: integración de todos los rubros, recomendaciones de trabajo conjunto, prioridades de atención y pronóstico de rendimiento del atleta…"
             className="w-full rounded-md border border-emerald-300 bg-white px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500" />

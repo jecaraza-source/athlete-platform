@@ -524,21 +524,21 @@ export async function generateAIDiagnosticText(
   const prompts: Record<typeof type, string> = {
     overall: `Eres un asistente médico especializado en deporte de alto rendimiento.
 Se te proporcionan los diagnósticos realizados por el equipo multidisciplinario del atleta.
-Genera un RESUMEN GENERAL conciso (máximo 180 palabras) que sintetice el estado integral del atleta desde todas las especialidades.
-El resumen debe ser claro, profesional y en español. No incluyas introducciones, solo el texto del resumen.
+Genera un RESUMEN GENERAL DEL DIAGNÓSTICO INICIAL lo más completo y detallado posible, integrando toda la información disponible de cada especialidad. El resumen debe abarcar el estado de salud general, la condición física y funcional, el perfil nutricional, el estado psicológico-deportivo, el perfil del entrenador y los hallazgos fisioterapeuts. Usa párrafos bien estructurados, lenguaje profesional y en español. No incluyas introducciones ni encabezados, solo el texto corrido.
 
 ${sectionBlock}`,
 
     interdisciplinary: `Eres un asistente médico especializado en deporte de alto rendimiento.
 Se te proporcionan los diagnósticos realizados por el equipo multidisciplinario del atleta.
-Genera el RESULTADO INTEGRADO INTERDISCIPLINARIO FINAL (máximo 280 palabras) que incluya:
-1. Conclusión interdisciplinaria que integre todos los rubros
-2. Recomendaciones de trabajo conjunto entre las especialidades
-3. Prioridades de atención inmediata
-4. Pronóstico de rendimiento del atleta
+Genera el RESULTADO INTEGRADO INTERDISCIPLINARIO FINAL lo más completo, detallado y extenso posible, incluyendo:
+- Conclusión interdisciplinaria que integre en profundidad todos los rubros (médico, nutricional, psicológico, entrenamiento y fisioterapia)
+- Hallazgos transversales y correlaciones entre especialidades
+- Recomendaciones detalladas de trabajo conjunto e intercomunicación entre las especialidades
+- Prioridades de atención inmediata y a mediano plazo
+- Plan de seguimiento y puntos de control sugeridos
+- Pronóstico de rendimiento deportivo del atleta con base en los diagnósticos
 
-El texto debe ser profesional, en español, y apto para incluirse en el expediente médico-deportivo.
-No incluyas numeración ni encabezados, solo el texto corrido.
+El texto debe ser exhaustivo, profesional, en español, y apto para incluirse formalmente en el expediente médico-deportivo. Usa párrafos bien estructurados sin numeración ni encabezados.
 
 ${sectionBlock}`,
   };
@@ -547,7 +547,7 @@ ${sectionBlock}`,
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const message = await client.messages.create({
       model:      'claude-opus-4-7',
-      max_tokens: 600,
+      max_tokens: 4096,
       messages:   [{ role: 'user', content: prompts[type] }],
     });
     const text = (message.content[0] as { type: string; text: string }).text?.trim() ?? null;
