@@ -368,11 +368,11 @@ export async function deleteProfile(id: string) {
     // athlete_notes is a pre-existing base-schema table (see 000_base_schema.sql)
     nullifyOrDelete('athlete_notes',        'author_profile_id'),
     nullifyOrDelete('nutrition_plans',      'nutritionist_profile_id'),
-    nullifyOrDelete('nutrition_checkins', 'nutritionist_profile_id'),
-    nullifyOrDelete('training_sessions', 'coach_profile_id'),
-    nullifyOrDelete('physio_cases', 'physio_profile_id'),
-    nullifyOrDelete('psychology_cases', 'psychologist_profile_id'),
-    nullifyOrDelete('events', 'created_by_profile_id'),
+    nullifyOrDelete('nutrition_checkins',   'nutritionist_profile_id'),
+    nullifyOrDelete('training_sessions',    'coach_profile_id'),
+    nullifyOrDelete('physio_cases',         'physio_profile_id'),
+    nullifyOrDelete('psychology_cases',     'psychologist_profile_id'),
+    nullifyOrDelete('events',               'created_by_profile_id'),
   ]);
 
   const { error } = await supabaseAdmin.from('profiles').delete().eq('id', id);
