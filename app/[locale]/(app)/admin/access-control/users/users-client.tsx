@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import UserRoleRow from './user-role-row';
 import type { ProfileWithRoles, Role } from '@/lib/rbac/types';
+import { bulkResetToDefaultPassword } from './actions';
 
 // ---------------------------------------------------------------------------
 // StatCard
@@ -40,12 +41,15 @@ export default function UsersClient({
   profiles,
   allRoles,
   canDelete = false,
+  isSuperAdmin = false,
   currentProfileId = null,
 }: {
   profiles: ProfileWithRoles[];
   allRoles: Role[];
   /** True when the logged-in user is a super_admin. */
   canDelete?: boolean;
+  /** True when the logged-in user is a super_admin (controls password-reset UI). */
+  isSuperAdmin?: boolean;
   /** Profile ID of the logged-in user, used to mark the self-row. */
   currentProfileId?: string | null;
 }) {
@@ -54,9 +58,23 @@ export default function UsersClient({
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
 
+  // Bulk-reset state
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const [resetResult, setResetResult] = useState<{ reset: number; errors: { email: string; error: string }[] } | null>(null);
+  const [isPendingReset, startResetTransition] = useTransition();
+
+  function handleBulkReset() {
+    startResetTransition(async () => {
+      const result = await bulkResetToDefaultPassword();
+      setResetResult(result);
+      setConfirmingReset(false);
+    });
+  }
+
   // Derived stats (computed from original profiles list, not filtered)
-  const withRoles    = profiles.filter((p) => p.roles.length > 0).length;
-  const withoutRoles = profiles.length - withRoles;
+  const withRoles       = profiles.filter((p) => p.roles.length > 0).length;
+  const withoutRoles    = profiles.length - withRoles;
+  const withDefaultPw   = profiles.filter((p) => !p.password_changed_at).length;
 
   // Filtered list
   const filtered = useMemo(() => {
@@ -76,11 +94,81 @@ export default function UsersClient({
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <StatCard value={profiles.length} label={t('totalUsers')}   color="gray"   />
-        <StatCard value={withRoles}        label={t('withRoles')}    color="violet" />
-        <StatCard value={withoutRoles}     label={t('withoutRoles')} color="amber"  />
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard value={profiles.length} label={t('totalUsers')}    color="gray"   />
+        <StatCard value={withRoles}        label={t('withRoles')}     color="violet" />
+        <StatCard value={withoutRoles}     label={t('withoutRoles')}  color="amber"  />
+        <StatCard value={withDefaultPw}    label={t('withDefaultPw')} color="amber"  />
       </div>
+
+      {/* Bulk password reset panel — super_admin only */}
+      {isSuperAdmin && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p className="font-semibold text-amber-800 text-sm">{t('resetDefaultPwTitle')}</p>
+              <p className="text-amber-700 text-xs mt-0.5">
+                {t('resetDefaultPwDesc', { count: withDefaultPw })}
+              </p>
+            </div>
+
+            {!confirmingReset && !resetResult && (
+              <button
+                onClick={() => setConfirmingReset(true)}
+                disabled={withDefaultPw === 0 || isPendingReset}
+                className="shrink-0 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {t('resetDefaultPw')}
+              </button>
+            )}
+
+            {confirmingReset && (
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-sm text-amber-800 font-medium">{t('resetDefaultPwConfirm', { count: withDefaultPw })}</span>
+                <button
+                  onClick={handleBulkReset}
+                  disabled={isPendingReset}
+                  className="rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {isPendingReset ? t('resetting') : tc('yes')}
+                </button>
+                <button
+                  onClick={() => setConfirmingReset(false)}
+                  className="text-sm text-amber-600 hover:underline"
+                >
+                  {tc('cancel')}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Result feedback */}
+          {resetResult && (
+            <div className="mt-3">
+              {resetResult.errors.length === 0 ? (
+                <p className="text-sm text-green-700 font-medium">
+                  ✓ {t('resetDefaultPwSuccess', { reset: resetResult.reset })}
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-sm text-green-700 font-medium">
+                    ✓ {t('resetDefaultPwSuccess', { reset: resetResult.reset })}
+                  </p>
+                  <p className="text-xs text-red-600">
+                    {t('resetDefaultPwErrors', { count: resetResult.errors.length })}
+                  </p>
+                </div>
+              )}
+              <button
+                onClick={() => setResetResult(null)}
+                className="mt-1 text-xs text-amber-600 hover:underline"
+              >
+                {tc('cancel')}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3">

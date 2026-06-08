@@ -606,7 +606,21 @@
         "setPassword": "Establecer",
         "passwordUpdated": "Contraseña actualizada",
         "noAuthLinked": "Sin cuenta de autenticación vinculada",
-        "deleteUserPermanently": "Eliminar usuario permanentemente"
+        "deleteUserPermanently": "Eliminar usuario permanentemente",
+        "withDefaultPw": "Contraseña por defecto",
+        "resetDefaultPwTitle": "Restablecer contraseña por defecto",
+        "resetDefaultPwDesc": "{count, plural, one {# usuario tiene la contraseña por defecto (12345678). Los usuarios que cambiaron su contraseña no se ven afectados.} other {# usuarios tienen la contraseña por defecto (12345678). Los usuarios que cambiaron su contraseña no se ven afectados.}}",
+        "resetDefaultPw": "Restablecer a 12345678",
+        "resetDefaultPwConfirm": "{count, plural, one {¿Restablecer contraseña de # usuario a 12345678?} other {¿Restablecer contraseña de # usuarios a 12345678?}}",
+        "resetDefaultPwSuccess": "{reset, plural, one {# contraseña restablecida exitosamente.} other {# contraseñas restablecidas exitosamente.}}",
+        "resetDefaultPwErrors": "{count, plural, one {# error al restablecer.} other {# errores al restablecer.}}",
+        "resetting": "Restableciendo…",
+        "defaultPwBadge": "12345678",
+        "customPwBadge": "Contraseña personalizada",
+        "markAsCustomPw": "Marcar como personalizada",
+        "markAsCustomPwTitle": "Marcar manualmente como contraseña personalizada (excluir del reset masivo)",
+        "clearCustomPw": "Revertir a defecto",
+        "clearCustomPwTitle": "Marcar como contraseña por defecto (incluir en el próximo reset masivo)"
       }
     },
     "notifications": {

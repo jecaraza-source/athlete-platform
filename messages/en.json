@@ -606,7 +606,21 @@
         "setPassword": "Set",
         "passwordUpdated": "Password updated",
         "noAuthLinked": "No auth account linked",
-        "deleteUserPermanently": "Delete user permanently"
+        "deleteUserPermanently": "Delete user permanently",
+        "withDefaultPw": "Default password",
+        "resetDefaultPwTitle": "Reset to default password",
+        "resetDefaultPwDesc": "{count, plural, one {# user has the default password (12345678). Users who changed their password are not affected.} other {# users have the default password (12345678). Users who changed their password are not affected.}}",
+        "resetDefaultPw": "Reset to 12345678",
+        "resetDefaultPwConfirm": "{count, plural, one {Reset password for # user to 12345678?} other {Reset password for # users to 12345678?}}",
+        "resetDefaultPwSuccess": "{reset, plural, one {# password reset successfully.} other {# passwords reset successfully.}}",
+        "resetDefaultPwErrors": "{count, plural, one {# error while resetting.} other {# errors while resetting.}}",
+        "resetting": "Resetting…",
+        "defaultPwBadge": "12345678",
+        "customPwBadge": "Custom password",
+        "markAsCustomPw": "Mark as custom",
+        "markAsCustomPwTitle": "Manually mark as custom password (exclude from bulk reset)",
+        "clearCustomPw": "Revert to default",
+        "clearCustomPwTitle": "Mark as default password (include in next bulk reset)"
       }
     },
     "notifications": {
