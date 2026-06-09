@@ -40,6 +40,16 @@ export default async function AthletesPage({
   // fallan (columnas/tablas no existen aún), cae a la query base.
   // ───────────────────────────────────────────────────────────────────────
 
+  // 0. Disciplinas dinámicas desde cat_disciplines
+  const { data: catDisciplinesData } = await supabaseAdmin
+    .from('cat_disciplines')
+    .select('code, name, block')
+    .order('name', { ascending: true });
+
+  const disciplinesForFilter = (catDisciplinesData ?? []).map(
+    (d: Record<string, string>) => ({ value: d.code, label: d.name })
+  );
+
   // 1. Query base con filtros de nombre y estado (server-side)
   let baseQuery = supabaseAdmin
     .from('athletes')
@@ -129,6 +139,7 @@ export default async function AthletesPage({
         currentStatus={status}
         currentDiscipline={discipline}
         currentDiagnostic={diagnostic}
+        disciplines={disciplinesForFilter}
       />
 
       {paginated.length === 0 ? (

@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from 'react';
 import { updateAthlete } from './actions';
 
-import { DISCIPLINES, getDisciplineLabel, getDisabilityLabel } from '@/lib/types/diagnostic';
+import { getDisciplineLabel, getDisabilityLabel } from '@/lib/types/diagnostic';
 
 type AthleteDetail = {
   id: string;
@@ -148,7 +148,13 @@ function FormField({
   );
 }
 
-export function GeneralInfoSection({ athlete }: { athlete: AthleteDetail }) {
+export function GeneralInfoSection({
+  athlete,
+  disciplines,
+}: {
+  athlete: AthleteDetail;
+  disciplines: { value: string; label: string }[];
+}) {
   return (
     <EditSection
       title="Información General"
@@ -177,7 +183,7 @@ export function GeneralInfoSection({ athlete }: { athlete: AthleteDetail }) {
             label="Disciplina"
             name="discipline"
             defaultValue={athlete.discipline}
-            options={DISCIPLINES.map((d) => ({ value: d.value, label: `${d.block} — ${d.label}` }))}
+            options={disciplines.map((d) => ({ value: d.value, label: d.label }))}
           />
           <FormField
             label="Persona con o sin Discapacidad"
