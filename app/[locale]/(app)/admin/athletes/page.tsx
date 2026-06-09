@@ -6,6 +6,7 @@ import NewStaffForm from '../staff/new-staff-form';
 import StaffCard from '../staff/staff-card';
 import type { Profile } from '../staff/staff-card';
 import AthletesConfigFilter from './athletes-config-filter';
+import ExportAthletesButton from './export-athletes-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,30 +65,34 @@ export default async function AdminAthletesPage({
 
   return (
     <main className="p-8">
-      <BackButton href="/admin" label={tc('backToAdmin')} />
-
-      <h1 className="text-3xl font-bold mt-4 mb-2 text-rose-700">{t('athletesSetup.title')}</h1>
-      <p className="text-gray-600 mb-4">{t('athletesSetup.description')}</p>
+      <div className="no-print">
+        <BackButton href="/admin" label={tc('backToAdmin')} />
+        <h1 className="text-3xl font-bold mt-4 mb-2 text-rose-700">{t('athletesSetup.title')}</h1>
+        <p className="text-gray-600 mb-4">{t('athletesSetup.description')}</p>
+      </div>
 
       {error && (
-        <div className="mb-6 rounded border border-red-300 bg-red-50 p-4 text-red-700">
+        <div className="mb-6 rounded border border-red-300 bg-red-50 p-4 text-red-700 no-print">
           {t('athletesSetup.errorLoading')} {error.message}
         </div>
       )}
 
+      <div className="no-print">
       <AthletesConfigFilter
         currentQ={q}
         currentDiscipline={discipline}
         total={athletes.length}
         filtered={filtered.length}
       />
+      </div>
 
-      <div className="flex items-center justify-end mb-4">
+      <div className="flex items-center justify-between mb-4 no-print">
         <NewStaffForm
           hasExtendedColumns={hasExtendedColumns}
           presetRole="athlete"
           buttonLabel={t('athletesSetup.addAthlete')}
         />
+        <ExportAthletesButton athletes={filtered} discipline={discipline} />
       </div>
 
       {filtered.length === 0 ? (
@@ -95,11 +100,43 @@ export default async function AdminAthletesPage({
           {athletes.length === 0 ? t('athletesSetup.noAthletes') : 'No se encontraron atletas con esos filtros.'}
         </p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((p) => (
-            <StaffCard key={p.id} profile={p} hasExtendedColumns={hasExtendedColumns} />
-          ))}
-        </div>
+        <>
+          {/* Screen: cards grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 no-print">
+            {filtered.map((p) => (
+              <StaffCard key={p.id} profile={p} hasExtendedColumns={hasExtendedColumns} />
+            ))}
+          </div>
+
+          {/* Print-only: clean table */}
+          <div className="print-only hidden">
+            <h2 className="text-lg font-bold mb-3">
+              Lista de Atletas{discipline ? ` — ${discipline}` : ''}
+              {q ? ` — Búsqueda: "${q}"` : ''}
+              <span className="text-sm font-normal ml-2">({filtered.length} atletas)</span>
+            </h2>
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b-2 border-gray-800 text-left">
+                  <th className="pb-2 pr-4">Nombre</th>
+                  <th className="pb-2 pr-4">Email</th>
+                  <th className="pb-2 pr-4">Teléfono</th>
+                  <th className="pb-2">Disciplina</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((p) => (
+                  <tr key={p.id} className="border-b border-gray-200">
+                    <td className="py-1.5 pr-4 font-medium">{p.first_name} {p.last_name}</td>
+                    <td className="py-1.5 pr-4 text-gray-600">{p.email ?? '—'}</td>
+                    <td className="py-1.5 pr-4 text-gray-600">{p.phone ?? '—'}</td>
+                    <td className="py-1.5 text-gray-600">{p.specialty ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </main>
   );
