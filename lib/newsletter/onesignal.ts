@@ -96,8 +96,27 @@ export async function sendNewsletterViaOneSignal(
       return { success: false, onesignalId: firstId, recipientCount: totalRecipients, error: msg };
     }
 
-    if (i === 0) firstId = (json.id as string) ?? null;
-    totalRecipients += batch.length;
+    const notifId = (json.id as string | undefined) ?? '';
+
+    // OneSignal returns HTTP 200 with id='' when no subscribers are registered.
+    // Surface this as a recoverable warning so callers can log it clearly.
+    if (notifId === '' && Array.isArray(json.errors) && (json.errors as string[]).length > 0) {
+      const msg = (json.errors as string[])[0];
+      console.warn('[sendNewsletterViaOneSignal] OneSignal warning:', msg);
+      // Still count the batch as attempted; caller decides how to handle
+      return {
+        success:        false,
+        onesignalId:    null,
+        recipientCount: 0,
+        error:          `OneSignal: ${msg} — verifica que los usuarios estén registrados como suscriptores de email en OneSignal.`,
+      };
+    }
+
+    if (i === 0) firstId = notifId || null;
+    // Use OneSignal's reported recipient count when available (more accurate
+    // than batch.length, which includes IDs that may not be registered)
+    const reported = typeof json.recipients === 'number' ? json.recipients : batch.length;
+    totalRecipients += reported;
   }
 
   return {
