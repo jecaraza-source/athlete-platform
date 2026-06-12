@@ -58,6 +58,14 @@ type Props = {
   attachmentPanels?: Partial<Record<DiagnosticSectionKey, ReactNode>>;
   /** Panel de adjuntos para estudios de laboratorio y gabinete (sección médica) */
   labStudiesPanel?: ReactNode;
+  /**
+   * Sections the current user is allowed to view/edit.
+   * Derived from their role in the server component; defaults to all sections
+   * so the component stays backward-compatible in tests and storybook.
+   */
+  allowedSections?: DiagnosticSectionKey[];
+  /** Whether the "Resultado Integrado" tab is visible for this user. */
+  canViewIntegratedResult?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -117,9 +125,11 @@ export default function DiagnosticTabs({
   integratedResults,
   attachmentPanels = {},
   labStudiesPanel,
+  allowedSections = SECTION_KEYS,
+  canViewIntegratedResult = false,
 }: Props) {
   type TabKey = DiagnosticSectionKey | 'resultado_integrado';
-  const [activeTab, setActiveTab] = useState<TabKey>('medico');
+  const [activeTab, setActiveTab] = useState<TabKey>(allowedSections[0] ?? 'medico');
 
   const sectionMap = Object.fromEntries(sections.map((s) => [s.section, s])) as Record<
     DiagnosticSectionKey,
@@ -175,9 +185,9 @@ export default function DiagnosticTabs({
         )}
       </div>
 
-      {/* ── Tarjetas semáforo por sección ──────────────────────────── */}
+      {/* ── Tarjetas semáforo por sección (solo secciones permitidas) ────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6 print:hidden">
-        {SECTION_KEYS.map((section) => (
+        {allowedSections.map((section) => (
           <SectionCard
             key={section}
             section={section}
@@ -188,9 +198,9 @@ export default function DiagnosticTabs({
         ))}
       </div>
 
-      {/* ── Botones de navegación de tabs ─────────────────────────── */}
+      {/* ── Botones de navegación de tabs (solo secciones permitidas) ────────── */}
       <div className="flex flex-wrap gap-1 mb-6 border-b border-gray-200 pb-px print:hidden">
-        {SECTION_KEYS.map((section) => (
+        {allowedSections.map((section) => (
           <button
             key={section}
             type="button"
@@ -204,17 +214,19 @@ export default function DiagnosticTabs({
             {SECTION_LABELS[section]}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={() => setActiveTab('resultado_integrado')}
-          className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
-            activeTab === 'resultado_integrado'
-              ? 'bg-white border border-b-white border-gray-200 text-emerald-700 -mb-px'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Resultado Integrado
-        </button>
+        {canViewIntegratedResult && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('resultado_integrado')}
+            className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
+              activeTab === 'resultado_integrado'
+                ? 'bg-white border border-b-white border-gray-200 text-emerald-700 -mb-px'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Resultado Integrado
+          </button>
+        )}
       </div>
 
       {/* ── Formulario activo ─────────────────────────────────────── */}
@@ -270,7 +282,7 @@ export default function DiagnosticTabs({
             {attachmentPanels['fisioterapia']}
           </>
         )}
-        {activeTab === 'resultado_integrado' && (
+        {activeTab === 'resultado_integrado' && canViewIntegratedResult && (
           <IntegratedResultForm
             athleteId={athlete.id}
             existingData={integratedResults}

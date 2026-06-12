@@ -1,5 +1,7 @@
+import { redirect } from 'next/navigation';
+import { getLocale } from 'next-intl/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requirePermission } from '@/lib/rbac/server';
+import { requirePermission, getDiagnosticAccess } from '@/lib/rbac/server';
 import BackButton from '@/components/back-button';
 import DiagnosticTabs from './diagnostic-tabs';
 import AttachmentsLoader from '@/components/attachments/attachments-loader';
@@ -14,6 +16,14 @@ export default async function DiagnosticPage({
 }) {
   await requirePermission('view_athletes');
   const { id } = await params;
+
+  // Enforce section-level access control.
+  // Roles without any allowed section are redirected to the athlete profile
+  // where they can still see the overall completion status.
+  const { allowedSections, canViewIntegratedResult } = await getDiagnosticAccess();
+  if (allowedSections.length === 0) {
+    redirect(`/${await getLocale()}/athletes/${id}`);
+  }
 
   const [
     { data: athlete },
@@ -59,15 +69,26 @@ export default async function DiagnosticPage({
     return data;
   };
 
-  // Fetch todas las evaluaciones e integración en paralelo
+  // Fetch evaluations only for sections the current user is allowed to see.
+  // This prevents sensitive data from being serialised into client component props.
   const [medicalEval, nutritionEval, psychologyEval, coachEval, physioEval, integratedResults] =
     await Promise.all([
-      fetchEval('athlete_medical_evaluation',        'medico'),
-      fetchEval('athlete_nutrition_evaluation',      'nutricion'),
-      fetchEval('athlete_psychology_evaluation',     'psicologia'),
-      fetchEval('athlete_coach_evaluation',          'entrenador'),
-      fetchEval('athlete_physiotherapy_evaluation',  'fisioterapia'),
-      diagnostic?.id
+      allowedSections.includes('medico')
+        ? fetchEval('athlete_medical_evaluation',       'medico')
+        : Promise.resolve(null),
+      allowedSections.includes('nutricion')
+        ? fetchEval('athlete_nutrition_evaluation',     'nutricion')
+        : Promise.resolve(null),
+      allowedSections.includes('psicologia')
+        ? fetchEval('athlete_psychology_evaluation',    'psicologia')
+        : Promise.resolve(null),
+      allowedSections.includes('entrenador')
+        ? fetchEval('athlete_coach_evaluation',         'entrenador')
+        : Promise.resolve(null),
+      allowedSections.includes('fisioterapia')
+        ? fetchEval('athlete_physiotherapy_evaluation', 'fisioterapia')
+        : Promise.resolve(null),
+      canViewIntegratedResult && diagnostic?.id
         ? supabaseAdmin
             .from('athlete_integrated_results')
             .select('*')
@@ -77,24 +98,26 @@ export default async function DiagnosticPage({
         : Promise.resolve(null),
     ]);
 
-  // Construir los paneles de adjuntos por sección (Server Components pasados como ReactNode)
+  // Construir los paneles de adjuntos solo para las secciones que el usuario puede ver.
   const attachmentPanels = Object.fromEntries(
-    SECTION_KEYS.map((key) => [
-      key,
-      <AttachmentsLoader
-        key={key}
-        athleteId={id}
-        module="diagnostic"
-        sectionName={key}
-        relatedRecordId={sectionMap[key]?.id}
-        title="Documentos anexos de esta sección"
-        defaultCollapsed
-      />,
-    ])
+    SECTION_KEYS
+      .filter((key) => allowedSections.includes(key))
+      .map((key) => [
+        key,
+        <AttachmentsLoader
+          key={key}
+          athleteId={id}
+          module="diagnostic"
+          sectionName={key}
+          relatedRecordId={sectionMap[key]?.id}
+          title="Documentos anexos de esta sección"
+          defaultCollapsed
+        />,
+      ])
   ) as Partial<Record<DiagnosticSectionKey, React.ReactNode>>;
 
-  // Panel específico para adjuntar estudios de laboratorio y gabinete (dentro del rubro médico)
-  const labStudiesPanel = (
+  // Panel de estudios de laboratorio y gabinete — solo si el usuario puede ver la sección médica.
+  const labStudiesPanel = allowedSections.includes('medico') ? (
     <AttachmentsLoader
       athleteId={id}
       module="diagnostic"
@@ -103,7 +126,7 @@ export default async function DiagnosticPage({
       title="Adjuntar estudios de laboratorio y gabinete"
       defaultCollapsed={false}
     />
-  );
+  ) : undefined;
 
   return (
     <main className="p-6 max-w-7xl mx-auto">
@@ -124,6 +147,8 @@ export default async function DiagnosticPage({
         integratedResults={integratedResults}
         attachmentPanels={attachmentPanels}
         labStudiesPanel={labStudiesPanel}
+        allowedSections={allowedSections}
+        canViewIntegratedResult={canViewIntegratedResult}
       />
     </main>
   );

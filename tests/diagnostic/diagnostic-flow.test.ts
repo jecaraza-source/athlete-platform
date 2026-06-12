@@ -29,6 +29,8 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/lib/rbac/server', () => ({
   assertPermission: vi.fn().mockResolvedValue(undefined),  // Sin denegar
   requirePermission: vi.fn().mockResolvedValue(undefined),
+  // hasRole: simula acceso completo (super_admin) para todos los tests del flujo
+  hasRole: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock('@/lib/supabase-admin', () => ({
