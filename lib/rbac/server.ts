@@ -30,6 +30,7 @@ import { getLocale } from 'next-intl/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import type { CurrentUser, Permission, ProfileSummary, Role } from './types';
+import type { DiagnosticSectionKey } from '@/lib/types/diagnostic';
 
 /** Build a locale-prefixed path, e.g. loginPath() → '/en/login'. */
 async function loginPath()     { return `/${await getLocale()}/login`; }
@@ -85,7 +86,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   // 1. Resolve the profile row
   const { data: profileRow } = await supabaseAdmin
     .from('profiles')
-    .select('id, first_name, last_name, email, role, avatar_url')
+    .select('id, first_name, last_name, email, role, avatar_url, privacy_consent_accepted_at')
     .eq('auth_user_id', authUser.id)
     .maybeSingle();
 
@@ -366,6 +367,64 @@ export async function getProfilesByRoleCodes(
     .in('role', fallback)
     .order('last_name');
   return (data ?? []) as ProfileStub[];
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostic section access
+// ---------------------------------------------------------------------------
+
+const ALL_DIAGNOSTIC_SECTIONS: DiagnosticSectionKey[] = [
+  'medico', 'nutricion', 'psicologia', 'entrenador', 'fisioterapia',
+];
+
+/** Role codes that grant full visibility of all diagnostic sections. */
+const FULL_DIAGNOSTIC_ACCESS_ROLES = ['super_admin', 'admin', 'program_director'] as const;
+
+/**
+ * Maps a role code to the single diagnostic section it owns.
+ * Roles not present here have no section access.
+ */
+const DIAGNOSTIC_SECTION_BY_ROLE: Partial<Record<string, DiagnosticSectionKey>> = {
+  medic:        'medico',
+  psychologist: 'psicologia',
+  nutritionist: 'nutricion',
+  physio:       'fisioterapia',
+};
+
+/**
+ * Returns the diagnostic section keys the current user is allowed to view/edit,
+ * and whether they can access the integrated result tab.
+ *
+ * Access matrix:
+ *   super_admin / admin / program_director → all 5 sections + resultado integrado
+ *   medic         → ['medico']
+ *   psychologist  → ['psicologia']
+ *   nutritionist  → ['nutricion']
+ *   physio        → ['fisioterapia']
+ *   all others    → [] (redirect to athlete profile; status summary is shown there)
+ */
+export async function getDiagnosticAccess(): Promise<{
+  allowedSections: DiagnosticSectionKey[];
+  canViewIntegratedResult: boolean;
+}> {
+  const user = await getCurrentUser();
+  if (!user) return { allowedSections: [], canViewIntegratedResult: false };
+
+  const codes = user.roles.map((r) => r.code);
+
+  if (codes.some((c) => (FULL_DIAGNOSTIC_ACCESS_ROLES as readonly string[]).includes(c))) {
+    return { allowedSections: ALL_DIAGNOSTIC_SECTIONS, canViewIntegratedResult: true };
+  }
+
+  const sections = [
+    ...new Set(
+      codes
+        .map((c) => DIAGNOSTIC_SECTION_BY_ROLE[c])
+        .filter((s): s is DiagnosticSectionKey => s !== undefined),
+    ),
+  ];
+
+  return { allowedSections: sections, canViewIntegratedResult: false };
 }
 
 export async function getRoleWithPermissions(roleId: string) {

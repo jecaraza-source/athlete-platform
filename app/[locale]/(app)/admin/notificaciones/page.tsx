@@ -116,6 +116,24 @@ export default async function NotificacionesHubPage() {
             <li>· Trigger manual (dev)</li>
           </ul>
         </Link>
+
+        {/* Aviso de Privacidad */}
+        <Link
+          href="/privacy-policy"
+          className="rounded-lg border border-indigo-200 bg-indigo-50 p-6 hover:bg-indigo-100 transition-colors"
+        >
+          <div className="text-2xl mb-3">🔒</div>
+          <h2 className="text-lg font-semibold text-indigo-800">Aviso de Privacidad</h2>
+          <p className="text-sm text-indigo-600 mt-1">
+            Consulta el aviso de privacidad y tratamiento de datos personales.
+          </p>
+          <ul className="mt-3 text-xs text-indigo-500 space-y-0.5">
+            <li>· Datos recopilados y finalidades</li>
+            <li>· Derechos ARCO del titular</li>
+            <li>· Fundamento legal (LFPDPPP)</li>
+            <li>· Contacto: privacidad@aodeporte.com</li>
+          </ul>
+        </Link>
       </div>
     </main>
   );

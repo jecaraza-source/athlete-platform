@@ -15,10 +15,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser }             from '@/lib/rbac/server';
 import { supabaseAdmin }              from '@/lib/supabase-admin';
-import { sendNewsletterViaOneSignal } from '@/lib/newsletter/onesignal';
+import { sendNewsletterViaResend }    from '@/lib/newsletter/resend-sender';
 
-export const runtime    = 'nodejs';
-export const maxDuration = 60;
+export const runtime     = 'nodejs';
+export const maxDuration = 300; // Resend batching may take longer for large lists
 
 // Roles allowed to send newsletters immediately
 const SEND_ROLES = new Set([
@@ -116,32 +116,59 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // 4. Resolve recipients
-  const recipientIds = Array.isArray(draft.recipient_ids) ? draft.recipient_ids as string[] : [];
-  const externalIds  = await resolveRecipients(draft.audiencia, recipientIds);
+  // Guard: html_content must exist before sending
+  if (!draft.html_content?.trim()) {
+    return NextResponse.json(
+      { error: 'El newsletter no tiene contenido HTML. Regenera el borrador antes de enviarlo.' },
+      { status: 422 }
+    );
+  }
 
-  if (externalIds.length === 0) {
+  // 4. Resolve recipients → get their email addresses
+  const recipientIds = Array.isArray(draft.recipient_ids) ? draft.recipient_ids as string[] : [];
+  const profileIds   = await resolveRecipients(draft.audiencia, recipientIds);
+
+  if (profileIds.length === 0) {
     return NextResponse.json(
       { error: 'No subscribers found for this audience.' },
       { status: 422 }
     );
   }
 
-  // 5. Send via OneSignal
-  const result = await sendNewsletterViaOneSignal({
-    asunto:      draft.asunto,
-    previewText: draft.preview_text ?? '',
-    htmlContent: draft.html_content,
-    externalIds,
-  });
+  // Fetch email addresses for all resolved profile IDs
+  const { data: profileRows } = await supabaseAdmin
+    .from('profiles')
+    .select('email')
+    .in('id', profileIds)
+    .not('email', 'is', null);
 
-  if (!result.success) {
+  const emails = (profileRows ?? [])
+    .map((p: { email: string | null }) => p.email)
+    .filter((e): e is string => !!e);
+
+  if (emails.length === 0) {
+    return NextResponse.json(
+      { error: 'No email addresses found for the resolved recipients.' },
+      { status: 422 }
+    );
+  }
+
+  // 5. Send via Resend
+  const result = await sendNewsletterViaResend(
+    draft.asunto,
+    draft.preview_text ?? '',
+    draft.html_content,
+    emails,
+  );
+
+  if (!result.success && result.sentCount === 0) {
     await supabaseAdmin.from('newsletter_logs').insert({
       draft_id:   draftId,
       action:     'error',
       actor_id:   user.profile.id,
       actor_role: user.roles[0]?.code ?? 'unknown',
-      note:       result.error ?? 'OneSignal send failed',
+      note:       result.error ?? 'Resend send failed',
+      metadata:   { failed_emails: result.failedEmails },
     });
     return NextResponse.json({ error: result.error ?? 'Send failed' }, { status: 500 });
   }
@@ -153,8 +180,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .update({
       status:          'sent',
       sent_at:         now,
-      onesignal_id:    result.onesignalId,
-      recipient_count: result.recipientCount,
+      recipient_count: result.sentCount,
     })
     .eq('id', draftId);
 
@@ -164,18 +190,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     action:     'sent',
     actor_id:   user.profile.id,
     actor_role: user.roles[0]?.code ?? 'unknown',
-    note:       `Enviado manualmente a ${result.recipientCount} destinatarios`,
+    note:       `Enviado vía Resend a ${result.sentCount} destinatarios${
+      result.failedCount > 0 ? ` (${result.failedCount} fallaron)` : ''
+    }`,
     metadata:   {
-      onesignal_id:    result.onesignalId,
-      recipient_count: result.recipientCount,
-      audiencia:       draft.audiencia,
+      provider:       'resend',
+      sent_count:     result.sentCount,
+      failed_count:   result.failedCount,
+      failed_emails:  result.failedEmails,
+      audiencia:      draft.audiencia,
     },
   });
 
   return NextResponse.json({
     ok:             true,
     draftId,
-    recipientCount: result.recipientCount,
-    onesignalId:    result.onesignalId,
+    recipientCount: result.sentCount,
+    failedCount:    result.failedCount,
   });
 }

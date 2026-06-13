@@ -28,6 +28,7 @@ export async function updateAthlete(id: string, formData: FormData) {
       discipline:        raw('discipline'),
       disability_status: raw('disability_status'),
       email:             raw('email'),
+      status:            raw('status'),
     };
   } else if (section === 'guardian') {
     payload = {

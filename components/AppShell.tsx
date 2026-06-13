@@ -4,6 +4,7 @@ import { getCurrentUser, hasRole, hasPermission } from '@/lib/rbac/server';
 import SignOutButton from './sign-out-button';
 import NavLinks from './nav-links';
 import LanguageSwitcher from './language-switcher';
+import PrivacyConsentModal from './PrivacyConsentModal';
 
 export default async function AppShell({ children }: { children: ReactNode }) {
   // getCurrentUser() is memoized — hasRole/hasPermission() reuse the same resolved data.
@@ -16,9 +17,11 @@ export default async function AppShell({ children }: { children: ReactNode }) {
 
   const profile  = currentUser?.profile ?? null;
   const authUser = profile; // keeps remaining code compatible
+  const needsConsent = profile != null && !profile.privacy_consent_accepted_at;
 
   return (
     <div className="min-h-screen flex bg-gray-50 text-gray-900">
+      {needsConsent && <PrivacyConsentModal />}
       {/* Sidebar — hidden when printing */}
       <aside className="w-56 shrink-0 bg-gray-50 border-r border-gray-200 flex flex-col print:hidden sticky top-0 h-screen overflow-y-auto">
         {/* Logo */}

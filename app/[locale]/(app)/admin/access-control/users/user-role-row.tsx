@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { assignRole, revokeRole, deleteUser } from './actions';
+import { assignRole, revokeRole, deleteUser, markPasswordAsCustom, clearPasswordChangedAt } from './actions';
 import type { ProfileWithRoles, Role } from '@/lib/rbac/types';
 import ChangePasswordForm from './change-password-form';
 
@@ -172,6 +172,74 @@ function AddRoleControl({
 }
 
 // ---------------------------------------------------------------------------
+// PasswordStatusBadge — shows per-row password state + manual override controls
+// ---------------------------------------------------------------------------
+
+function PasswordStatusBadge({
+  profileId,
+  passwordChangedAt,
+  canEdit,
+}: {
+  profileId: string;
+  passwordChangedAt: string | null | undefined;
+  canEdit: boolean;
+}) {
+  const t = useTranslations('admin.accessControl.usersAndRoles');
+  const [isPending, startTransition] = useTransition();
+  const [localChangedAt, setLocalChangedAt] = useState(passwordChangedAt ?? null);
+
+  function toggleStatus() {
+    startTransition(async () => {
+      if (localChangedAt) {
+        const result = await clearPasswordChangedAt(profileId);
+        if (!result.error) setLocalChangedAt(null);
+      } else {
+        const result = await markPasswordAsCustom(profileId);
+        if (!result.error) setLocalChangedAt(new Date().toISOString());
+      }
+    });
+  }
+
+  if (localChangedAt) {
+    return (
+      <span className="inline-flex items-center gap-1 mt-1">
+        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 ring-1 ring-green-200 font-medium">
+          🔑 {t('customPwBadge')}
+        </span>
+        {canEdit && (
+          <button
+            onClick={toggleStatus}
+            disabled={isPending}
+            title={t('clearCustomPwTitle')}
+            className="text-xs text-gray-400 hover:text-amber-600 hover:underline disabled:opacity-40 transition-colors"
+          >
+            {isPending ? '…' : t('clearCustomPw')}
+          </button>
+        )}
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 mt-1">
+      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 ring-1 ring-amber-200 font-medium">
+        🔒 {t('defaultPwBadge')}
+      </span>
+      {canEdit && (
+        <button
+          onClick={toggleStatus}
+          disabled={isPending}
+          title={t('markAsCustomPwTitle')}
+          className="text-xs text-gray-400 hover:text-green-600 hover:underline disabled:opacity-40 transition-colors"
+        >
+          {isPending ? '…' : t('markAsCustomPw')}
+        </button>
+      )}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // UserRoleRow
 // ---------------------------------------------------------------------------
 
@@ -269,6 +337,11 @@ export default function UserRoleRow({
             {profile.auth_user_id && (
               <ChangePasswordForm authUserId={profile.auth_user_id} />
             )}
+            <PasswordStatusBadge
+              profileId={profile.id}
+              passwordChangedAt={profile.password_changed_at}
+              canEdit={canDelete}
+            />
           </div>
         </div>
       </td>

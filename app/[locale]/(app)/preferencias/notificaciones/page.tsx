@@ -1,8 +1,54 @@
-import Link from 'next/link';
 import { requireAuthenticated } from '@/lib/rbac/server';
 import { supabaseAdmin }         from '@/lib/supabase-admin';
 import BackButton from '@/components/back-button';
 import NotificationPreferencesForm from './notification-preferences-form';
+
+const PRIVACY_SECTIONS = [
+  {
+    heading: '1. Responsable del Tratamiento de Datos',
+    body: `AO Deportes ("nosotros", "la plataforma") es responsable del tratamiento de los datos personales que usted nos proporciona a través de la aplicación móvil AO Deportes y del sitio web aodeporte.com.`,
+  },
+  {
+    heading: '2. Datos Personales que Recopilamos',
+    body: `Podemos recopilar y tratar las siguientes categorías de datos personales:\n\n• Datos de identificación: nombre completo, correo electrónico, número de teléfono.\n• Datos deportivos: disciplina, categoría, resultados y métricas de rendimiento.\n• Datos de salud: información médica, nutricional, fisioterapéutica y psicológica registrada por el staff especializado.\n• Datos de uso: interacciones dentro de la plataforma, registros de acceso y preferencias.\n• Fotografías y archivos multimedia: imágenes de perfil y documentos adjuntos cargados en la plataforma.`,
+  },
+  {
+    heading: '3. Finalidades del Tratamiento',
+    body: `Sus datos personales se utilizan para:\n\n• Gestionar su registro y cuenta dentro de la plataforma.\n• Proveer seguimiento integral del desarrollo deportivo, médico, nutricional y psicológico del atleta.\n• Facilitar la comunicación entre atletas, entrenadores y staff especializado.\n• Generar reportes e indicadores de desempeño.\n• Enviar notificaciones relevantes relacionadas con su plan de entrenamiento y actividades.\n• Cumplir con obligaciones legales aplicables.`,
+  },
+  {
+    heading: '4. Fundamento Legal',
+    body: `El tratamiento de sus datos se basa en:\n\n• Su consentimiento explícito al registrarse en la plataforma.\n• La ejecución de la relación contractual/deportiva entre el atleta y la organización.\n• El cumplimiento de obligaciones legales.\n• Nuestros intereses legítimos en la mejora y operación de la plataforma.`,
+  },
+  {
+    heading: '5. Conservación de los Datos',
+    body: `Sus datos personales se conservarán durante el tiempo que mantenga una cuenta activa en la plataforma, y por el período adicional que resulte necesario para cumplir con obligaciones legales o resolver disputas. Los datos de salud se conservan conforme a los plazos establecidos por la normativa sanitaria aplicable.`,
+  },
+  {
+    heading: '6. Compartición de Datos',
+    body: `No vendemos ni cedemos sus datos personales a terceros con fines comerciales. Podemos compartir sus datos con:\n\n• Personal autorizado de la plataforma (entrenadores, médicos, nutriólogos y demás staff registrado).\n• Proveedores de tecnología que nos apoyan en la operación del servicio (Supabase para almacenamiento y autenticación, Vercel para hospedaje), sujetos a acuerdos de confidencialidad.\n• Autoridades competentes cuando sea requerido por ley.`,
+  },
+  {
+    heading: '7. Seguridad de los Datos',
+    body: `Implementamos medidas técnicas y organizativas adecuadas para proteger sus datos personales contra acceso no autorizado, pérdida, destrucción o alteración. Esto incluye cifrado en tránsito (TLS), control de acceso basado en roles y autenticación segura.`,
+  },
+  {
+    heading: '8. Sus Derechos',
+    body: `De acuerdo con la legislación aplicable, usted tiene derecho a:\n\n• Acceder a sus datos personales.\n• Rectificar datos inexactos o incompletos.\n• Solicitar la supresión de sus datos (derecho al olvido).\n• Oponerse al tratamiento de sus datos.\n• Solicitar la portabilidad de sus datos.\n• Retirar su consentimiento en cualquier momento.\n\nPara ejercer estos derechos, contacte a: privacidad@aodeporte.com`,
+  },
+  {
+    heading: '9. Datos de Menores',
+    body: `La plataforma puede ser utilizada por atletas menores de edad bajo supervisión y con el consentimiento expreso de sus padres o tutores legales. Si usted es padre o tutor y tiene alguna inquietud sobre el tratamiento de datos de un menor, contáctenos de inmediato.`,
+  },
+  {
+    heading: '10. Cambios a este Aviso',
+    body: `Podemos actualizar este Aviso de Privacidad periódicamente. Le notificaremos sobre cambios significativos mediante un aviso visible en la aplicación o por correo electrónico. Le recomendamos revisar este aviso con regularidad.`,
+  },
+  {
+    heading: '11. Contacto',
+    body: `Si tiene preguntas o inquietudes sobre el tratamiento de sus datos personales, puede contactarnos en:\n\nAO Deportes\nCorreo: privacidad@aodeporte.com\nSitio web: aodeporte.com`,
+  },
+];
 
 export const dynamic = 'force-dynamic';
 
@@ -197,6 +243,57 @@ export default async function NotificationPreferencesPage() {
           </ul>
         </section>
       )}
+
+
+      {/* ── Aviso de Privacidad ─────────────────────────────────────── */}
+      <section className="mt-10">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          Aviso de Privacidad
+        </h2>
+
+        <details className="group rounded-xl border border-indigo-100 bg-indigo-50/40 overflow-hidden">
+          {/* Banner — click para expandir/colapsar */}
+          <summary className="flex items-center gap-3 px-5 py-4 bg-indigo-50 cursor-pointer list-none hover:bg-indigo-100/60 transition-colors">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100">
+              <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+              </svg>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-indigo-800">Aviso de Privacidad — AO Deportes</p>
+              {user.profile?.privacy_consent_accepted_at ? (
+                <p className="text-xs text-indigo-500 mt-0.5">
+                  Aceptado el{' '}
+                  {new Date(user.profile.privacy_consent_accepted_at).toLocaleDateString('es-MX', {
+                    day: 'numeric', month: 'long', year: 'numeric',
+                  })}
+                </p>
+              ) : (
+                <p className="text-xs text-amber-600 mt-0.5">Aún no has aceptado el aviso de privacidad.</p>
+              )}
+            </div>
+            <span className="shrink-0 text-xs text-indigo-400 mr-2">Última actualización: abril 2026</span>
+            {/* Chevron que rota al abrir */}
+            <svg className="w-4 h-4 text-indigo-400 shrink-0 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </summary>
+
+          {/* Contenido del aviso — visible solo al abrir */}
+          <div className="px-5 py-5 space-y-5 max-h-[480px] overflow-y-auto border-t border-indigo-100">
+            {PRIVACY_SECTIONS.map((section) => (
+              <div key={section.heading}>
+                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
+                  {section.heading}
+                </h3>
+                <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">
+                  {section.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </details>
+      </section>
     </main>
   );
 }

@@ -3,7 +3,8 @@
 import { useRef, useState, useTransition } from 'react';
 import { updateAthlete } from './actions';
 
-import { DISCIPLINES, getDisciplineLabel, getDisabilityLabel } from '@/lib/types/diagnostic';
+import { getDisciplineLabel, getDisabilityLabel } from '@/lib/types/diagnostic';
+import { getAthleteStatusLabel } from '@/lib/types/athlete';
 
 type AthleteDetail = {
   id: string;
@@ -22,6 +23,7 @@ type AthleteDetail = {
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
   medical_notes_summary: string | null;
+  status: string;
 };
 
 function Field({ label, value }: { label: string; value: string | null }) {
@@ -148,7 +150,13 @@ function FormField({
   );
 }
 
-export function GeneralInfoSection({ athlete }: { athlete: AthleteDetail }) {
+export function GeneralInfoSection({
+  athlete,
+  disciplines,
+}: {
+  athlete: AthleteDetail;
+  disciplines: { value: string; label: string }[];
+}) {
   return (
     <EditSection
       title="Información General"
@@ -164,6 +172,7 @@ export function GeneralInfoSection({ athlete }: { athlete: AthleteDetail }) {
           <Field label="Disciplina" value={getDisciplineLabel(athlete.discipline)} />
           <Field label="Discapacidad" value={getDisabilityLabel(athlete.disability_status)} />
           <Field label="Email (acceso móvil)" value={athlete.email} />
+          <Field label="Estado" value={getAthleteStatusLabel(athlete.status)} />
         </>
       }
       form={
@@ -177,7 +186,7 @@ export function GeneralInfoSection({ athlete }: { athlete: AthleteDetail }) {
             label="Disciplina"
             name="discipline"
             defaultValue={athlete.discipline}
-            options={DISCIPLINES.map((d) => ({ value: d.value, label: `${d.block} — ${d.label}` }))}
+            options={disciplines.map((d) => ({ value: d.value, label: d.label }))}
           />
           <FormField
             label="Persona con o sin Discapacidad"
@@ -186,6 +195,15 @@ export function GeneralInfoSection({ athlete }: { athlete: AthleteDetail }) {
             options={[
               { value: 'sin_discapacidad', label: 'Sin discapacidad' },
               { value: 'con_discapacidad', label: 'Con discapacidad' },
+            ]}
+          />
+          <FormField
+            label="Estado"
+            name="status"
+            defaultValue={athlete.status}
+            options={[
+              { value: 'active', label: 'Activo' },
+              { value: 'inactive', label: 'Inactivo' },
             ]}
           />
           <div className="col-span-2">

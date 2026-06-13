@@ -203,7 +203,7 @@ export default function IntegratedResultForm({
   async function handleAIGenerate(type: 'overall' | 'interdisciplinary') {
     setAiError(null);
     setAiPending(type);
-    const result = await generateAIDiagnosticText(type, buildSectionsPayload());
+    const result = await generateAIDiagnosticText(type, buildSectionsPayload(), athleteId);
     setAiPending(null);
     if (result.error) { setAiError(result.error); return; }
     if (result.text) {

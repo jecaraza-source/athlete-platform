@@ -51,7 +51,7 @@ export default function NewDisciplineForm() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="disc-name">
-            {t('nameLabel')} <span className="text-red-500">*</span>
+              {t('nameLabel')} <span className="text-red-500">*</span>
             </label>
             <input
               id="disc-name"
@@ -64,16 +64,33 @@ export default function NewDisciplineForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="disc-category">
-            {t('categoryLabel')}
+            <label className="block text-sm font-medium mb-1" htmlFor="disc-code">
+              Código <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="disc-code"
+              name="code"
+              type="text"
+              required
+              placeholder="ej. taekwondo"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+            />
+            <p className="mt-1 text-xs text-gray-400">Identificador único (sin espacios, en minúsculas)</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="disc-block">
+              Bloque
             </label>
             <select
-              id="disc-category"
-              name="category_type"
+              id="disc-block"
+              name="block"
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
-              <option value="individual">{t('categoryIndividual')}</option>
-              <option value="team">{t('categoryTeam')}</option>
+              <option value="combate">Combate</option>
+              <option value="resistencia">Resistencia</option>
+              <option value="precision">Precisión</option>
+              <option value="acrobatico">Acrobático</option>
             </select>
           </div>
         </div>
