@@ -1,1 +1,14 @@
 .vercel
+
+# Dependencies — shared package node_modules were accidentally tracked
+packages/shared/node_modules/
+
+# Local environment files (each app has its own .env*.local rules,
+# this covers any root-level env files created by Vercel CLI or similar)
+.env*.local
+.env.vercel.*
+
+# Firebase / Google service account JSON credentials — NEVER commit these
+# They contain RSA private keys that grant full Firebase admin access.
+*-adminsdk-*.json
+service-account*.json
