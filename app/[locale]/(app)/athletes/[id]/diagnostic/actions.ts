@@ -528,12 +528,17 @@ type AISections = {
 
 /**
  * Generates the overall_summary or interdisciplinary_result field using
- * Claude claude-3-5-haiku-20241022. The model receives the extracted section summaries
+ * Claude claude-opus-4-7. The model receives the extracted section summaries
  * and returns a synthesized text in Spanish.
+ *
+ * Rate-limited: max 10 AI text generations per athlete per calendar day.
+ * Each successful generation is logged in athlete_follow_up_log with
+ * action = 'ai_generado' so the counter persists across serverless invocations.
  */
 export async function generateAIDiagnosticText(
   type: 'overall' | 'interdisciplinary',
   sections: AISections,
+  athleteId: string,
 ): Promise<{ text: string | null; error: string | null }> {
   const denied = await assertPermission('edit_athletes');
   if (denied) return { text: null, error: 'Sin permisos.' };
@@ -542,6 +547,35 @@ export async function generateAIDiagnosticText(
 
   const hasSections = Object.values(sections).some((s) => s.trim().length > 0);
   if (!hasSections) return { text: null, error: 'No hay información de diagnósticos para procesar.' };
+
+  // ── Rate limit ─────────────────────────────────────────────────────────────
+  // Max AI generations per athlete per calendar day (UTC).
+  // Counted via the persistent athlete_follow_up_log table so the cap holds
+  // across Vercel serverless cold-starts and concurrent requests.
+  const AI_DAILY_LIMIT = 10;
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+
+  const { count: callsToday } = await supabaseAdmin
+    .from('athlete_follow_up_log')
+    .select('*', { count: 'exact', head: true })
+    .eq('athlete_id', athleteId)
+    .eq('action', 'ai_generado')
+    .gte('created_at', todayStart.toISOString());
+
+  if ((callsToday ?? 0) >= AI_DAILY_LIMIT) {
+    return {
+      text:  null,
+      error: `Límite diario de generaciones IA alcanzado (${AI_DAILY_LIMIT}/día por atleta). Intenta de nuevo mañana.`,
+    };
+  }
+
+  // ── Obtain diagnostic ID for logging (used after generation) ───────────────
+  const { data: diagRow } = await supabaseAdmin
+    .from('athlete_initial_diagnostic')
+    .select('id')
+    .eq('athlete_id', athleteId)
+    .maybeSingle();
 
   const sectionBlock = [
     sections.medical       ? `=== MÉDICO ===\n${sections.medical}`       : '',
@@ -583,6 +617,12 @@ ${sectionBlock}`,
       messages:   [{ role: 'user', content: prompts[type] }],
     });
     const text = (message.content[0] as { type: string; text: string }).text?.trim() ?? null;
+
+    // ── Log the generation for rate-limit accounting ──────────────────────
+    if (text && diagRow) {
+      await logAction(athleteId, diagRow.id, 'resultado_integrado', 'ai_generado');
+    }
+
     return { text, error: null };
   } catch (e) {
     console.error('[generateAIDiagnosticText]', e);

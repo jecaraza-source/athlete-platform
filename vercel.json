@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "next build",
+  "buildCommand": "node scripts/register-deployment.mjs && next build",
   "installCommand": "npm install",
   "outputDirectory": ".next",
   "crons": [

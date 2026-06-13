@@ -1270,6 +1270,18 @@
     "notifications": {
       "title": "Notifications",
       "description": "Control which channels you receive: email and push."
+    },
+    "system": {
+      "title": "About this platform",
+      "version": "Version",
+      "deployedAt": "Published",
+      "environment": "Environment",
+      "commit": "Commit",
+      "branch": "Branch",
+      "noDeployment": "Local development version",
+      "envProduction": "Production",
+      "envPreview": "Preview",
+      "envDevelopment": "Development"
     }
   },
   "privacyConsent": {
