@@ -251,15 +251,15 @@ export default async function NotificationPreferencesPage() {
           Aviso de Privacidad
         </h2>
 
-        <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 overflow-hidden">
-          {/* Banner de aceptación */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-indigo-100 bg-indigo-50">
+        <details className="group rounded-xl border border-indigo-100 bg-indigo-50/40 overflow-hidden">
+          {/* Banner — click para expandir/colapsar */}
+          <summary className="flex items-center gap-3 px-5 py-4 bg-indigo-50 cursor-pointer list-none hover:bg-indigo-100/60 transition-colors">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100">
               <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
               </svg>
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-indigo-800">Aviso de Privacidad — AO Deportes</p>
               {user.profile?.privacy_consent_accepted_at ? (
                 <p className="text-xs text-indigo-500 mt-0.5">
@@ -272,11 +272,15 @@ export default async function NotificationPreferencesPage() {
                 <p className="text-xs text-amber-600 mt-0.5">Aún no has aceptado el aviso de privacidad.</p>
               )}
             </div>
-            <span className="ml-auto shrink-0 text-xs text-indigo-400">Última actualización: abril 2026</span>
-          </div>
+            <span className="shrink-0 text-xs text-indigo-400 mr-2">Última actualización: abril 2026</span>
+            {/* Chevron que rota al abrir */}
+            <svg className="w-4 h-4 text-indigo-400 shrink-0 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </summary>
 
-          {/* Contenido del aviso */}
-          <div className="px-5 py-5 space-y-5 max-h-[480px] overflow-y-auto">
+          {/* Contenido del aviso — visible solo al abrir */}
+          <div className="px-5 py-5 space-y-5 max-h-[480px] overflow-y-auto border-t border-indigo-100">
             {PRIVACY_SECTIONS.map((section) => (
               <div key={section.heading}>
                 <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
@@ -288,7 +292,7 @@ export default async function NotificationPreferencesPage() {
               </div>
             ))}
           </div>
-        </div>
+        </details>
       </section>
     </main>
   );
