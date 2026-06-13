@@ -48,3 +48,4 @@ app-example
 /ios
 /android
 .vercel
+.env*
