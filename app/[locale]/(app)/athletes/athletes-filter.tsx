@@ -2,7 +2,8 @@
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { DISCIPLINES, STATUS_LABELS } from '@/lib/types/diagnostic';
+import { STATUS_LABELS } from '@/lib/types/diagnostic';
+import { getAthleteStatusLabel } from '@/lib/types/athlete';
 import type { DiagnosticStatus } from '@/lib/types/diagnostic';
 
 const DIAGNOSTIC_OPTIONS: { value: DiagnosticStatus }[] = [
@@ -17,11 +18,13 @@ export default function AthletesFilter({
   currentStatus,
   currentDiscipline,
   currentDiagnostic,
+  disciplines,
 }: {
   currentQ: string;
   currentStatus: string;
   currentDiscipline: string;
   currentDiagnostic: string;
+  disciplines: { value: string; label: string }[];
 }) {
   const t       = useTranslations('athletes');
   const tc      = useTranslations('common');
@@ -71,7 +74,7 @@ export default function AthletesFilter({
         className="rounded-md border border-gray-300 px-3 py-2 text-sm"
       >
         <option value="">{t('colDiscipline')}: {t('filterAll')}</option>
-        {DISCIPLINES.map((d) => (
+        {disciplines.map((d) => (
           <option key={d.value} value={d.value}>
             {d.label}
           </option>
@@ -85,8 +88,8 @@ export default function AthletesFilter({
         className="rounded-md border border-gray-300 px-3 py-2 text-sm"
       >
         <option value="">{t('status')}: {t('filterAll')}</option>
-        <option value="active">{t('filterActive')}</option>
-        <option value="inactive">{t('filterInactive')}</option>
+        <option value="active">{getAthleteStatusLabel('active')}</option>
+        <option value="inactive">{getAthleteStatusLabel('inactive')}</option>
       </select>
 
       {/* Diagnostic status */}

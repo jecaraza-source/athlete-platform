@@ -3,12 +3,40 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { assertPermission } from '@/lib/rbac/server';
+import { assertPermission, hasRole } from '@/lib/rbac/server';
 import { SECTION_KEYS, type DiagnosticSectionKey } from '@/lib/types/diagnostic';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Role codes allowed to save each diagnostic section.
+ * super_admin / admin / program_director can edit any section.
+ */
+const SECTION_ALLOWED_ROLES: Record<string, string[]> = {
+  medico:       ['medic',        'super_admin', 'admin', 'program_director'],
+  nutricion:    ['nutritionist', 'super_admin', 'admin', 'program_director'],
+  psicologia:   ['psychologist', 'super_admin', 'admin', 'program_director'],
+  entrenador:   ['coach',        'super_admin', 'admin', 'program_director'],
+  fisioterapia: ['physio',       'super_admin', 'admin', 'program_director'],
+};
+
+/**
+ * Authorization check for a specific diagnostic section.
+ * Verifies both the generic `edit_athletes` permission AND the role-specific
+ * section ownership, so a medic cannot save the nutrition section, etc.
+ */
+async function assertSectionAccess(section: string): Promise<{ error: string } | null> {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+  const allowed = SECTION_ALLOWED_ROLES[section] ?? [];
+  const hasAccess = await hasRole(...allowed);
+  if (!hasAccess) {
+    return { error: 'No tienes permiso para modificar esta sección del diagnóstico.' };
+  }
+  return null;
+}
 
 function str(formData: FormData, key: string): string | null {
   const v = (formData.get(key) as string)?.trim();
@@ -203,7 +231,7 @@ export async function saveMedicalSection(
   complete: boolean,
   formData: FormData,
 ): Promise<{ error: string | null }> {
-  const denied = await assertPermission('edit_athletes');
+  const denied = await assertSectionAccess('medico');
   if (denied) return denied;
 
   const section = await ensureSectionRecord(athleteId, 'medico');
@@ -272,7 +300,7 @@ export async function saveNutritionSection(
   complete: boolean,
   formData: FormData,
 ): Promise<{ error: string | null }> {
-  const denied = await assertPermission('edit_athletes');
+  const denied = await assertSectionAccess('nutricion');
   if (denied) return denied;
 
   const section = await ensureSectionRecord(athleteId, 'nutricion');
@@ -332,7 +360,7 @@ export async function savePsychologySection(
   complete: boolean,
   formData: FormData,
 ): Promise<{ error: string | null }> {
-  const denied = await assertPermission('edit_athletes');
+  const denied = await assertSectionAccess('psicologia');
   if (denied) return denied;
 
   const section = await ensureSectionRecord(athleteId, 'psicologia');
@@ -394,7 +422,7 @@ export async function saveCoachSection(
   complete: boolean,
   formData: FormData,
 ): Promise<{ error: string | null }> {
-  const denied = await assertPermission('edit_athletes');
+  const denied = await assertSectionAccess('entrenador');
   if (denied) return denied;
 
   const section = await ensureSectionRecord(athleteId, 'entrenador');
@@ -463,7 +491,7 @@ export async function savePhysioSection(
   complete: boolean,
   formData: FormData,
 ): Promise<{ error: string | null }> {
-  const denied = await assertPermission('edit_athletes');
+  const denied = await assertSectionAccess('fisioterapia');
   if (denied) return denied;
 
   const section = await ensureSectionRecord(athleteId, 'fisioterapia');
@@ -509,6 +537,8 @@ export async function generateAIDiagnosticText(
 ): Promise<{ text: string | null; error: string | null }> {
   const denied = await assertPermission('edit_athletes');
   if (denied) return { text: null, error: 'Sin permisos.' };
+  const isFullAccess = await hasRole('super_admin', 'admin', 'program_director');
+  if (!isFullAccess) return { text: null, error: 'Sin permisos para el resultado integrado.' };
 
   const hasSections = Object.values(sections).some((s) => s.trim().length > 0);
   if (!hasSections) return { text: null, error: 'No hay información de diagnósticos para procesar.' };
@@ -570,6 +600,8 @@ export async function saveIntegratedResult(
 ): Promise<{ error: string | null }> {
   const denied = await assertPermission('edit_athletes');
   if (denied) return denied;
+  const isFullAccess = await hasRole('super_admin', 'admin', 'program_director');
+  if (!isFullAccess) return { error: 'Sin permisos para el resultado integrado.' };
 
   const { data: diagnostic } = await supabaseAdmin
     .from('athlete_initial_diagnostic')

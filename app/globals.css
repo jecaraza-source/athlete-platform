@@ -12,6 +12,16 @@
     size: A4 portrait;
   }
 
+  /* Hide navigation, filters and action buttons when printing */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Show print-only content */
+  .print-only {
+    display: block !important;
+  }
+
   /* Make form controls render as clean text output */
   input:not([type="checkbox"]):not([type="radio"]),
   textarea,

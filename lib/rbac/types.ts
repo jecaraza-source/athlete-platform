@@ -115,6 +115,17 @@ export type ProfileSummary = {
   /** Public URL of the user's avatar in the `avatars` storage bucket.
    *  Added by migration 022. Undefined/null when no photo has been uploaded. */
   avatar_url?: string | null;
+  /**
+   * Timestamp of the last user-initiated password change (migration 050).
+   * NULL = user still has the default password and has never changed it.
+   * Non-null = user changed their own password via mobile/web.
+   */
+  password_changed_at?: string | null;
+  /**
+   * Timestamp when the user first accepted the privacy notice (migration 052).
+   * NULL = user has not yet accepted — show consent modal on first access.
+   */
+  privacy_consent_accepted_at?: string | null;
 };
 
 /** A profile enriched with its RBAC role assignments. */

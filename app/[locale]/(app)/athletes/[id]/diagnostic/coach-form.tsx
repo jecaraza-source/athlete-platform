@@ -88,9 +88,8 @@ export default function CoachForm({
         <div className="rounded-md bg-blue-50 border border-blue-200 p-3 mb-3">
           <p className="text-xs text-blue-700 font-medium">Bloques de intervención por disciplina:</p>
           <ul className="text-xs text-blue-600 mt-1 space-y-0.5">
-            <li>• Combate: Judo, Karate, Tae Kwon Do, Boxeo</li>
-            <li>• Resistencia: Atletismo, Natación, Canotaje, Parabadminton</li>
-            <li>• Precisión: Tiro con Arco, Tiro Deportivo</li>
+            <li>• Combate: Tae Kwon Do, Boxeo</li>
+            <li>• Resistencia: Atletismo, Natación, Canotaje</li>
             <li>• Acrobático: Gimnasia Artística Femenil, Breaking</li>
           </ul>
         </div>

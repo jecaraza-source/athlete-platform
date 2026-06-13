@@ -15,6 +15,7 @@ import {
   SECTION_LABELS,
   type DiagnosticStatus,
 } from '@/lib/types/diagnostic';
+import { getAthleteStatusLabel, getAthleteStatusBadgeClass } from '@/lib/types/athlete';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,6 +70,15 @@ export default async function AthleteDetailPage({
   // ──────────────────────────────────────────────────────────────────────
   // 1. Query base (columnas originales — siempre presentes en la BD)
   // ──────────────────────────────────────────────────────────────────────
+  const { data: catDisciplinesData } = await supabaseAdmin
+    .from('cat_disciplines')
+    .select('code, name')
+    .order('name', { ascending: true });
+
+  const athleteDisciplines = (catDisciplinesData ?? []).map(
+    (d: Record<string, string>) => ({ value: d.code, label: d.name })
+  );
+
   const [
     { data, error },
     { data: trainingSessions },
@@ -211,16 +221,14 @@ export default async function AthleteDetailPage({
             )}
           </div>
         </div>
-        <span className={`self-start text-xs font-medium px-3 py-1 rounded-full capitalize ${
-          athlete.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-        }`}>
-          {athlete.status}
+        <span className={`self-start text-xs font-medium px-3 py-1 rounded-full ${getAthleteStatusBadgeClass(athlete.status)}`}>
+          {getAthleteStatusLabel(athlete.status)}
         </span>
       </div>
 
       {/* Profile info */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
-        <GeneralInfoSection athlete={athlete} />
+        <GeneralInfoSection athlete={athlete} disciplines={athleteDisciplines} />
         <GuardianSection athlete={athlete} />
         <EmergencyContactSection athlete={athlete} />
       </div>

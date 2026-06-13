@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission, getCurrentUser } from '@/lib/rbac/server';
 
+const DEFAULT_PASSWORD = '12345678';
+
 export async function assignRole(profileId: string, roleId: string) {
   await requirePermission('manage_users');
 
@@ -121,5 +123,106 @@ export async function changeUserPassword(
   });
 
   if (error) return { error: error.message };
+  return { error: null };
+}
+
+/**
+ * Bulk-reset all users whose password_changed_at IS NULL to the default
+ * password (12345678). Users who changed their password themselves via the
+ * mobile or web app (tracked by the DB trigger in migration 050) are skipped.
+ *
+ * The admin API (service role) is used so the DB trigger that normally sets
+ * password_changed_at does NOT fire — the trigger only fires when the
+ * authenticated user's uid matches the updated row.
+ */
+export async function bulkResetToDefaultPassword(): Promise<{
+  reset: number;
+  skipped: number;
+  errors: { email: string; error: string }[];
+}> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return { reset: 0, skipped: 0, errors: [{ email: '', error: 'Not authenticated.' }] };
+
+  const isSuperAdmin = currentUser.roles.some((r) => r.code === 'super_admin');
+  if (!isSuperAdmin) return { reset: 0, skipped: 0, errors: [{ email: '', error: 'Only super admins can reset passwords.' }] };
+
+  // Only target profiles that have never changed their password
+  const { data: profiles, error: fetchError } = await supabaseAdmin
+    .from('profiles')
+    .select('id, auth_user_id, email')
+    .is('password_changed_at', null)
+    .not('auth_user_id', 'is', null);
+
+  if (fetchError) return { reset: 0, skipped: 0, errors: [{ email: '', error: fetchError.message }] };
+  if (!profiles?.length) return { reset: 0, skipped: 0, errors: [] };
+
+  const errors: { email: string; error: string }[] = [];
+  let reset = 0;
+
+  await Promise.all(
+    profiles.map(async (profile) => {
+      const { error: pwErr } = await supabaseAdmin.auth.admin.updateUserById(
+        profile.auth_user_id!,
+        { password: DEFAULT_PASSWORD },
+      );
+      if (pwErr) {
+        errors.push({ email: profile.email ?? profile.id, error: pwErr.message });
+      } else {
+        reset++;
+      }
+    }),
+  );
+
+  revalidatePath('/admin/access-control/users');
+  return { reset, skipped: 0, errors };
+}
+
+/**
+ * Manually mark a user as having a custom (non-default) password.
+ * Useful when the admin knows a specific user changed their password before
+ * the tracking trigger (migration 050) was deployed.
+ * Sets password_changed_at = NOW() via the service-role client.
+ */
+export async function markPasswordAsCustom(
+  profileId: string,
+): Promise<{ error: string | null }> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return { error: 'Not authenticated.' };
+
+  const isSuperAdmin = currentUser.roles.some((r) => r.code === 'super_admin');
+  if (!isSuperAdmin) return { error: 'Only super admins can perform this action.' };
+
+  const { error } = await supabaseAdmin
+    .from('profiles')
+    .update({ password_changed_at: new Date().toISOString() })
+    .eq('id', profileId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath('/admin/access-control/users');
+  return { error: null };
+}
+
+/**
+ * Clear the password_changed_at marker — resets a profile back to
+ * "default password" status so it will be included in the next bulk reset.
+ */
+export async function clearPasswordChangedAt(
+  profileId: string,
+): Promise<{ error: string | null }> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return { error: 'Not authenticated.' };
+
+  const isSuperAdmin = currentUser.roles.some((r) => r.code === 'super_admin');
+  if (!isSuperAdmin) return { error: 'Only super admins can perform this action.' };
+
+  const { error } = await supabaseAdmin
+    .from('profiles')
+    .update({ password_changed_at: null })
+    .eq('id', profileId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath('/admin/access-control/users');
   return { error: null };
 }

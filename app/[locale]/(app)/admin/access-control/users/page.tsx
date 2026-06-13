@@ -14,7 +14,7 @@ export default async function UsersRolesPage() {
     getAllRoles(),
     supabaseAdmin
       .from('profiles')
-      .select('id, first_name, last_name, email, role, auth_user_id')
+      .select('id, first_name, last_name, email, role, auth_user_id, password_changed_at')
       .order('last_name'),
     supabaseAdmin
       .from('user_roles')
@@ -54,6 +54,7 @@ export default async function UsersRolesPage() {
         profiles={profilesWithRoles}
         allRoles={allRoles}
         canDelete={currentUser.roles.some((r) => r.code === 'super_admin')}
+        isSuperAdmin={currentUser.roles.some((r) => r.code === 'super_admin')}
         currentProfileId={currentUser.profile?.id ?? null}
       />
     </main>

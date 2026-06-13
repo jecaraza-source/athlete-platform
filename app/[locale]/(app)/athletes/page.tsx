@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission } from '@/lib/rbac/server';
 import { getTranslations } from 'next-intl/server';
 import { getDisciplineLabel, STATUS_LABELS, STATUS_DOT } from '@/lib/types/diagnostic';
+import { getAthleteStatusLabel, getAthleteStatusBadgeClass } from '@/lib/types/athlete';
 import type { DiagnosticStatus } from '@/lib/types/diagnostic';
 import AthletesFilter from './athletes-filter';
 import Pagination from '@/components/pagination';
@@ -40,10 +41,21 @@ export default async function AthletesPage({
   // fallan (columnas/tablas no existen aún), cae a la query base.
   // ───────────────────────────────────────────────────────────────────────
 
+  // 0. Disciplinas dinámicas desde cat_disciplines
+  const { data: catDisciplinesData } = await supabaseAdmin
+    .from('cat_disciplines')
+    .select('code, name, block')
+    .order('name', { ascending: true });
+
+  const disciplinesForFilter = (catDisciplinesData ?? []).map(
+    (d: Record<string, string>) => ({ value: d.code, label: d.name })
+  );
+
   // 1. Query base con filtros de nombre y estado (server-side)
   let baseQuery = supabaseAdmin
     .from('athletes')
     .select('id, first_name, last_name, status, school_or_club')
+    .order('status', { ascending: false })
     .order('last_name', { ascending: true });
 
   if (q) {
@@ -129,6 +141,7 @@ export default async function AthletesPage({
         currentStatus={status}
         currentDiscipline={discipline}
         currentDiagnostic={diagnostic}
+        disciplines={disciplinesForFilter}
       />
 
       {paginated.length === 0 ? (
@@ -177,7 +190,11 @@ export default async function AthletesPage({
                         )}
                       </div>
                     </td>
-                    <td className="py-3 text-gray-600 capitalize">{athlete.status}</td>
+                    <td className="py-3">
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getAthleteStatusBadgeClass(athlete.status)}`}>
+                        {getAthleteStatusLabel(athlete.status)}
+                      </span>
+                    </td>
                   </tr>
                 );
               })}

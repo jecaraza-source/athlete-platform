@@ -90,10 +90,31 @@ export default function RecipientSelector({
     fetch('/api/newsletter/recipients/list?limit=500')
       .then((r) => r.json())
       .then((data: { profiles?: RecipientProfile[] }) => {
-        setAllProfiles(data.profiles ?? []);
+        const profiles = data.profiles ?? [];
+        setAllProfiles(profiles);
+
+        // Auto-select based on defaultAudiencia once profiles are loaded
+        if (profiles.length === 0) return;
+
+        if (defaultAudiencia === 'all') {
+          setSelectedIds(new Set(profiles.map((p) => p.id)));
+          setActiveSegments(new Set(SEGMENTS.map((s) => s.key)));
+          setAllSelected(true);
+        } else if (defaultAudiencia in SEGMENT_ROLES) {
+          const seg = defaultAudiencia as SegmentKey;
+          const segIds = new Set(
+            profiles
+              .filter((p) => profileBelongsToSegment(p.role, seg))
+              .map((p) => p.id)
+          );
+          setActiveSegments(new Set([seg]));
+          setSelectedIds(segIds);
+        }
+        // 'individual' — leave empty; user selects manually
       })
       .catch(() => setAllProfiles([]))
       .finally(() => setLoadingList(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Derived: which profiles are visible in the list ───────────────────────
