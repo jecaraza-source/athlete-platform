@@ -48,3 +48,12 @@ app-example
 /ios
 /android
 .vercel
+
+# Data exports — may contain PII, never commit
+scripts/export-usuarios.*
+scripts/export-users.*
+scripts/*.csv
+scripts/*.xlsx
+
+# Supabase CLI temp files
+supabase/.temp/
