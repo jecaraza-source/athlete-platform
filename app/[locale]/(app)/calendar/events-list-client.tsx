@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import EditEventCard from './edit-event-card';
 
 type Athlete = { id: string; first_name: string; last_name: string };
@@ -29,6 +30,7 @@ export default function EventsListClient({
   participantsByEvent: Record<string, Athlete[]>;
   sports?: Sport[];
 }) {
+  const t = useTranslations('calendar');
   const [selectedAthleteId, setSelectedAthleteId] = useState('');
   const [selectedSportId,   setSelectedSportId]   = useState('');
 
@@ -53,7 +55,7 @@ export default function EventsListClient({
               onChange={(e) => setSelectedSportId(e.target.value)}
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             >
-              <option value="">All sports</option>
+              <option value="">{t('allDisciplines')}</option>
               {sports.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -67,7 +69,7 @@ export default function EventsListClient({
               onChange={(e) => setSelectedAthleteId(e.target.value)}
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             >
-              <option value="">All athletes</option>
+              <option value="">{t('allAthletes')}</option>
               {athletes.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.first_name} {a.last_name}
@@ -81,12 +83,12 @@ export default function EventsListClient({
               onClick={() => { setSelectedAthleteId(''); setSelectedSportId(''); }}
               className="text-xs text-gray-400 hover:text-gray-600"
             >
-              Clear filters
+              {t('clearFilters')}
             </button>
           )}
 
           <span className="text-xs text-gray-400">
-            {filtered.length} event{filtered.length !== 1 ? 's' : ''}
+            {t('eventsCount', { count: filtered.length })}
           </span>
         </div>
       )}
@@ -94,7 +96,7 @@ export default function EventsListClient({
       {/* Event list */}
       {filtered.length === 0 ? (
         <div className="rounded-xl border border-gray-100 bg-gray-50 px-5 py-8 text-center text-sm text-gray-400">
-          {selectedAthleteId ? 'No events found for this athlete.' : 'No events yet.'}
+          {selectedAthleteId ? t('noEventsForAthlete') : t('noEventsYet')}
         </div>
       ) : (
         <div className="space-y-3">

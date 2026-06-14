@@ -16,6 +16,16 @@ export default async function AdminPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Link
+          href="/admin/console"
+          className="md:col-span-2 rounded-lg border border-indigo-400 bg-indigo-600 p-6 hover:bg-indigo-700 transition-colors flex items-start gap-4"
+        >
+          <span className="text-3xl mt-0.5">📊</span>
+          <div>
+            <h2 className="text-lg font-semibold text-white">Admin Console</h2>
+            <p className="text-sm text-indigo-200 mt-1">KPIs, citas, heatmap, alertas en tiempo real y exportación a Excel.</p>
+          </div>
+        </Link>
+        <Link
           href="/admin/staff"
           className="rounded-lg border border-indigo-200 bg-indigo-50 p-6 hover:bg-indigo-100 transition-colors flex items-start gap-4"
         >
