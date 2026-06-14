@@ -128,7 +128,8 @@ export function AppointmentsDrawer({ open, onClose, from, to, periodLabel, curre
 
   const handleAction = async (apt: Appointment, action: 'show' | 'no_show') => {
     try {
-      await updateAppointmentStatus(apt.id, action, currentUserId);
+      // currentUserId is now resolved server-side via requireAdminAccess() inside the action.
+      await updateAppointmentStatus(apt.id, action);
       toast({ title: action === 'show' ? '✅ Show registrado' : '❌ No show registrado' });
       setActionMenu(null);
       load();
