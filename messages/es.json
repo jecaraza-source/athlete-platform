@@ -243,7 +243,11 @@
     "displayEnd": "Fin:",
     "displayDiscipline": "Disciplina:",
     "displayNotes": "Descripción:",
-    "displayParticipants": "Participantes:"
+    "displayParticipants": "Participantes:",
+    "clearFilters": "Limpiar filtros",
+    "eventsCount": "{count, plural, one {# evento} other {# eventos}}",
+    "noEventsForAthlete": "Sin eventos para este atleta.",
+    "noEventsYet": "Sin eventos todavía."
   },
   "followUp": {
     "title": "Seguimiento",

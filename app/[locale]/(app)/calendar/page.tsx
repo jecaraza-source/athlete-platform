@@ -56,10 +56,14 @@ export default async function CalendarPage() {
   const rawEvents = (data ?? []) as unknown as (Omit<EventRow, 'sport_name'> & {
     sports: { id: string; name: string }[] | { id: string; name: string } | null;
   })[];
-  const events: EventRow[] = rawEvents.map((e) => ({
-    ...e,
-    sport_name: (Array.isArray(e.sports) ? e.sports[0] : e.sports)?.name ?? null,
-  }));
+  const events: EventRow[] = Array.from(
+    new Map(
+      rawEvents.map((e) => [
+        e.id,
+        { ...e, sport_name: (Array.isArray(e.sports) ? e.sports[0] : e.sports)?.name ?? null },
+      ])
+    ).values()
+  );
 
   const athletes    = (athletesData ?? []) as { id: string; first_name: string; last_name: string; discipline: string | null }[];
   const participants = (participantsData ?? []) as { event_id: string; participant_id: string }[];
