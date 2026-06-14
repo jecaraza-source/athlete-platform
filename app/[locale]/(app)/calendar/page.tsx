@@ -56,14 +56,28 @@ export default async function CalendarPage() {
   const rawEvents = (data ?? []) as unknown as (Omit<EventRow, 'sport_name'> & {
     sports: { id: string; name: string }[] | { id: string; name: string } | null;
   })[];
-  const events: EventRow[] = rawEvents.map((e) => ({
-    ...e,
-    sport_name: (Array.isArray(e.sports) ? e.sports[0] : e.sports)?.name ?? null,
-  }));
+  const events: EventRow[] = Array.from(
+    new Map(
+      rawEvents.map((e) => [
+        e.id,
+        { ...e, sport_name: (Array.isArray(e.sports) ? e.sports[0] : e.sports)?.name ?? null },
+      ])
+    ).values()
+  );
 
   const athletes    = (athletesData ?? []) as { id: string; first_name: string; last_name: string; discipline: string | null }[];
   const participants = (participantsData ?? []) as { event_id: string; participant_id: string }[];
-  const sports      = (sportsData    ?? []) as Sport[];
+
+  // Deduplicate sports by normalized name (strips accents, spaces, lowercases)
+  // e.g. "Tae Kwon Do" and "Taekwondo" collapse to the same key
+  const normalizeName = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '');
+  const uniqueSportsMap = new Map<string, Sport>();
+  for (const s of (sportsData ?? []) as Sport[]) {
+    const key = normalizeName(s.name);
+    if (!uniqueSportsMap.has(key)) uniqueSportsMap.set(key, s);
+  }
+  const sports = Array.from(uniqueSportsMap.values());
 
   // Build a map: event_id → athletes who are participants
   const athleteById = Object.fromEntries(athletes.map((a) => [a.id, a]));
