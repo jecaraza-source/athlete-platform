@@ -5,6 +5,37 @@ import type {
   KpiSet, ServiceStat, SpecialistLoad, ServiceType,
 } from '@/lib/types/admin';
 
+// ─── Select fragments ─────────────────────────────────────────────────────────
+// profiles doesn't have full_name or specialty — use first_name/last_name/role
+const APPOINTMENT_SELECT = `
+  id, date, time, status, notes, service_type,
+  original_date, original_appointment_id,
+  confirmed_by, confirmed_at, no_show_reason, reschedule_reason,
+  athlete:profiles!athlete_id(id, first_name, last_name, email, avatar_url),
+  specialist:profiles!specialist_id(id, first_name, last_name, role)
+`;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toAppointment(raw: any): Appointment {
+  const athleteName = [raw.athlete?.first_name, raw.athlete?.last_name].filter(Boolean).join(' ')
+    || raw.athlete?.email || '';
+  const specialistName = [raw.specialist?.first_name, raw.specialist?.last_name].filter(Boolean).join(' ') || '';
+  return {
+    ...raw,
+    athlete: {
+      id:         raw.athlete?.id ?? '',
+      full_name:  athleteName,
+      email:      raw.athlete?.email ?? '',
+      avatar_url: raw.athlete?.avatar_url ?? null,
+    },
+    specialist: {
+      id:        raw.specialist?.id ?? '',
+      full_name: specialistName,
+      specialty: raw.specialist?.role ?? '',
+    },
+  };
+}
+
 const SERVICE_LABELS: Record<ServiceType, string> = {
   medico: 'Consulta Médica',
   nutricion: 'Nutrición',
@@ -100,18 +131,12 @@ export async function fetchRecentAppointments(from: string, to: string): Promise
 
   const { data } = await supabase
     .from('appointments')
-    .select(`
-      id, date, time, status, notes, service_type,
-      original_date, original_appointment_id,
-      confirmed_by, confirmed_at, no_show_reason, reschedule_reason,
-      athlete:profiles!athlete_id(id, full_name, email, avatar_url),
-      specialist:profiles!specialist_id(id, full_name, specialty)
-    `)
+    .select(APPOINTMENT_SELECT)
     .gte('date', from).lte('date', to)
     .order('date', { ascending: false })
     .limit(20);
 
-  return (data ?? []) as unknown as Appointment[];
+  return (data ?? []).map(toAppointment);
 }
 
 // ─── CITAS FILTRADAS (drawer con paginación) ──────────────────────────────────
@@ -127,13 +152,7 @@ export async function fetchFilteredAppointments(
 
   let query = supabase
     .from('appointments')
-    .select(`
-      id, date, time, status, notes, service_type,
-      original_date, original_appointment_id,
-      confirmed_by, confirmed_at, no_show_reason, reschedule_reason,
-      athlete:profiles!athlete_id(id, full_name, email, avatar_url),
-      specialist:profiles!specialist_id(id, full_name, specialty)
-    `, { count: 'exact' })
+    .select(APPOINTMENT_SELECT, { count: 'exact' })
     .gte('date', filters.dateFrom || from)
     .lte('date', filters.dateTo || to)
     .order('date', { ascending: false });
@@ -146,8 +165,7 @@ export async function fetchFilteredAppointments(
 
   const { data, count } = await query;
 
-  // Client-side name search (Supabase can't ILIKE on joined columns directly)
-  let results = (data ?? []) as unknown as Appointment[];
+  let results = (data ?? []).map(toAppointment);
   if (filters.search) {
     const q = filters.search.toLowerCase();
     results = results.filter(a =>
@@ -170,13 +188,7 @@ export async function fetchAllAppointmentsForExport(
 
   let query = supabase
     .from('appointments')
-    .select(`
-      id, date, time, status, notes, service_type,
-      original_date, original_appointment_id,
-      confirmed_by, confirmed_at, no_show_reason, reschedule_reason,
-      athlete:profiles!athlete_id(id, full_name, email, avatar_url),
-      specialist:profiles!specialist_id(id, full_name, specialty)
-    `)
+    .select(APPOINTMENT_SELECT)
     .gte('date', filters.dateFrom || from)
     .lte('date', filters.dateTo || to)
     .order('date', { ascending: false });
@@ -185,7 +197,7 @@ export async function fetchAllAppointmentsForExport(
   if (filters.status !== 'all')      query = query.eq('status', filters.status);
 
   const { data } = await query;
-  let results = (data ?? []) as unknown as Appointment[];
+  let results = (data ?? []).map(toAppointment);
 
   if (filters.search) {
     const q = filters.search.toLowerCase();
@@ -233,7 +245,7 @@ export async function fetchSpecialistRanking(from: string, to: string): Promise<
 
   const { data } = await supabase
     .from('appointments')
-    .select('specialist_id, specialist:profiles!specialist_id(id, full_name, specialty)')
+    .select('specialist_id, specialist:profiles!specialist_id(id, first_name, last_name, role)')
     .gte('date', from).lte('date', to);
 
   const counts: Record<string, { full_name: string; specialty: string; count: number }> = {};
@@ -241,7 +253,8 @@ export async function fetchSpecialistRanking(from: string, to: string): Promise<
   (data ?? []).forEach((row: any) => {
     const id = row.specialist_id;
     if (!counts[id]) {
-      counts[id] = { full_name: row.specialist?.full_name ?? '', specialty: row.specialist?.specialty ?? '', count: 0 };
+      const name = [row.specialist?.first_name, row.specialist?.last_name].filter(Boolean).join(' ') || '';
+      counts[id] = { full_name: name, specialty: row.specialist?.role ?? '', count: 0 };
     }
     counts[id].count++;
   });
