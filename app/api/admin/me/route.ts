@@ -43,15 +43,8 @@ export async function GET() {
     const allCodes = [profile.role, ...rbacCodes].filter(Boolean) as string[];
     const matchedRole = allCodes.find(c => ALLOWED_ROLES.includes(c));
 
-    // Temporary debug — remove after confirming access works
-    console.log('[admin/me] profile.id:', profile.id);
-    console.log('[admin/me] profile.role:', profile.role);
-    console.log('[admin/me] rbacCodes:', rbacCodes);
-    console.log('[admin/me] allCodes:', allCodes);
-    console.log('[admin/me] matchedRole:', matchedRole);
-
     if (!matchedRole) {
-      return NextResponse.json({ error: 'forbidden', allCodes }, { status: 403 });
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
 
     const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || profile.email || user.email || '';
