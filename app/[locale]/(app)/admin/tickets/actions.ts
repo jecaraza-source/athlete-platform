@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getCurrentUser, assertPermission } from '@/lib/rbac/server';
 import { triggerTicketLifecycleEmails } from '@/lib/notifications/ticket-email-service';
+import { oneSignalAdapter } from '@/lib/notifications/providers/onesignal-adapter';
 import {
   canAccessTicket,
   canAssignTicket,
@@ -319,4 +320,69 @@ export async function deleteTicket(ticketId: string): Promise<ActionResult> {
 
   revalidatePath('/admin/tickets');
   return { error: null };
+}
+
+/**
+ * Send a push notification to a profile's registered devices.
+ * Requires: edit_tickets permission (granted to medical staff via migration 057).
+ * Best-effort — does not fail if the user has no registered devices.
+ */
+export async function sendTicketPushNotification(
+  ticketId:        string,
+  recipientProfileId: string,
+  message:         string,
+  notificationType: string = 'update',
+): Promise<ActionResult & { deviceCount?: number }> {
+  const denied = await assertPermission('edit_tickets');
+  if (denied) return denied;
+
+  const user = await getCurrentUser();
+  if (!user?.profile) return { error: 'Perfil no encontrado.' };
+
+  const trimmed = message.trim();
+  if (!trimmed) return { error: 'El mensaje no puede estar vacío.' };
+
+  // Fetch the recipient's active device tokens
+  const { data: tokens } = await supabaseAdmin
+    .from('push_device_tokens')
+    .select('onesignal_player_id')
+    .eq('profile_id', recipientProfileId)
+    .eq('is_active', true)
+    .not('onesignal_player_id', 'is', null);
+
+  const playerIds = (tokens ?? [])
+    .map((t: { onesignal_player_id: string | null }) => t.onesignal_player_id)
+    .filter((id): id is string => !!id);
+
+  if (playerIds.length === 0) {
+    return { error: 'El destinatario no tiene dispositivos registrados con notificaciones activas.', deviceCount: 0 };
+  }
+
+  const result = await oneSignalAdapter.send({
+    player_ids:  playerIds,
+    title:       '🏷️ Ticket actualizado',
+    message:     trimmed,
+    extra_data:  { ticketId, type: notificationType },
+    deep_link:   `/tickets/${ticketId}`,
+  });
+
+  if (!result.success) {
+    return { error: result.error ?? 'Error al enviar la notificación push.' };
+  }
+
+  // Log the push in the ticket activity
+  await supabaseAdmin.from('ticket_activity_log').insert({
+    ticket_id:    ticketId,
+    action:       'push_sent',
+    performed_by: user.profile.id,
+    metadata:     {
+      recipient_profile_id: recipientProfileId,
+      device_count:         playerIds.length,
+      notification_type:    notificationType,
+      message:              trimmed,
+    },
+  });
+
+  revalidatePath(`/admin/tickets/${ticketId}`);
+  return { error: null, deviceCount: playerIds.length };
 }
