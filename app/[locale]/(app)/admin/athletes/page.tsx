@@ -7,6 +7,10 @@ import StaffCard from '../staff/staff-card';
 import type { Profile } from '../staff/staff-card';
 import AthletesConfigFilter from './athletes-config-filter';
 import ExportAthletesButton from './export-athletes-button';
+import { getAthleteStatusLabel } from '@/lib/types/athlete';
+
+// Extended type that includes the athlete's active/inactive status
+export type AthleteProfile = Profile & { athlete_status?: string | null };
 
 export const dynamic = 'force-dynamic';
 
@@ -45,8 +49,27 @@ export default async function AdminAthletesPage({
     }
   }
 
+  // Fetch athlete status (active/inactive) from the athletes table
+  // and merge into profiles by profile_id
+  let statusMap: Record<string, string> = {};
+  if (athletes.length > 0) {
+    const profileIds = athletes.map((a) => a.id);
+    const { data: athleteRows } = await supabaseAdmin
+      .from('athletes')
+      .select('profile_id, status')
+      .in('profile_id', profileIds);
+    statusMap = Object.fromEntries(
+      (athleteRows ?? []).map((r: { profile_id: string; status: string }) => [r.profile_id, r.status])
+    );
+  }
+
+  const athletesWithStatus: AthleteProfile[] = athletes.map((a) => ({
+    ...a,
+    athlete_status: statusMap[a.id] ?? null,
+  }));
+
   // Apply filters in memory
-  let filtered = athletes;
+  let filtered: AthleteProfile[] = athletesWithStatus;
   if (q) {
     const lower = q.toLowerCase();
     filtered = filtered.filter(
@@ -57,7 +80,7 @@ export default async function AdminAthletesPage({
     );
   }
   if (discipline) {
-    filtered = filtered.filter((a) => a.specialty === discipline);
+    filtered = (filtered as AthleteProfile[]).filter((a) => a.specialty === discipline);
   }
 
   const t = await getTranslations('admin');
@@ -92,7 +115,7 @@ export default async function AdminAthletesPage({
           presetRole="athlete"
           buttonLabel={t('athletesSetup.addAthlete')}
         />
-        <ExportAthletesButton athletes={filtered} discipline={discipline} />
+        <ExportAthletesButton athletes={filtered as AthleteProfile[]} discipline={discipline} />
       </div>
 
       {filtered.length === 0 ? (
@@ -121,16 +144,18 @@ export default async function AdminAthletesPage({
                   <th className="pb-2 pr-4">Nombre</th>
                   <th className="pb-2 pr-4">Email</th>
                   <th className="pb-2 pr-4">Teléfono</th>
-                  <th className="pb-2">Disciplina</th>
+                  <th className="pb-2 pr-4">Disciplina</th>
+                  <th className="pb-2">Estado</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((p) => (
+                {(filtered as AthleteProfile[]).map((p) => (
                   <tr key={p.id} className="border-b border-gray-200">
                     <td className="py-1.5 pr-4 font-medium">{p.first_name} {p.last_name}</td>
                     <td className="py-1.5 pr-4 text-gray-600">{p.email ?? '—'}</td>
                     <td className="py-1.5 pr-4 text-gray-600">{p.phone ?? '—'}</td>
-                    <td className="py-1.5 text-gray-600">{p.specialty ?? '—'}</td>
+                    <td className="py-1.5 pr-4 text-gray-600">{p.specialty ?? '—'}</td>
+                    <td className="py-1.5 text-gray-600">{getAthleteStatusLabel(p.athlete_status ?? null)}</td>
                   </tr>
                 ))}
               </tbody>
