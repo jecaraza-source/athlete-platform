@@ -126,9 +126,10 @@ export async function fetchKpis(
     supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).gte('date', prevFrom).lte('date', prevTo),
     supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'show').gte('date', from).lte('date', to),
     supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'show').gte('date', prevFrom).lte('date', prevTo),
-    supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'athlete'),
-    supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'athlete').gte('created_at', from).lte('created_at', to),
-    supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'athlete').gte('created_at', prevFrom).lte('created_at', prevTo),
+    // Count only athletes with status='active' (athletes table, not profiles)
+    supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+    supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true }).eq('status', 'active').gte('created_at', from).lte('created_at', to),
+    supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true }).eq('status', 'active').gte('created_at', prevFrom).lte('created_at', prevTo),
   ]);
 
   const tc = totalCurrent ?? 0;
