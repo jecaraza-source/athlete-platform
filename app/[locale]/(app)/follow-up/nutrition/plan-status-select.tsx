@@ -4,9 +4,9 @@ import { useTransition } from 'react';
 import { updateNutritionPlanStatus } from './actions';
 
 const STATUSES = [
-  { value: 'active', label: 'Active' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'completed', label: 'Completed' },
+  { value: 'active',    label: 'Activo' },
+  { value: 'paused',    label: 'Pausado' },
+  { value: 'completed', label: 'Completado' },
 ];
 
 export default function PlanStatusSelect({
