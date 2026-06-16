@@ -37,10 +37,14 @@ export interface KpiData {
 }
 
 export interface KpiSet {
-  totalAppointments: KpiData;
-  attendanceRate: KpiData;
-  activeAthletes: KpiData;
-  newRegistrations: KpiData;
+  totalAppointments:     KpiData;
+  attendanceRate:        KpiData;
+  activeAthletes:        KpiData;
+  newRegistrations:      KpiData;
+  /** Appointments with status='confirmed' and date >= today (global, no period filter). */
+  scheduledAppointments: KpiData;
+  /** Appointments with status='no_show' in the selected period. */
+  noShowAppointments:    KpiData;
 }
 
 export interface ServiceStat {

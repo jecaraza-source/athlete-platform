@@ -113,6 +113,8 @@ export async function fetchKpis(
 ): Promise<KpiSet> {
   await requireAdminAccess();
 
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
   const [
     { count: totalCurrent },
     { count: totalPrev },
@@ -121,6 +123,9 @@ export async function fetchKpis(
     { count: activeAthletes },
     { count: newCurrent },
     { count: newPrev },
+    { count: scheduledCount },
+    { count: noShowCurrent },
+    { count: noShowPrev },
   ] = await Promise.all([
     supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).gte('date', from).lte('date', to),
     supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).gte('date', prevFrom).lte('date', prevTo),
@@ -130,23 +135,33 @@ export async function fetchKpis(
     supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true }).eq('status', 'active'),
     supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true }).eq('status', 'active').gte('created_at', from).lte('created_at', to),
     supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true }).eq('status', 'active').gte('created_at', prevFrom).lte('created_at', prevTo),
+    // Citas programadas: confirmed + future date (global — not period-filtered)
+    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'confirmed').gte('date', today),
+    // No shows in current period
+    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'no_show').gte('date', from).lte('date', to),
+    // No shows in previous period (for trend)
+    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'no_show').gte('date', prevFrom).lte('date', prevTo),
   ]);
 
-  const tc = totalCurrent ?? 0;
-  const tp = totalPrev ?? 0;
-  const sc = showsCurrent ?? 0;
-  const sp = showsPrev ?? 0;
-  const nc = newCurrent ?? 0;
-  const np = newPrev ?? 0;
+  const tc  = totalCurrent ?? 0;
+  const tp  = totalPrev    ?? 0;
+  const sc  = showsCurrent ?? 0;
+  const sp  = showsPrev    ?? 0;
+  const nc  = newCurrent   ?? 0;
+  const np  = newPrev      ?? 0;
+  const nsc = noShowCurrent ?? 0;
+  const nsp = noShowPrev    ?? 0;
 
   const attendanceRateCurrent = tc > 0 ? Math.round((sc / tc) * 100) : 0;
   const attendanceRatePrev    = tp > 0 ? Math.round((sp / tp) * 100) : 0;
 
   return {
-    totalAppointments: { value: tc, previousValue: tp, ...calcTrend(tc, tp) },
-    attendanceRate:    { value: attendanceRateCurrent, previousValue: attendanceRatePrev, ...calcTrend(attendanceRateCurrent, attendanceRatePrev) },
-    activeAthletes:    { value: activeAthletes ?? 0, previousValue: 0, trend: 'neutral', trendPercent: 0 },
-    newRegistrations:  { value: nc, previousValue: np, ...calcTrend(nc, np) },
+    totalAppointments:     { value: tc,  previousValue: tp,  ...calcTrend(tc, tp) },
+    attendanceRate:        { value: attendanceRateCurrent, previousValue: attendanceRatePrev, ...calcTrend(attendanceRateCurrent, attendanceRatePrev) },
+    activeAthletes:        { value: activeAthletes ?? 0, previousValue: 0, trend: 'neutral', trendPercent: 0 },
+    newRegistrations:      { value: nc,  previousValue: np,  ...calcTrend(nc, np) },
+    scheduledAppointments: { value: scheduledCount ?? 0, previousValue: 0, trend: 'neutral', trendPercent: 0 },
+    noShowAppointments:    { value: nsc, previousValue: nsp, ...calcTrend(nsc, nsp) },
   };
 }
 
