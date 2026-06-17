@@ -15,7 +15,7 @@ import { resolveAudience }             from './audience';
 import { renderPushTemplate }          from './template-utils';
 import type { PushCampaign, PushJob }  from './types';
 
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 500;
 
 // ---------------------------------------------------------------------------
 // Enqueue

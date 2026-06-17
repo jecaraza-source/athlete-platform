@@ -67,7 +67,8 @@ export async function resolveAthleteRecipients(
 ): Promise<ResolvedRecipient[]> {
   let query = supabaseAdmin
     .from('athletes')
-    .select('id, first_name, last_name, email, status, sport');
+    .select('id, profile_id, first_name, last_name, email, status, sport')
+    .not('profile_id', 'is', null);
 
   if (filters.status) {
     query = query.eq('status', filters.status);
@@ -80,9 +81,9 @@ export async function resolveAthleteRecipients(
   if (error || !athletes) return [];
 
   return athletes
-    .filter((a) => a.email)
+    .filter((a) => a.email && a.profile_id)
     .map((a) => ({
-      profile_id:    a.id,
+      profile_id:    a.profile_id!,
       email:         a.email!,
       first_name:    a.first_name ?? '',
       last_name:     a.last_name ?? '',
