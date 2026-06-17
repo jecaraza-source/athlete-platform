@@ -919,6 +919,12 @@
       "actionNotePrompt": "{action} — add a note (optional):",
       "notePlaceholder": "Reason / comment...",
       "confirmBtn": "Confirm",
+      "adminDeleteBtn": "🗑 Delete expense (Admin)",
+      "adminDeleteWarning": "⚠️ This action permanently deletes the expense regardless of its status. The deletion will be recorded in the audit log with the provided justification.",
+      "adminDeleteJustificationLabel": "Deletion justification *",
+      "adminDeleteJustificationPlaceholder": "Describe the reason for deleting this expense…",
+      "adminDeleteJustificationRequired": "A justification is required to delete the expense.",
+      "adminDeleteConfirmBtn": "Confirm deletion",
       "form": {
         "titleLabel": "Title",
         "titlePlaceholder": "Brief expense description",

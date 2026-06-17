@@ -919,6 +919,12 @@
       "actionNotePrompt": "{action} — añade una nota (opcional):",
       "notePlaceholder": "Motivo / comentario...",
       "confirmBtn": "Confirmar",
+      "adminDeleteBtn": "🗑 Eliminar gasto (Admin)",
+      "adminDeleteWarning": "⚠️ Esta acción elimina el gasto permanentemente en cualquier estado. La eliminación quedará registrada en la bitácora con la justificación proporcionada.",
+      "adminDeleteJustificationLabel": "Justificación de eliminación *",
+      "adminDeleteJustificationPlaceholder": "Describe el motivo por el que se elimina este gasto…",
+      "adminDeleteJustificationRequired": "La justificación es requerida para eliminar el gasto.",
+      "adminDeleteConfirmBtn": "Confirmar eliminación",
       "form": {
         "titleLabel": "Título",
         "titlePlaceholder": "Descripción breve del gasto",
