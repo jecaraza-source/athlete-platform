@@ -720,7 +720,13 @@
       "roleTrainer": "Trainer",
       "roleNutritionist": "Nutritionist",
       "rolePhysio": "Physio",
-      "roleMedic": "Medic"
+      "roleMedic": "Medic",
+      "roleCoach": "External coach",
+      "roleEventCoordinator": "Event coordinator",
+      "searchPlaceholder": "Search by name…",
+      "allSpecialties": "All specialties",
+      "allRoles": "All roles",
+      "noResults": "No staff members match the filters."
     },
     "disciplines": {
       "title": "Discipline Configuration",

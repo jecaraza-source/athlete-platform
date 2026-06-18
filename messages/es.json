@@ -720,7 +720,13 @@
       "roleTrainer": "Entrenador",
       "roleNutritionist": "Nutricionista",
       "rolePhysio": "Fisioterapeuta",
-      "roleMedic": "Médico"
+      "roleMedic": "Médico",
+      "roleCoach": "Entrenador externo",
+      "roleEventCoordinator": "Coordinador de eventos",
+      "searchPlaceholder": "Buscar por nombre…",
+      "allSpecialties": "Todas las especialidades",
+      "allRoles": "Todos los roles",
+      "noResults": "No hay miembros que coincidan con los filtros."
     },
     "disciplines": {
       "title": "Configuración de Disciplinas",
