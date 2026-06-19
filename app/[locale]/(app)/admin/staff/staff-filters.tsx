@@ -64,7 +64,7 @@ export default function StaffFilters({
         />
 
         {/* Specialty filter */}
-        {hasExtendedColumns && specialties.length > 0 && (
+        {hasExtendedColumns && (
           <select
             value={specialty}
             onChange={(e) => setSpecialty(e.target.value)}
@@ -80,7 +80,7 @@ export default function StaffFilters({
         )}
 
         {/* Role filter */}
-        {roles.length > 1 && (
+        {roles.length > 0 && (
           <select
             value={role}
             onChange={(e) => setRole(e.target.value)}
@@ -108,7 +108,9 @@ export default function StaffFilters({
       </div>
 
       {/* Results */}
-      {filtered.length === 0 ? (
+      {staff.length === 0 ? (
+        <p className="text-sm text-gray-500">{t('noStaff')}</p>
+      ) : filtered.length === 0 ? (
         <p className="text-sm text-gray-500">{t('noResults')}</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

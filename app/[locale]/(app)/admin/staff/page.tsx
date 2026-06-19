@@ -94,11 +94,7 @@ export default async function StaffPage() {
               buttonLabel={t('addStaff')}
             />
           </div>
-          {staff.length === 0 ? (
-            <p className="text-sm text-gray-500">{t('noStaff')}</p>
-          ) : (
-            <StaffFilters staff={staff} hasExtendedColumns={hasExtendedColumns} />
-          )}
+          <StaffFilters staff={staff} hasExtendedColumns={hasExtendedColumns} />
         </section>
 
         {ungrouped.length > 0 && (
