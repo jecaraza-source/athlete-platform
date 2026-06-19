@@ -26,6 +26,20 @@ export default function StaffFilters({
     [staff],
   );
 
+  // Role code → Spanish label map (mirrors admin.staff translation keys)
+  const ROLE_LABELS: Record<string, string> = {
+    super_admin:       t('roleSuperAdmin'),
+    admin:             t('roleAdmin'),
+    athlete:           t('roleAthlete'),
+    psychologist:      t('rolePsychologist'),
+    trainer:           t('roleTrainer'),
+    nutritionist:      t('roleNutritionist'),
+    physio:            t('rolePhysio'),
+    medic:             t('roleMedic'),
+    coach:             t('roleCoach'),
+    event_coordinator: t('roleEventCoordinator'),
+  };
+
   // Unique non-empty roles present in this staff list
   const roles = useMemo(
     () =>
@@ -89,7 +103,7 @@ export default function StaffFilters({
             <option value="">{t('allRoles')}</option>
             {roles.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {ROLE_LABELS[r] ?? r}
               </option>
             ))}
           </select>
