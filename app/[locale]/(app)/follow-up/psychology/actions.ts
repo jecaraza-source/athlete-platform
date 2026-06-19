@@ -4,6 +4,30 @@ import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { assertPermission } from '@/lib/rbac/server';
 
+export async function updatePsychologyCase(id: string, formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
+  const existingSummary = (formData.get('summary') as string) || null;
+  const editReason = (formData.get('edit_reason') as string)?.trim();
+  const todayStr = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  let summary = existingSummary;
+  if (editReason) {
+    const entry = `[Modificado ${todayStr}: ${editReason}]`;
+    summary = existingSummary ? `${existingSummary}\n${entry}` : entry;
+  }
+
+  const { error } = await supabaseAdmin
+    .from('psychology_cases')
+    .update({ summary })
+    .eq('id', id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath('/follow-up/psychology');
+  return { error: null };
+}
+
 export async function createPsychologyCase(formData: FormData) {
   const denied = await assertPermission('edit_athletes');
   if (denied) return denied;
@@ -31,11 +55,20 @@ export async function updatePsychologySession(id: string, formData: FormData) {
   const moodRaw = formData.get('mood_score') as string;
   const stressRaw = formData.get('stress_score') as string;
 
+  const editReason = (formData.get('edit_reason') as string)?.trim();
+  const todayStr = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const topicBase = (formData.get('topic_summary') as string) || null;
+  let topicSummary = topicBase;
+  if (editReason) {
+    const entry = `[Modificado ${todayStr}: ${editReason}]`;
+    topicSummary = topicBase ? `${topicBase}\n${entry}` : entry;
+  }
+
   const payload = {
     session_date: formData.get('session_date') as string,
     mood_score: moodRaw ? parseInt(moodRaw, 10) : null,
     stress_score: stressRaw ? parseInt(stressRaw, 10) : null,
-    topic_summary: (formData.get('topic_summary') as string) || null,
+    topic_summary: topicSummary,
     recommendations: (formData.get('recommendations') as string) || null,
     next_session_date: (formData.get('next_session_date') as string) || null,
   };

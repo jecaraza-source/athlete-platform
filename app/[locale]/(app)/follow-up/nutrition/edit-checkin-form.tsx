@@ -1,27 +1,27 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { updateTrainingSession } from './actions';
+import { updateNutritionCheckin } from './actions';
 
-type TrainingSession = {
+type NutritionCheckin = {
   id: string;
-  title: string;
-  session_date: string;
-  start_time: string | null;
-  end_time: string | null;
-  location: string | null;
+  checkin_date: string;
+  weight_kg: number | null;
+  body_fat_percent: number | null;
+  adherence_score: number | null;
   notes: string | null;
+  next_actions: string | null;
 };
 
-export default function EditSessionForm({ session }: { session: TrainingSession }) {
-  const [editing, setEditing]     = useState(false);
-  const [error, setError]         = useState<string | null>(null);
+export default function EditCheckinForm({ checkin }: { checkin: NutritionCheckin }) {
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
-      const result = await updateTrainingSession(session.id, formData);
+      const result = await updateNutritionCheckin(checkin.id, formData);
       if (result.error) {
         setError(result.error);
       } else {
@@ -31,25 +31,14 @@ export default function EditSessionForm({ session }: { session: TrainingSession 
     });
   }
 
-  // ── Read view ──────────────────────────────────────────────────────────────
   if (!editing) {
     return (
-      <div className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2.5 text-sm">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-          <span className="font-medium text-gray-700">
-            {new Date(session.session_date).toLocaleDateString()}
-          </span>
-          <span className="text-gray-600">{session.title}</span>
-          {(session.start_time || session.end_time) && (
-            <span className="text-xs text-gray-500">
-              {session.start_time ?? ''}
-              {session.start_time && session.end_time ? ' – ' : ''}
-              {session.end_time ?? ''}
-            </span>
-          )}
-          {session.location && (
-            <span className="text-xs text-gray-500">📍 {session.location}</span>
-          )}
+      <div className="rounded border border-gray-200 bg-white p-2.5 text-sm">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-gray-700">
+          <span className="font-medium">{new Date(checkin.checkin_date).toLocaleDateString()}</span>
+          {checkin.weight_kg != null && <span>{checkin.weight_kg} kg</span>}
+          {checkin.body_fat_percent != null && <span>{checkin.body_fat_percent}% BF</span>}
+          {checkin.adherence_score != null && <span>Adherencia: {checkin.adherence_score}/10</span>}
           <button
             type="button"
             onClick={() => setEditing(true)}
@@ -58,86 +47,89 @@ export default function EditSessionForm({ session }: { session: TrainingSession 
             Editar
           </button>
         </div>
-        {session.notes && (
-          <p className="mt-1 text-xs text-gray-400 italic">{session.notes}</p>
+        {checkin.notes && (
+          <p className="mt-1 text-gray-500 text-xs" title={checkin.notes}>{checkin.notes}</p>
+        )}
+        {checkin.next_actions && (
+          <p className="mt-0.5 text-xs text-gray-400 italic">{checkin.next_actions}</p>
         )}
       </div>
     );
   }
 
-  // ── Edit view ──────────────────────────────────────────────────────────────
   return (
     <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-3 text-sm">
       {error && (
-        <p className="mb-2 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-700">
-          {error}
-        </p>
+        <p className="mb-2 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-700">{error}</p>
       )}
       <form ref={formRef} action={handleSubmit} className="space-y-2">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <div>
-            <label className="block text-xs font-medium mb-0.5">
-              Título <span className="text-red-500">*</span>
-            </label>
-            <input
-              name="title"
-              type="text"
-              required
-              defaultValue={session.title}
-              className="w-full rounded border border-gray-300 px-2 py-1 text-xs"
-            />
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div>
             <label className="block text-xs font-medium mb-0.5">
               Fecha <span className="text-red-500">*</span>
             </label>
             <input
-              name="session_date"
+              name="checkin_date"
               type="date"
               required
-              defaultValue={session.session_date}
+              defaultValue={checkin.checkin_date}
               className="w-full rounded border border-gray-300 px-2 py-1 text-xs"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Lugar</label>
+            <label className="block text-xs font-medium mb-0.5">Peso (kg)</label>
             <input
-              name="location"
-              type="text"
-              defaultValue={session.location ?? ''}
+              name="weight_kg"
+              type="number"
+              step="0.01"
+              min="0"
+              defaultValue={checkin.weight_kg ?? ''}
               className="w-full rounded border border-gray-300 px-2 py-1 text-xs"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Hora inicio</label>
+            <label className="block text-xs font-medium mb-0.5">% Grasa corporal</label>
             <input
-              name="start_time"
-              type="time"
-              defaultValue={session.start_time ?? ''}
+              name="body_fat_percent"
+              type="number"
+              step="0.1"
+              min="0"
+              max="100"
+              defaultValue={checkin.body_fat_percent ?? ''}
               className="w-full rounded border border-gray-300 px-2 py-1 text-xs"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Hora fin</label>
+            <label className="block text-xs font-medium mb-0.5">Adherencia (1–10)</label>
             <input
-              name="end_time"
-              type="time"
-              defaultValue={session.end_time ?? ''}
+              name="adherence_score"
+              type="number"
+              min="1"
+              max="10"
+              step="1"
+              defaultValue={checkin.adherence_score ?? ''}
               className="w-full rounded border border-gray-300 px-2 py-1 text-xs"
             />
           </div>
         </div>
-
         <div>
           <label className="block text-xs font-medium mb-0.5">Notas</label>
           <textarea
             name="notes"
             rows={2}
-            defaultValue={session.notes ?? ''}
+            defaultValue={checkin.notes ?? ''}
             className="w-full rounded border border-gray-300 px-2 py-1 text-xs resize-none"
           />
         </div>
-
+        <div>
+          <label className="block text-xs font-medium mb-0.5">Próximas acciones</label>
+          <textarea
+            name="next_actions"
+            rows={2}
+            defaultValue={checkin.next_actions ?? ''}
+            className="w-full rounded border border-gray-300 px-2 py-1 text-xs resize-none"
+          />
+        </div>
         <div>
           <label className="block text-xs font-medium mb-0.5 text-amber-700">
             Motivo de la edición
@@ -149,7 +141,6 @@ export default function EditSessionForm({ session }: { session: TrainingSession 
             className="w-full rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs resize-none placeholder:text-amber-400"
           />
         </div>
-
         <div className="flex gap-2 pt-1">
           <button
             type="submit"

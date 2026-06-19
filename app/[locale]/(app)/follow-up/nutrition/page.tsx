@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { requirePermission, getProfilesByRoleCodes } from '@/lib/rbac/server';
 import NewPlanForm from './new-plan-form';
 import AthleteFilter from './athlete-filter';
+import EditPlanForm from './edit-plan-form';
 import CheckinForm from './checkin-form';
 import CheckinChart from './checkin-chart';
 import PlanStatusSelect from './plan-status-select';
@@ -140,30 +141,24 @@ export default async function NutritionPage({
           status: plan.status,
           node: (
             <div className="rounded-lg border border-gray-200 p-5">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                <div>
-                  <h2 className="text-lg font-semibold">{plan.title}</h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {plan.athletes ? `${plan.athletes.first_name} ${plan.athletes.last_name}` : tc('unknownAthlete')}
-                  </p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <EditPlanForm
+                    planId={plan.id}
+                    title={plan.title}
+                    startDate={plan.start_date}
+                    endDate={plan.end_date ?? null}
+                    status={plan.status}
+                    athleteName={plan.athletes ? `${plan.athletes.first_name} ${plan.athletes.last_name}` : tc('unknownAthlete')}
+                    nutritionistName={plan.profiles ? `${plan.profiles.first_name} ${plan.profiles.last_name}` : tc('na')}
+                  />
                 </div>
-                <div className="flex items-center gap-2 self-start md:self-auto">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusColors[plan.status] ?? 'bg-gray-100 text-gray-600'}`}>
                     {statusLabels[plan.status] ?? plan.status}
                   </span>
                   <PlanStatusSelect planId={plan.id} currentStatus={plan.status} />
                 </div>
-              </div>
-              <div className="mt-3 text-sm text-gray-700 space-y-1">
-                <p>
-                  <span className="font-medium">{t('nutritionist')}:</span>{' '}
-                  {plan.profiles ? `${plan.profiles.first_name} ${plan.profiles.last_name}` : tc('na')}
-                </p>
-                <p>
-                  <span className="font-medium">{t('period')}:</span>{' '}
-                  {new Date(plan.start_date).toLocaleDateString()}
-                  {plan.end_date ? ` – ${new Date(plan.end_date).toLocaleDateString()}` : ` ${t('ongoing')}`}
-                </p>
               </div>
               {plan.athlete_id && (
                 <CheckinForm

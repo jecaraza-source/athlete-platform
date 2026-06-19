@@ -4,6 +4,21 @@ import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { assertPermission } from '@/lib/rbac/server';
 
+export async function updatePhysioCase(id: string, formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
+  const { error } = await supabaseAdmin
+    .from('physio_cases')
+    .update({ opened_at: formData.get('opened_at') as string })
+    .eq('id', id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath('/follow-up/physio');
+  return { error: null };
+}
+
 export async function createPhysioCase(formData: FormData) {
   const denied = await assertPermission('edit_athletes');
   if (denied) return denied;
@@ -77,12 +92,21 @@ export async function updatePhysioSession(id: string, formData: FormData) {
   const painRaw = formData.get('pain_score') as string;
   const mobilityRaw = formData.get('mobility_score') as string;
 
+  const existingNotes = (formData.get('notes') as string) || null;
+  const editReason = (formData.get('edit_reason') as string)?.trim();
+  const todayStr = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  let notes = existingNotes;
+  if (editReason) {
+    const entry = `[Modificado ${todayStr}: ${editReason}]`;
+    notes = existingNotes ? `${existingNotes}\n${entry}` : entry;
+  }
+
   const payload = {
     session_date: formData.get('session_date') as string,
     treatment_summary: (formData.get('treatment_summary') as string) || null,
     pain_score: painRaw ? parseInt(painRaw, 10) : null,
     mobility_score: mobilityRaw ? parseInt(mobilityRaw, 10) : null,
-    notes: (formData.get('notes') as string) || null,
+    notes,
     next_session_date: (formData.get('next_session_date') as string) || null,
   };
 

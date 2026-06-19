@@ -5,6 +5,7 @@ import { requirePermission } from '@/lib/rbac/server';
 import AthleteFilter from '../nutrition/athlete-filter';
 import NewCaseForm from './new-case-form';
 import NewMedicalSessionForm from './new-session-form';
+import EditCaseForm from './edit-case-form';
 import CaseStatusSelect from './case-status-select';
 import SessionChart from './session-chart';
 import SessionsList from './sessions-list';
@@ -169,27 +170,24 @@ export default async function MedicalPage({
           status: c.status,
           node: (
             <div className="rounded-lg border border-gray-200 p-5">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                <div>
-                  <h2 className="text-lg font-semibold">
-                  {c.athletes ? `${c.athletes.first_name} ${c.athletes.last_name}` : 'Atleta desconocido'}
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {c.profiles ? `Dr. ${c.profiles.first_name} ${c.profiles.last_name}` : t('noAssigned')}
-                    {c.condition ? ` · ${c.condition}` : ''}
-                  </p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <EditCaseForm
+                    caseId={c.id}
+                    condition={c.condition}
+                    notes={c.notes}
+                    athleteName={c.athletes ? `${c.athletes.first_name} ${c.athletes.last_name}` : 'Atleta desconocido'}
+                    profileName={c.profiles ? `Dr. ${c.profiles.first_name} ${c.profiles.last_name}` : t('noAssigned')}
+                    openedAt={c.opened_at}
+                  />
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusColors[c.status] ?? 'bg-gray-100 text-gray-600'}`}>
                     {STATUS_LABELS[c.status] ?? c.status}
                   </span>
-                  <span className="text-sm text-gray-500">{new Date(c.opened_at).toLocaleDateString()}</span>
                   <CaseStatusSelect caseId={c.id} currentStatus={c.status} />
                 </div>
               </div>
-              {c.notes && (
-                <p className="mt-3 text-sm text-gray-600 italic border-l-2 border-gray-200 pl-3">{c.notes}</p>
-              )}
               <SessionChart sessions={c.medical_sessions} />
               <div className="mt-4 border-t border-gray-100 pt-3">
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
