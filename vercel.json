@@ -2,6 +2,7 @@
   "framework": "nextjs",
   "buildCommand": "node scripts/register-deployment.mjs && next build",
   "installCommand": "npm install",
+  "ignoreCommand": "! test -f package.json",
   "outputDirectory": ".next",
   "crons": [
     {
