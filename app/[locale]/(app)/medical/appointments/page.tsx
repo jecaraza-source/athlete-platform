@@ -70,22 +70,22 @@ export default async function AppointmentsListPage({
     ['admin', 'super_admin', 'program_director', 'event_coordinator'].includes(c),
   );
 
-  // Date range: from today (MX) to end of 2026
-  const todayMX    = todayInMX();              // 'YYYY-MM-DD' in Mexico City
-  const rangeStart = `${todayMX}T00:00:00`;
-  const rangeEnd   = '2026-12-31T23:59:59';
+  // Date range: full program Jun 2026 → Dec 2026 (including past appointments)
+  const todayMX      = todayInMX();           // 'YYYY-MM-DD' in Mexico City
+  const PROGRAM_START = '2026-06-01T00:00:00'; // Start of the program
+  const PROGRAM_END   = '2026-12-31T23:59:59';
 
   // Month filter overrides range start/end
-  let filterStart = rangeStart;
-  let filterEnd   = rangeEnd;
+  let filterStart = PROGRAM_START;
+  let filterEnd   = PROGRAM_END;
   if (monthParam !== 'all') {
     const mo = parseInt(monthParam, 10);
-    const lastDay = new Date(2026, mo, 0).getDate(); // day 0 of next month = last day of this month
+    const lastDay = new Date(2026, mo, 0).getDate();
     filterStart = `2026-${String(mo).padStart(2, '0')}-01T00:00:00`;
     filterEnd   = `2026-${String(mo).padStart(2, '0')}-${lastDay}T23:59:59`;
   }
 
-  // Build query — ascending order, from today to Dec
+  // Build query — ascending order, full program period
   let query = supabaseAdmin
     .from('events')
     .select('id, title, start_at, end_at, status, event_participants(participant_id)')
@@ -134,23 +134,28 @@ export default async function AppointmentsListPage({
     grouped.get(dayKey)!.push(ev);
   }
 
-  function renderEvent(ev: EventRow) {
+  function renderEvent(ev: EventRow, isPast: boolean) {
     const pid = ev.event_participants?.[0]?.participant_id;
     const athlete = pid ? athleteMap.get(pid) : undefined;
     const athleteName = athlete
       ? `${athlete.first_name} ${athlete.last_name}`
       : 'Atleta no asignado';
-    const needsAction = ev.status === 'scheduled';
+    const needsAction = ev.status === 'scheduled' && !isPast;
+    const isProcessed = ['show', 'no_show', 'no_show_remote', 'rescheduled'].includes(ev.status);
 
     return (
       <li key={ev.id}>
         <Link
           href={`/medical/appointments/${ev.id}`}
-          className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition-colors group"
+          className={`flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition-colors group ${
+            isPast && !isProcessed ? 'opacity-70' : ''
+          }`}
         >
           {/* Time */}
           <div className="w-14 shrink-0 text-center">
-            <p className="text-sm font-bold text-gray-700">
+            <p className={`text-sm font-bold ${
+              isPast ? 'text-gray-400' : 'text-gray-700'
+            }`}>
               {new Date(ev.start_at).toLocaleTimeString('es-MX', {
                 timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false,
               })}
@@ -160,9 +165,16 @@ export default async function AppointmentsListPage({
           {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-gray-800 truncate">{athleteName}</p>
+              <p className={`text-sm font-semibold truncate ${
+                isPast ? 'text-gray-500' : 'text-gray-800'
+              }`}>{athleteName}</p>
               {needsAction && (
                 <span className="shrink-0 w-2 h-2 rounded-full bg-cyan-500" title="Pendiente" />
+              )}
+              {isPast && !isProcessed && ev.status === 'scheduled' && (
+                <span className="shrink-0 text-[10px] font-medium text-red-500 bg-red-50 border border-red-200 rounded px-1.5 py-0.5">
+                  Pendiente de registrar
+                </span>
               )}
             </div>
             <p className="text-xs text-gray-400 mt-0.5">{ev.title}</p>
@@ -182,18 +194,39 @@ export default async function AppointmentsListPage({
   }
 
   const monthLabel = monthParam === 'all'
-    ? 'Junio – Diciembre 2026'
+    ? 'Programa completo Jun–Dic 2026'
     : `${MONTH_LABELS[monthParam] ?? monthParam} 2026`;
+
+  // Pending-to-register count: past scheduled appointments
+  const pendingPast = events.filter(
+    (ev) => ev.status === 'scheduled' &&
+    new Date(ev.start_at).toLocaleDateString('sv-SE', { timeZone: TZ }) < todayMX
+  ).length;
 
   return (
     <main className="p-6 max-w-3xl mx-auto">
       <BackButton href="/dashboard" label="Volver al dashboard" />
 
       <h1 className="mt-5 text-2xl font-bold text-gray-900">Mis Citas</h1>
-      <p className="text-sm text-gray-500 mt-0.5 mb-5">
+      <p className="text-sm text-gray-500 mt-0.5 mb-3">
         {isAdmin ? 'Todas las citas del sistema' : 'Citas asignadas a tu perfil'}
         {' — '}{monthLabel}
       </p>
+
+      {/* Alert: past appointments pending to register */}
+      {pendingPast > 0 && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-center gap-3">
+          <span className="text-red-500 text-lg">⚠️</span>
+          <div>
+            <p className="text-sm font-semibold text-red-800">
+              {pendingPast} cita{pendingPast > 1 ? 's' : ''} pasada{pendingPast > 1 ? 's' : ''} pendiente{pendingPast > 1 ? 's' : ''} de registrar
+            </p>
+            <p className="text-xs text-red-600 mt-0.5">
+              Ingresa a cada cita para marcar asistencia, no-show o llamada.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <Suspense>
@@ -219,27 +252,45 @@ export default async function AppointmentsListPage({
       ) : (
         <div className="space-y-6">
           {[...grouped.entries()].map(([dayKey, dayEvents]) => {
-            const dayDate = new Date(dayKey + 'T12:00:00'); // noon to avoid TZ issues
+            const dayDate  = new Date(dayKey + 'T12:00:00');
             const dayLabel = dayDate.toLocaleDateString('es-MX', {
               weekday: 'long', day: 'numeric', month: 'long',
             });
-            const isToday = dayKey === todayMX;
+            const isToday  = dayKey === todayMX;
+            const isPast   = dayKey < todayMX;
+
+            // Count unregistered past appointments
+            const unregistered = isPast
+              ? dayEvents.filter((e) => e.status === 'scheduled').length
+              : 0;
 
             return (
               <section key={dayKey}>
                 <div className="flex items-center gap-3 mb-2">
                   <h2 className={`text-sm font-semibold uppercase tracking-wide capitalize ${
-                    isToday ? 'text-cyan-700' : 'text-gray-500'
+                    isToday ? 'text-cyan-700' : isPast ? 'text-gray-400' : 'text-gray-600'
                   }`}>
-                    {isToday ? `● Hoy — ${dayLabel}` : dayLabel}
+                    {isToday
+                      ? `● Hoy — ${dayLabel}`
+                      : isPast
+                      ? `✓ ${dayLabel}`
+                      : dayLabel
+                    }
                   </h2>
                   <span className="text-xs text-gray-400">
                     {dayEvents.length} {dayEvents.length === 1 ? 'cita' : 'citas'}
                   </span>
+                  {unregistered > 0 && (
+                    <span className="text-[10px] font-medium text-red-600 bg-red-50 border border-red-200 rounded px-1.5 py-0.5">
+                      {unregistered} sin registrar
+                    </span>
+                  )}
                 </div>
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div className={`rounded-xl border overflow-hidden shadow-sm ${
+                  isPast ? 'border-gray-200 bg-gray-50' : 'border-gray-200 bg-white'
+                }`}>
                   <ul className="divide-y divide-gray-100">
-                    {dayEvents.map(renderEvent)}
+                    {dayEvents.map((ev) => renderEvent(ev, isPast))}
                   </ul>
                 </div>
               </section>
