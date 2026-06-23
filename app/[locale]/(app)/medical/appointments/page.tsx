@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getCurrentUser } from '@/lib/rbac/server';
 import BackButton from '@/components/back-button';
+import { Suspense } from 'react';
+import AppointmentsFilters from './appointments-filters';
+import { todayInMX, TZ } from '@/lib/timezone';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,8 +44,19 @@ type EventRow = {
 
 type AthleteStub = { id: string; first_name: string; last_name: string };
 
-export default async function AppointmentsListPage() {
+const MONTH_LABELS: Record<string, string> = {
+  '6':'Junio','7':'Julio','8':'Agosto','9':'Septiembre',
+  '10':'Octubre','11':'Noviembre','12':'Diciembre',
+};
+
+export default async function AppointmentsListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string; service?: string; status?: string }>;
+}) {
   const locale = await getLocale();
+  const { month: monthParam = 'all', service: serviceParam = 'all', status: statusParam = 'all' } =
+    await searchParams;
 
   const user = await getCurrentUser();
   if (!user?.profile) redirect(`/${locale}/login`);
@@ -56,22 +70,49 @@ export default async function AppointmentsListPage() {
     ['admin', 'super_admin', 'program_director', 'event_coordinator'].includes(c),
   );
 
-  // Step 1: get events with participant IDs only (no FK join needed)
+  // Date range: from today (MX) to end of 2026
+  const todayMX    = todayInMX();              // 'YYYY-MM-DD' in Mexico City
+  const rangeStart = `${todayMX}T00:00:00`;
+  const rangeEnd   = '2026-12-31T23:59:59';
+
+  // Month filter overrides range start/end
+  let filterStart = rangeStart;
+  let filterEnd   = rangeEnd;
+  if (monthParam !== 'all') {
+    const mo = parseInt(monthParam, 10);
+    const lastDay = new Date(2026, mo, 0).getDate(); // day 0 of next month = last day of this month
+    filterStart = `2026-${String(mo).padStart(2, '0')}-01T00:00:00`;
+    filterEnd   = `2026-${String(mo).padStart(2, '0')}-${lastDay}T23:59:59`;
+  }
+
+  // Build query — ascending order, from today to Dec
   let query = supabaseAdmin
     .from('events')
     .select('id, title, start_at, end_at, status, event_participants(participant_id)')
     .eq('event_type', 'medical')
-    .order('start_at', { ascending: false })
-    .limit(50);
+    .gte('start_at', filterStart)
+    .lte('start_at', filterEnd)
+    .order('start_at', { ascending: true })
+    .limit(500);
 
   if (!isAdmin) {
     query = query.eq('created_by_profile_id', user.profile.id);
   }
 
+  // Service filter (title contains keyword)
+  if (serviceParam !== 'all') {
+    query = query.ilike('title', `%${serviceParam}%`);
+  }
+
+  // Status filter
+  if (statusParam !== 'all') {
+    query = query.eq('status', statusParam);
+  }
+
   const { data, error } = await query;
   const events = (data ?? []) as unknown as EventRow[];
 
-  // Step 2: batch-fetch athlete names for all participants
+  // Step 2: batch-fetch athlete names
   const athleteIds = [...new Set(
     events.flatMap((ev) => ev.event_participants.map((ep) => ep.participant_id))
   )].filter(Boolean);
@@ -85,83 +126,84 @@ export default async function AppointmentsListPage() {
     (athletes ?? []).forEach((a) => athleteMap.set(a.id, a as AthleteStub));
   }
 
-  // Separate upcoming vs past
-  const now = new Date();
-  const CLOSED = ['show', 'no_show', 'no_show_remote', 'rescheduled', 'cancelled'];
-  const upcoming = events.filter((e) => !CLOSED.includes(e.status) || new Date(e.start_at) >= now);
-  const past     = events.filter((e) => CLOSED.includes(e.status) && new Date(e.start_at) < now);
+  // Group events by date (MX timezone)
+  const grouped = new Map<string, EventRow[]>();
+  for (const ev of events) {
+    const dayKey = new Date(ev.start_at).toLocaleDateString('sv-SE', { timeZone: TZ }); // YYYY-MM-DD
+    if (!grouped.has(dayKey)) grouped.set(dayKey, []);
+    grouped.get(dayKey)!.push(ev);
+  }
 
-  function renderList(items: EventRow[]) {
-    if (items.length === 0) {
-      return <p className="text-sm text-gray-400 italic py-2">Sin citas en este período.</p>;
-    }
+  function renderEvent(ev: EventRow) {
+    const pid = ev.event_participants?.[0]?.participant_id;
+    const athlete = pid ? athleteMap.get(pid) : undefined;
+    const athleteName = athlete
+      ? `${athlete.first_name} ${athlete.last_name}`
+      : 'Atleta no asignado';
+    const needsAction = ev.status === 'scheduled';
+
     return (
-      <ul className="divide-y divide-gray-100">
-        {items.map((ev) => {
-          const pid = ev.event_participants?.[0]?.participant_id;
-          const athlete = pid ? athleteMap.get(pid) : undefined;
-          const athleteName = athlete
-            ? `${athlete.first_name} ${athlete.last_name}`
-            : 'Atleta no asignado';
-          const needsAction = ev.status === 'scheduled';
+      <li key={ev.id}>
+        <Link
+          href={`/medical/appointments/${ev.id}`}
+          className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition-colors group"
+        >
+          {/* Time */}
+          <div className="w-14 shrink-0 text-center">
+            <p className="text-sm font-bold text-gray-700">
+              {new Date(ev.start_at).toLocaleTimeString('es-MX', {
+                timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false,
+              })}
+            </p>
+          </div>
 
-          return (
-            <li key={ev.id}>
-              <Link
-                href={`/medical/appointments/${ev.id}`}
-                className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
-              >
-                {/* Date block */}
-                <div className="w-12 text-center shrink-0">
-                  <p className="text-xs font-medium text-gray-400 uppercase">
-                    {new Date(ev.start_at).toLocaleDateString('es-MX', { month: 'short' })}
-                  </p>
-                  <p className="text-2xl font-bold text-gray-800 leading-none">
-                    {new Date(ev.start_at).getDate()}
-                  </p>
-                </div>
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-gray-800 truncate">{athleteName}</p>
+              {needsAction && (
+                <span className="shrink-0 w-2 h-2 rounded-full bg-cyan-500" title="Pendiente" />
+              )}
+            </div>
+            <p className="text-xs text-gray-400 mt-0.5">{ev.title}</p>
+          </div>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{athleteName}</p>
-                    {needsAction && (
-                      <span className="shrink-0 w-2 h-2 rounded-full bg-indigo-500" title="Requiere acción" />
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {new Date(ev.start_at).toLocaleTimeString('es-MX', {
-                      hour:   '2-digit',
-                      minute: '2-digit',
-                    })}
-                    {' · '}
-                    {ev.title}
-                  </p>
-                </div>
+          {/* Status pill */}
+          <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
+            STATUS_PILL[ev.status] ?? 'bg-gray-100 text-gray-600'
+          }`}>
+            {STATUS_LABEL[ev.status] ?? ev.status}
+          </span>
 
-                {/* Status pill */}
-                <span className={`shrink-0 text-xs font-medium px-2.5 py-0.5 rounded-full ${STATUS_PILL[ev.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                  {STATUS_LABEL[ev.status] ?? ev.status}
-                </span>
-
-                {/* Arrow */}
-                <span className="text-gray-300 group-hover:text-gray-500 transition-colors text-sm">›</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+          <span className="text-gray-300 group-hover:text-gray-500 text-sm">›</span>
+        </Link>
+      </li>
     );
   }
+
+  const monthLabel = monthParam === 'all'
+    ? 'Junio – Diciembre 2026'
+    : `${MONTH_LABELS[monthParam] ?? monthParam} 2026`;
 
   return (
     <main className="p-6 max-w-3xl mx-auto">
       <BackButton href="/dashboard" label="Volver al dashboard" />
 
-      <h1 className="mt-5 text-2xl font-bold text-gray-900">Mis citas médicas</h1>
-      <p className="text-sm text-gray-500 mt-1 mb-6">
-        {isAdmin ? 'Todas las citas médicas del sistema.' : 'Citas asignadas a tu perfil.'}
+      <h1 className="mt-5 text-2xl font-bold text-gray-900">Mis Citas</h1>
+      <p className="text-sm text-gray-500 mt-0.5 mb-5">
+        {isAdmin ? 'Todas las citas del sistema' : 'Citas asignadas a tu perfil'}
+        {' — '}{monthLabel}
       </p>
+
+      {/* Filters */}
+      <Suspense>
+        <AppointmentsFilters
+          currentMonth={monthParam}
+          currentService={serviceParam}
+          currentStatus={statusParam}
+          totalCount={events.length}
+        />
+      </Suspense>
 
       {error && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -169,26 +211,41 @@ export default async function AppointmentsListPage() {
         </div>
       )}
 
-      {/* Upcoming */}
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-          Próximas · pendientes de acción
-        </h2>
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          {renderList(upcoming)}
+      {grouped.size === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center text-gray-400">
+          <p className="text-base">Sin citas para los filtros seleccionados.</p>
+          <p className="text-sm mt-1">Prueba cambiando el mes o removiendo filtros.</p>
         </div>
-      </section>
+      ) : (
+        <div className="space-y-6">
+          {[...grouped.entries()].map(([dayKey, dayEvents]) => {
+            const dayDate = new Date(dayKey + 'T12:00:00'); // noon to avoid TZ issues
+            const dayLabel = dayDate.toLocaleDateString('es-MX', {
+              weekday: 'long', day: 'numeric', month: 'long',
+            });
+            const isToday = dayKey === todayMX;
 
-      {/* Past */}
-      {past.length > 0 && (
-        <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            Historial reciente
-          </h2>
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            {renderList(past)}
-          </div>
-        </section>
+            return (
+              <section key={dayKey}>
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className={`text-sm font-semibold uppercase tracking-wide capitalize ${
+                    isToday ? 'text-cyan-700' : 'text-gray-500'
+                  }`}>
+                    {isToday ? `● Hoy — ${dayLabel}` : dayLabel}
+                  </h2>
+                  <span className="text-xs text-gray-400">
+                    {dayEvents.length} {dayEvents.length === 1 ? 'cita' : 'citas'}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                  <ul className="divide-y divide-gray-100">
+                    {dayEvents.map(renderEvent)}
+                  </ul>
+                </div>
+              </section>
+            );
+          })}
+        </div>
       )}
     </main>
   );
