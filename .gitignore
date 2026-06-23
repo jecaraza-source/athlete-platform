@@ -12,3 +12,4 @@ packages/shared/node_modules/
 # They contain RSA private keys that grant full Firebase admin access.
 *-adminsdk-*.json
 service-account*.json
+apps/web
