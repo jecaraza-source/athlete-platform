@@ -15,11 +15,13 @@ export type NewsletterStatus =
 export type NewsletterLogAction =
   | 'generated'
   | 'approved'
+  | 'auto_approved'
   | 'rejected'
   | 'sent'
   | 'error'
   | 'cancelled'
-  | 'viewed';
+  | 'viewed'
+  | 'skipped';
 
 export type Tip = {
   emoji: string;

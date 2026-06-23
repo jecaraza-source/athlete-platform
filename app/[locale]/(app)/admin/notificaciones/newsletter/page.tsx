@@ -29,7 +29,7 @@ export default async function NewsletterAdminPage() {
     )
   );
 
-  // Pending drafts (no html_content — loaded on demand in the panel)
+  // Recent drafts (last 7 days) — auto-approved, sent, or pending
   const { data: pending } = await supabaseAdmin
     .from('newsletter_drafts')
     .select(
@@ -37,8 +37,9 @@ export default async function NewsletterAdminPage() {
       'scheduled_for, approved_by, approved_at, approval_note, rejected_reason, ' +
       'recipient_count, sent_at, created_at, updated_at, onesignal_id'
     )
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false });
+    .in('status', ['pending', 'approved'])
+    .order('created_at', { ascending: false })
+    .limit(10);
 
   return (
     <main className="p-8">
@@ -47,8 +48,13 @@ export default async function NewsletterAdminPage() {
       <div className="mt-4 mb-6">
         <h1 className="text-3xl font-bold text-teal-700">Newsletter Diario</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Revisa, edita y aprueba los newsletters generados automáticamente.
+          El newsletter se genera y envía automáticamente cada día a las 7:00 AM,
+          solo cuando hay actividad reciente de coaches o staff. Aquí puedes ver el historial.
         </p>
+        <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-medium text-emerald-700">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          Envío automático activo — no requiere aprobación manual
+        </div>
       </div>
 
       <NewsletterAdminPanel

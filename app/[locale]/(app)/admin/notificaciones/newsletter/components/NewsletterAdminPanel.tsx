@@ -69,9 +69,9 @@ export default function NewsletterAdminPanel({
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
-          Pendientes
+          Próximos envíos
           {drafts.length > 0 && (
-            <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold rounded-full bg-rose-100 text-rose-700">
+            <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700">
               {drafts.length}
             </span>
           )}
@@ -96,7 +96,8 @@ export default function NewsletterAdminPanel({
           <div className="w-72 shrink-0 space-y-2">
             {drafts.length === 0 ? (
               <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-400 text-sm">
-                No hay newsletters pendientes de aprobación.
+                No hay newsletters programados por ahora.
+                <p className="mt-1 text-xs">Se generarán automáticamente si hay actividad de staff hoy.</p>
               </div>
             ) : (
               drafts.map((draft) => (
@@ -114,8 +115,12 @@ export default function NewsletterAdminPanel({
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${AUDIENCIA_COLORS[draft.audiencia] ?? 'bg-gray-100 text-gray-600'}`}>
                       {AUDIENCIA_LABEL[draft.audiencia] ?? draft.audiencia}
                     </span>
-                    <span className="text-[11px] text-gray-400">
-                      {formatDate(draft.created_at)}
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                      draft.status === 'approved'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {draft.status === 'approved' ? '✓ Auto-aprobado' : 'Pendiente'}
                     </span>
                   </div>
                   <p className="text-sm font-semibold text-gray-800 leading-tight line-clamp-2">
