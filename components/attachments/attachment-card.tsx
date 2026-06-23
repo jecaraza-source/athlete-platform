@@ -14,6 +14,7 @@ import {
 import {
   updateAttachmentDescription,
   deleteAttachment,
+  uploadAttachments,
 } from '@/lib/attachments/actions';
 
 type Props = {
@@ -24,6 +25,8 @@ type Props = {
   showModule?: boolean;
 };
 
+const ACCEPT_STRING = '.pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv';
+
 export default function AttachmentCard({
   attachment,
   signedUrl,
@@ -31,15 +34,19 @@ export default function AttachmentCard({
   canDelete,
   showModule = false,
 }: Props) {
-  const [editing, setEditing]         = useState(false);
-  const [description, setDescription] = useState(attachment.description ?? '');
-  const [editError, setEditError]     = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [isPendingEdit, startEdit]    = useTransition();
-  const [isPendingDelete, startDelete]= useTransition();
-  const [deleted, setDeleted]         = useState(false);
-  const [modalOpen, setModalOpen]     = useState(false);
-  const descRef = useRef<HTMLTextAreaElement>(null);
+  const [editing, setEditing]             = useState(false);
+  const [description, setDescription]     = useState(attachment.description ?? '');
+  const [editError, setEditError]         = useState<string | null>(null);
+  const [deleteError, setDeleteError]     = useState<string | null>(null);
+  const [replaceError, setReplaceError]   = useState<string | null>(null);
+  const [replaceSuccess, setReplaceSuccess] = useState(false);
+  const [isPendingEdit, startEdit]        = useTransition();
+  const [isPendingDelete, startDelete]    = useTransition();
+  const [isPendingReplace, startReplace]  = useTransition();
+  const [deleted, setDeleted]             = useState(false);
+  const [modalOpen, setModalOpen]         = useState(false);
+  const descRef    = useRef<HTMLTextAreaElement>(null);
+  const replaceRef = useRef<HTMLInputElement>(null);
 
   const isImage     = attachment.mime_type.startsWith('image/');
   const previewType = getPreviewType(attachment.mime_type);
@@ -79,6 +86,54 @@ export default function AttachmentCard({
       const result = await deleteAttachment(attachment.id);
       if (result.error) setDeleteError(result.error);
       else setDeleted(true);
+    });
+  }
+
+  function handleReplaceClick() {
+    setReplaceError(null);
+    setReplaceSuccess(false);
+    replaceRef.current?.click();
+  }
+
+  function handleReplaceFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!replaceRef.current) replaceRef.current = e.target;
+    e.target.value = '';
+    if (!file) return;
+
+    setReplaceError(null);
+    setReplaceSuccess(false);
+
+    startReplace(async () => {
+      // 1. Upload the new file with same context
+      const formData = new FormData();
+      formData.append('files', file);
+      const uploadResult = await uploadAttachments(
+        {
+          athleteId:       attachment.athlete_id,
+          module:          attachment.module_name as Parameters<typeof uploadAttachments>[0]['module'],
+          sectionName:     attachment.section_name ?? undefined,
+          relatedRecordId: attachment.related_record_id ?? undefined,
+          description:     attachment.description ?? undefined,
+        },
+        formData
+      );
+
+      if (uploadResult.errors.length > 0 || uploadResult.uploaded === 0) {
+        setReplaceError(uploadResult.errors[0] ?? 'Error al subir el archivo de reemplazo.');
+        return;
+      }
+
+      // 2. Soft-delete the old attachment
+      const deleteResult = await deleteAttachment(attachment.id);
+      if (deleteResult.error) {
+        setReplaceError(`Archivo nuevo subido pero no se pudo eliminar el anterior: ${deleteResult.error}`);
+        return;
+      }
+
+      setReplaceSuccess(true);
+      // Brief delay so the user sees the success message before the card disappears
+      setTimeout(() => setDeleted(true), 1500);
     });
   }
 
@@ -210,9 +265,21 @@ export default function AttachmentCard({
               </ActionBtn>
             )}
 
+            {/* Replace file */}
+            {canEdit && (
+              <ActionBtn
+                title={isPendingReplace ? 'Reemplazando…' : 'Reemplazar archivo'}
+                onClick={handleReplaceClick}
+                disabled={isPendingReplace || isPendingDelete}
+                color="emerald"
+              >
+                {isPendingReplace ? <Spinner /> : <RefreshIcon />}
+              </ActionBtn>
+            )}
+
             {/* Delete */}
             {canDelete && (
-              <ActionBtn title="Eliminar" onClick={handleDelete} disabled={isPendingDelete} color="red">
+              <ActionBtn title="Eliminar" onClick={handleDelete} disabled={isPendingDelete || isPendingReplace} color="red">
                 {isPendingDelete ? <Spinner /> : <TrashIcon />}
               </ActionBtn>
             )}
@@ -223,7 +290,30 @@ export default function AttachmentCard({
         {deleteError && (
           <p className="mx-3 mb-2 text-xs text-red-600 bg-red-50 rounded px-2 py-1">{deleteError}</p>
         )}
+
+        {/* Replace error */}
+        {replaceError && (
+          <p className="mx-3 mb-2 text-xs text-red-600 bg-red-50 rounded px-2 py-1">
+            ⚠️ {replaceError}
+          </p>
+        )}
+
+        {/* Replace success */}
+        {replaceSuccess && (
+          <p className="mx-3 mb-2 text-xs text-emerald-700 bg-emerald-50 rounded px-2 py-1">
+            ✓ Archivo reemplazado correctamente.
+          </p>
+        )}
       </div>
+
+      {/* Hidden file input for replace */}
+      <input
+        ref={replaceRef}
+        type="file"
+        accept={ACCEPT_STRING}
+        className="hidden"
+        onChange={handleReplaceFile}
+      />
 
       {/* ── Preview Modal ──────────────────────────────────────────── */}
       {modalOpen && signedUrl && (
@@ -310,5 +400,14 @@ function TrashIcon() {
 function Spinner() {
   return (
     <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-300 border-t-red-500 animate-spin" />
+  );
+}
+
+function RefreshIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    </svg>
   );
 }
