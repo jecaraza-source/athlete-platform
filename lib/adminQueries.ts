@@ -106,12 +106,13 @@ function toISO(date: string): string   { return `${date}T23:59:59`; }
 
 // ─── Select fragment ───────────────────────────────────────────────────────────────────────────────
 // Joins events.created_by_profile_id → profiles (specialist)
-// and event_participants → profiles (athlete)
+// event_participants.participant_id → athletes (FK: REFERENCES athletes(id))
+// Note: !participant_id hint required because FK column name ≠ table name
 const EVENT_SELECT = `
   id, start_at, status, description, title,
   creator:profiles!created_by_profile_id(id, first_name, last_name, role),
   event_participants(participant_id, participant_type,
-    athlete:profiles!participant_id(id, first_name, last_name, email, avatar_url))
+    athlete:athletes!participant_id(id, first_name, last_name, email))
 `;
 
 function toAppointment(raw: RawEventRow): Appointment {

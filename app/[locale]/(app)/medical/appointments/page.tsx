@@ -37,7 +37,8 @@ type EventRow = {
   end_at: string;
   status: string;
   event_participants: {
-    athletes: { first_name: string; last_name: string } | null;
+    // aliased as 'athlete' with !participant_id FK hint
+    athlete: { first_name: string; last_name: string } | null;
   }[];
 };
 
@@ -57,12 +58,13 @@ export default async function AppointmentsListPage() {
   );
 
   // Build query — admins see all medical events, specialists see their own
+  // Note: !participant_id hint needed because FK column name differs from table name
   let query = supabaseAdmin
     .from('events')
     .select(`
       id, title, start_at, end_at, status,
       event_participants(
-        athletes(first_name, last_name)
+        athlete:athletes!participant_id(first_name, last_name)
       )
     `)
     .eq('event_type', 'medical')
@@ -90,7 +92,7 @@ export default async function AppointmentsListPage() {
     return (
       <ul className="divide-y divide-gray-100">
         {items.map((ev) => {
-          const athlete = ev.event_participants?.[0]?.athletes;
+          const athlete = ev.event_participants?.[0]?.athlete;
           const athleteName = athlete
             ? `${athlete.first_name} ${athlete.last_name}`
             : 'Atleta no asignado';

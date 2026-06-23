@@ -18,7 +18,7 @@ const MEDICAL_ROLE_CODES = [
 const ADMIN_ROLE_CODES = ['admin', 'super_admin', 'program_director', 'event_coordinator'];
 
 // Statuses that make the view read-only
-const CLOSED_STATUSES = ['show', 'no_show', 'rescheduled', 'cancelled'];
+const CLOSED_STATUSES = ['show', 'no_show', 'no_show_remote', 'rescheduled', 'cancelled'];
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,7 +35,8 @@ type AthleteRow = {
 type ParticipantRow = {
   participant_id: string;
   attendance_status: string;
-  athletes: AthleteRow | AthleteRow[] | null;
+  // aliased as 'athlete' with !participant_id FK hint
+  athlete: AthleteRow | AthleteRow[] | null;
 };
 
 type SpecialistRow = {
@@ -99,7 +100,7 @@ export default async function AppointmentDetailPage({
       specialist:profiles!created_by_profile_id(id, first_name, last_name),
       event_participants(
         participant_id, attendance_status,
-        athletes(id, first_name, last_name, email, profile_id)
+        athlete:athletes!participant_id(id, first_name, last_name, email, profile_id)
       )
     `)
     .eq('id', eventId)
@@ -131,7 +132,7 @@ export default async function AppointmentDetailPage({
   // Extract athlete from event_participants (individual medical appointments have one participant)
   const participant = event.event_participants?.[0] ?? null;
   const athleteRaw  = participant
-    ? (Array.isArray(participant.athletes) ? participant.athletes[0] : participant.athletes)
+    ? (Array.isArray(participant.athlete) ? participant.athlete[0] : participant.athlete)
     : null;
   const athlete = athleteRaw as AthleteRow | null;
 
