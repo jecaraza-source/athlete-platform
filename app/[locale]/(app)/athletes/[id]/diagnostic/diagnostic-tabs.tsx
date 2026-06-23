@@ -285,6 +285,7 @@ export default function DiagnosticTabs({
         {activeTab === 'resultado_integrado' && canViewIntegratedResult && (
           <IntegratedResultForm
             athleteId={athlete.id}
+            athleteName={`${athlete.first_name} ${athlete.last_name}`}
             existingData={integratedResults}
             sectionsComplete={isComplete}
             evaluations={evaluations}
