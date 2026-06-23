@@ -35,8 +35,6 @@ type AthleteRow = {
 type ParticipantRow = {
   participant_id: string;
   attendance_status: string;
-  // aliased as 'athlete' with !participant_id FK hint
-  athlete: AthleteRow | AthleteRow[] | null;
 };
 
 type SpecialistRow = {
@@ -98,10 +96,7 @@ export default async function AppointmentDetailPage({
       id, title, event_type, start_at, end_at, status, description,
       created_by_profile_id,
       specialist:profiles!created_by_profile_id(id, first_name, last_name),
-      event_participants(
-        participant_id, attendance_status,
-        athlete:athletes!participant_id(id, first_name, last_name, email, profile_id)
-      )
+      event_participants(participant_id, attendance_status)
     `)
     .eq('id', eventId)
     .single();
@@ -129,12 +124,19 @@ export default async function AppointmentDetailPage({
   const isOwner = event.created_by_profile_id === user.profile.id;
   if (!isOwner && !isAdmin) redirect(`/${locale}/dashboard`);
 
-  // Extract athlete from event_participants (individual medical appointments have one participant)
-  const participant = event.event_participants?.[0] ?? null;
-  const athleteRaw  = participant
-    ? (Array.isArray(participant.athlete) ? participant.athlete[0] : participant.athlete)
-    : null;
-  const athlete = athleteRaw as AthleteRow | null;
+  // Extract athlete from event_participants — fetch separately (no FK in PostgREST cache)
+  const participant     = event.event_participants?.[0] ?? null;
+  const participantId   = participant?.participant_id ?? null;
+
+  let athlete: AthleteRow | null = null;
+  if (participantId) {
+    const { data: athleteData } = await supabaseAdmin
+      .from('athletes')
+      .select('id, first_name, last_name, email, profile_id')
+      .eq('id', participantId)
+      .maybeSingle();
+    athlete = (athleteData as AthleteRow | null) ?? null;
+  }
 
   // Resolve specialist (stored in created_by_profile_id)
   const specialistRaw = Array.isArray(event.specialist)

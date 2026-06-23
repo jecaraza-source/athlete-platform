@@ -36,11 +36,10 @@ type EventRow = {
   start_at: string;
   end_at: string;
   status: string;
-  event_participants: {
-    // aliased as 'athlete' with !participant_id FK hint
-    athlete: { first_name: string; last_name: string } | null;
-  }[];
+  event_participants: { participant_id: string }[];
 };
+
+type AthleteStub = { id: string; first_name: string; last_name: string };
 
 export default async function AppointmentsListPage() {
   const locale = await getLocale();
@@ -57,27 +56,34 @@ export default async function AppointmentsListPage() {
     ['admin', 'super_admin', 'program_director', 'event_coordinator'].includes(c),
   );
 
-  // Build query — admins see all medical events, specialists see their own
-  // Note: !participant_id hint needed because FK column name differs from table name
+  // Step 1: get events with participant IDs only (no FK join needed)
   let query = supabaseAdmin
     .from('events')
-    .select(`
-      id, title, start_at, end_at, status,
-      event_participants(
-        athlete:athletes!participant_id(first_name, last_name)
-      )
-    `)
+    .select('id, title, start_at, end_at, status, event_participants(participant_id)')
     .eq('event_type', 'medical')
     .order('start_at', { ascending: false })
     .limit(50);
 
-  // Filter by created_by_profile_id (used as specialist identifier)
   if (!isAdmin) {
     query = query.eq('created_by_profile_id', user.profile.id);
   }
 
   const { data, error } = await query;
   const events = (data ?? []) as unknown as EventRow[];
+
+  // Step 2: batch-fetch athlete names for all participants
+  const athleteIds = [...new Set(
+    events.flatMap((ev) => ev.event_participants.map((ep) => ep.participant_id))
+  )].filter(Boolean);
+
+  const athleteMap = new Map<string, AthleteStub>();
+  if (athleteIds.length > 0) {
+    const { data: athletes } = await supabaseAdmin
+      .from('athletes')
+      .select('id, first_name, last_name')
+      .in('id', athleteIds);
+    (athletes ?? []).forEach((a) => athleteMap.set(a.id, a as AthleteStub));
+  }
 
   // Separate upcoming vs past
   const now = new Date();
@@ -92,7 +98,8 @@ export default async function AppointmentsListPage() {
     return (
       <ul className="divide-y divide-gray-100">
         {items.map((ev) => {
-          const athlete = ev.event_participants?.[0]?.athlete;
+          const pid = ev.event_participants?.[0]?.participant_id;
+          const athlete = pid ? athleteMap.get(pid) : undefined;
           const athleteName = athlete
             ? `${athlete.first_name} ${athlete.last_name}`
             : 'Atleta no asignado';

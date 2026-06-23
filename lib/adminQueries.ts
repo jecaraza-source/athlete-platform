@@ -105,21 +105,36 @@ function fromISO(date: string): string { return `${date}T00:00:00`; }
 function toISO(date: string): string   { return `${date}T23:59:59`; }
 
 // ─── Select fragment ───────────────────────────────────────────────────────────────────────────────
-// Joins events.created_by_profile_id → profiles (specialist)
-// event_participants.participant_id → athletes (FK: REFERENCES athletes(id))
-// Note: !participant_id hint required because FK column name ≠ table name
+// event_participants.participant_id has no registered FK in PostgREST’s schema cache,
+// so we fetch participant_id only and resolve athlete in a separate query per batch.
 const EVENT_SELECT = `
   id, start_at, status, description, title,
   creator:profiles!created_by_profile_id(id, first_name, last_name, role),
-  event_participants(participant_id, participant_type,
-    athlete:athletes!participant_id(id, first_name, last_name, email))
+  event_participants(participant_id, participant_type)
 `;
 
-function toAppointment(raw: RawEventRow): Appointment {
+// Fetches athlete names for a list of athlete IDs in one round-trip
+async function fetchAthleteMap(
+  ids: string[],
+): Promise<Map<string, Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'email'>>> {
+  if (ids.length === 0) return new Map();
+  const { data } = await supabaseAdmin
+    .from('athletes')
+    .select('id, first_name, last_name, email')
+    .in('id', ids);
+  const map = new Map<string, Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'email'>>();
+  (data ?? []).forEach((a) => map.set(a.id, a as Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'email'>));
+  return map;
+}
+
+function toAppointment(
+  raw: RawEventRow,
+  athleteMap: Map<string, Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'email'>>,
+): Appointment {
   const creator     = one(raw.creator);
   const athletePart = (raw.event_participants ?? [])
     .find((p) => p.participant_type === 'athlete');
-  const athlete = athletePart ? one(athletePart.athlete) : null;
+  const athlete = athletePart ? athleteMap.get(athletePart.participant_id) ?? null : null;
 
   const dt   = new Date(raw.start_at);
   // Extract date and time in Mexico City timezone
@@ -149,7 +164,7 @@ function toAppointment(raw: RawEventRow): Appointment {
       id:         athlete?.id ?? '',
       full_name:  athleteName,
       email:      athlete?.email ?? '',
-      avatar_url: athlete?.avatar_url ?? null,
+      avatar_url: null,   // athletes table has no avatar_url
     },
     specialist: {
       id:        creator?.id ?? '',
@@ -290,7 +305,10 @@ export async function fetchRecentAppointments(from: string, to: string): Promise
     .order('start_at', { ascending: false })
     .limit(20);
 
-  return (data ?? []).map((r) => toAppointment(r as unknown as RawEventRow));
+  const rows = (data ?? []) as unknown as RawEventRow[];
+  const ids  = rows.flatMap(r => r.event_participants?.map(p => p.participant_id) ?? []);
+  const aMap = await fetchAthleteMap([...new Set(ids)]);
+  return rows.map((r) => toAppointment(r, aMap));
 }
 
 // ─── CITAS FILTRADAS (drawer con paginación) ─────────────────────────────────────────────────────
@@ -322,7 +340,10 @@ export async function fetchFilteredAppointments(
 
   const { data, count } = await query;
 
-  let results = (data ?? []).map((r) => toAppointment(r as unknown as RawEventRow));
+  const rows = (data ?? []) as unknown as RawEventRow[];
+  const ids  = rows.flatMap(r => r.event_participants?.map(p => p.participant_id) ?? []);
+  const aMap = await fetchAthleteMap([...new Set(ids)]);
+  let results = rows.map((r) => toAppointment(r, aMap));
 
   // Service type filter is applied client-side (derived from title)
   if (filters.serviceType !== 'all') {
@@ -361,7 +382,10 @@ export async function fetchAllAppointmentsForExport(
   }
 
   const { data } = await query;
-  let results = (data ?? []).map((r) => toAppointment(r as unknown as RawEventRow));
+  const rows2 = (data ?? []) as unknown as RawEventRow[];
+  const ids2  = rows2.flatMap(r => r.event_participants?.map(p => p.participant_id) ?? []);
+  const aMap2 = await fetchAthleteMap([...new Set(ids2)]);
+  let results = rows2.map((r) => toAppointment(r, aMap2));
 
   if (filters.serviceType !== 'all') {
     results = results.filter(a => a.service_type === filters.serviceType);
