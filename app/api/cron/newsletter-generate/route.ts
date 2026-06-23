@@ -16,18 +16,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireCronAuth }               from '@/lib/cron/auth';
 import { supabaseAdmin }                 from '@/lib/supabase-admin';
 import { generateNewsletterContent, buildEmailHTML } from '@/lib/newsletter/generator';
+import { scheduledForMX }               from '@/lib/timezone';
 import type { NewsletterAudiencia }      from '@/lib/newsletter/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
-// Scheduled for today at 13:00 UTC (= 7:00 AM Mexico/Obregón UTC-6).
-// The generate cron fires at 12:00 UTC, the send cron at 13:00 UTC.
-function todayAt7amLocalUTC(): string {
-  const d = new Date();
-  d.setUTCHours(13, 0, 0, 0);
-  return d.toISOString();
-}
+// Schedules the newsletter for 7:00 AM Mexico City time on the same day.
+// scheduledForMX() handles DST automatically (UTC-6 in winter, UTC-5 in summer).
 
 const AUDIENCES: NewsletterAudiencia[] = ['atleta', 'coach'];
 
@@ -127,7 +123,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   // 2. Activity found — generate and auto-approve newsletters
   const appUrl       = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aodeporte.com';
-  const scheduledFor = todayAt7amLocalUTC();
+  const scheduledFor = scheduledForMX(7, 0); // 7:00 AM Mexico City
 
   const results: Array<{
     audiencia: NewsletterAudiencia;

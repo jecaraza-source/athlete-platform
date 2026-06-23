@@ -120,8 +120,11 @@ function toAppointment(raw: RawEventRow): Appointment {
   const athlete = athletePart ? one(athletePart.athlete) : null;
 
   const dt   = new Date(raw.start_at);
-  const date = dt.toISOString().split('T')[0];
-  const time = `${String(dt.getUTCHours()).padStart(2, '0')}:${String(dt.getUTCMinutes()).padStart(2, '0')}`;
+  // Extract date and time in Mexico City timezone
+  const date = dt.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' }); // YYYY-MM-DD
+  const time = dt.toLocaleTimeString('es-MX', {
+    timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hour12: false,
+  });
 
   const athleteName    = [athlete?.first_name, athlete?.last_name].filter(Boolean).join(' ')
     || athlete?.email || '';
@@ -384,9 +387,13 @@ export async function fetchHeatmapData(from: string, to: string): Promise<Heatma
 
   const cells: Record<string, number> = {};
   (data ?? []).forEach(({ start_at }: { start_at: string }) => {
-    const d    = new Date(start_at);
-    const day  = (d.getDay() + 6) % 7; // 0=Lun, 6=Dom
-    const hour = d.getHours();
+    const d = new Date(start_at);
+    // Use Mexico City local day/hour for the heatmap
+    const mxStr = d.toLocaleString('en-US', { timeZone: 'America/Mexico_City', weekday: 'short', hour: 'numeric', hour12: false });
+    const mxDate = new Date(d.toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+    const day  = (mxDate.getDay() + 6) % 7; // 0=Lun, 6=Dom
+    const hour = mxDate.getHours();
+    void mxStr;
     const key  = `${day}-${hour}`;
     cells[key] = (cells[key] ?? 0) + 1;
   });

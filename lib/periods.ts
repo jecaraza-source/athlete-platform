@@ -6,9 +6,12 @@ import {
   subMonths, subWeeks, subDays,
 } from 'date-fns';
 import type { PeriodKey, PeriodRange } from '@/lib/types/admin';
+import { nowInMX } from '@/lib/timezone';
 
 export function getPeriodRange(period: PeriodKey): PeriodRange {
-  const now = new Date();
+  // Use Mexico City "now" so day/week/month boundaries match local time,
+  // not the UTC clock of the Vercel runtime.
+  const now = nowInMX();
   const fmt = (d: Date) => format(d, 'yyyy-MM-dd');
 
   const ranges: Record<PeriodKey, PeriodRange> = {
@@ -37,7 +40,7 @@ export function getPeriodRange(period: PeriodKey): PeriodRange {
 }
 
 export function getPreviousPeriodRange(period: PeriodKey): PeriodRange {
-  const now = new Date();
+  const now = nowInMX();
   const fmt = (d: Date) => format(d, 'yyyy-MM-dd');
 
   const prev: Record<PeriodKey, PeriodRange> = {
