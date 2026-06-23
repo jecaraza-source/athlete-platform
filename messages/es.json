@@ -51,7 +51,8 @@
     "newsletter": "Newsletter Diario",
     "finances": "Finanzas",
     "preferences": "Preferencias",
-    "admin": "Admin"
+    "admin": "Admin",
+    "appointments": "Mis Citas"
   },
   "auth": {
     "signIn": "Iniciar sesión",

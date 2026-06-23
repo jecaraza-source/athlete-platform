@@ -8,11 +8,14 @@ import PrivacyConsentModal from './PrivacyConsentModal';
 
 export default async function AppShell({ children }: { children: ReactNode }) {
   // getCurrentUser() is memoized — hasRole/hasPermission() reuse the same resolved data.
-  const [currentUser, showAdmin, isAthlete, showFinances] = await Promise.all([
+  const [currentUser, showAdmin, isAthlete, showFinances, showAppointments] = await Promise.all([
     getCurrentUser(),
     hasRole('super_admin', 'admin', 'program_director'),
     hasRole('athlete'),
     hasPermission('view_finances'),
+    // Show 'Mis Citas' to medical staff and admins
+    hasRole('medic', 'physio', 'nutritionist', 'psychologist',
+            'super_admin', 'admin', 'program_director'),
   ]);
 
   const profile  = currentUser?.profile ?? null;
@@ -38,7 +41,7 @@ export default async function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Navigation */}
-        <NavLinks showAdmin={showAdmin} showFinances={showFinances} isAthlete={isAthlete} />
+        <NavLinks showAdmin={showAdmin} showFinances={showFinances} isAthlete={isAthlete} showAppointments={showAppointments} />
 
         {/* Footer */}
         <div className="border-t border-gray-200">

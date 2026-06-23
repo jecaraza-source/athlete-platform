@@ -93,12 +93,15 @@ export default function NavLinks({
   showAdmin = false,
   showFinances = false,
   isAthlete = false,
+  showAppointments = false,
 }: {
   showAdmin?: boolean;
   /** When true, shows the Finanzas link (user has view_finances permission). */
   showFinances?: boolean;
   /** When true, hides staff-only sections (athlete list, follow-up, communications). */
   isAthlete?: boolean;
+  /** When true, shows 'Mis Citas' link for medical staff (medic, physio, nutritionist, psychologist). */
+  showAppointments?: boolean;
 }) {
   const pathname = usePathname();
   const t = useTranslations('nav');
@@ -141,6 +144,20 @@ export default function NavLinks({
             </Link>
           );
         })}
+
+        {/* ── Mis Citas — medical staff and admins only ────────── */}
+        {!isAthlete && showAppointments && (
+          <Link
+            href="/medical/appointments"
+            className={linkClass(
+              '/medical/appointments',
+              'bg-cyan-50 text-cyan-600 hover:bg-cyan-100 hover:text-cyan-800',
+              'bg-cyan-100 text-cyan-900',
+            )}
+          >
+            {t('appointments')}
+          </Link>
+        )}
 
         {/* ── Communications accordion — staff / admin only ──────── */}
         {!isAthlete && (
