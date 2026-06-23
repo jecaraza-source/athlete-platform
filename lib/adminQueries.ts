@@ -1,4 +1,18 @@
 'use server';
+// =============================================================================
+// lib/adminQueries.ts
+// Admin console data queries — reads from the EVENTS + EVENT_PARTICIPANTS tables.
+//
+// The platform stores appointments as `events` (2,900+ rows) with participants
+// in `event_participants`. The legacy `appointments` table is empty and unused.
+//
+// events schema: id, title, event_type, start_at, end_at, status, description,
+//               created_by_profile_id, created_at
+// events.status: 'scheduled' (=confirmed), 'show', 'no_show', 'rescheduled'
+//
+// event_participants: id, event_id, participant_id, participant_type,
+//                     attendance_status, notes
+// =============================================================================
 
 import { supabaseAdmin }    from '@/lib/supabase-admin';
 import { requireAdminAccess } from '@/lib/rbac/server';
@@ -8,7 +22,7 @@ import type {
   KpiSet, ServiceStat, SpecialistLoad, ServiceType,
 } from '@/lib/types/admin';
 
-// ─── Internal types for raw Supabase rows ─────────────────────────────────────
+// ─── Internal types ──────────────────────────────────────────────────────────────────────────────────
 
 type RawProfile = {
   id: string;
@@ -19,82 +33,35 @@ type RawProfile = {
   role?: string | null;
 };
 
-type RawAppointmentRow = {
-  id: string;
-  date: string;
-  time: string;
-  status: string;
-  notes: string | null;
-  service_type: string;
-  original_date: string | null;
-  original_appointment_id: string | null;
-  confirmed_by: string | null;
-  confirmed_at: string | null;
-  no_show_reason: string | null;
-  reschedule_reason: string | null;
+type RawParticipant = {
+  participant_id: string;
+  participant_type: string;
   athlete: RawProfile | RawProfile[] | null;
-  specialist: RawProfile | RawProfile[] | null;
 };
 
-type RawSpecialistRow = {
-  specialist_id: string;
-  specialist: Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'role'>
-    | Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'role'>[]  | null;
+type RawEventRow = {
+  id: string;
+  start_at: string;
+  status: string;
+  description: string | null;
+  title: string | null;
+  creator: RawProfile | RawProfile[] | null;
+  event_participants: RawParticipant[] | null;
 };
 
-// ─── Select fragments ─────────────────────────────────────────────────────────
-const APPOINTMENT_SELECT = `
-  id, date, time, status, notes, service_type,
-  original_date, original_appointment_id,
-  confirmed_by, confirmed_at, no_show_reason, reschedule_reason,
-  athlete:profiles!athlete_id(id, first_name, last_name, email, avatar_url),
-  specialist:profiles!specialist_id(id, first_name, last_name, role)
-`;
+type RawCreatorRow = {
+  created_by_profile_id: string | null;
+  creator: Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'role'>
+    | Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'role'>[] | null;
+};
 
-// Supabase may return the FK join as an array (when using !foreign_key notation)
-// or as a single object. This helper normalises both.
+// Normalise Supabase FK join (may return single object or array)
 function one<T>(v: T | T[] | null | undefined): T | null {
   if (!v) return null;
   return Array.isArray(v) ? (v[0] ?? null) : v;
 }
 
-function toAppointment(raw: RawAppointmentRow): Appointment {
-  const athlete     = one(raw.athlete);
-  const specialist  = one(raw.specialist);
-
-  const athleteName    = [athlete?.first_name, athlete?.last_name].filter(Boolean).join(' ')
-    || athlete?.email || '';
-  const specialistName = [specialist?.first_name, specialist?.last_name].filter(Boolean).join(' ') || '';
-
-  // Construct explicitly — avoids spread merging RawAppointmentRow fields into Appointment
-  const appointment: Appointment = {
-    id:                      raw.id,
-    date:                    raw.date,
-    time:                    raw.time,
-    // Cast status string to the typed union — values come from our own DB enum.
-    status:                  raw.status as Appointment['status'],
-    notes:                   raw.notes,
-    service_type:            raw.service_type as Appointment['service_type'],
-    original_date:           raw.original_date,
-    original_appointment_id: raw.original_appointment_id,
-    confirmed_by:            raw.confirmed_by,
-    confirmed_at:            raw.confirmed_at,
-    no_show_reason:          raw.no_show_reason,
-    reschedule_reason:       raw.reschedule_reason,
-    athlete: {
-      id:         athlete?.id ?? '',
-      full_name:  athleteName,
-      email:      athlete?.email ?? '',
-      avatar_url: athlete?.avatar_url ?? null,
-    },
-    specialist: {
-      id:        specialist?.id ?? '',
-      full_name: specialistName,
-      specialty: specialist?.role ?? '',
-    },
-  };
-  return appointment;
-}
+// ─── Service type helpers ────────────────────────────────────────────────────────────────────────────────
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
   medico: 'Consulta Médica',
@@ -105,7 +72,89 @@ const SERVICE_LABELS: Record<ServiceType, string> = {
   entrenamiento: 'Plan de Entrenamiento',
 };
 
-// ─── KPIs ───────────────────────────────────────────────────────────────────────────────────
+// Derives the service type from the event title (e.g. "FISIOTERAPIA 1" → 'fisioterapia')
+const SERVICE_KEYWORDS: [string, ServiceType][] = [
+  ['fisio', 'fisioterapia'],
+  ['psicol', 'psicologia'],
+  ['nutri', 'nutricion'],
+  ['entrena', 'entrenamiento'],
+  ['evalua', 'evaluacion'],
+];
+
+function titleToServiceType(title: string): ServiceType {
+  const t = (title || '').toLowerCase();
+  for (const [keyword, type] of SERVICE_KEYWORDS) {
+    if (t.includes(keyword)) return type;
+  }
+  return 'medico';
+}
+
+// Maps events.status to the Appointment.status union
+function mapEventStatus(status: string): Appointment['status'] {
+  if (status === 'scheduled') return 'confirmed';
+  if (status === 'show')      return 'show';
+  if (status === 'no_show')   return 'no_show';
+  if (status === 'rescheduled') return 'rescheduled';
+  if (status === 'cancelled') return 'cancelled';
+  return 'confirmed';
+}
+
+// ISO datetime range helpers (events use TIMESTAMPTZ, not DATE)
+function fromISO(date: string): string { return `${date}T00:00:00`; }
+function toISO(date: string): string   { return `${date}T23:59:59`; }
+
+// ─── Select fragment ───────────────────────────────────────────────────────────────────────────────
+// Joins events.created_by_profile_id → profiles (specialist)
+// and event_participants → profiles (athlete)
+const EVENT_SELECT = `
+  id, start_at, status, description, title,
+  creator:profiles!created_by_profile_id(id, first_name, last_name, role),
+  event_participants(participant_id, participant_type,
+    athlete:profiles!participant_id(id, first_name, last_name, email, avatar_url))
+`;
+
+function toAppointment(raw: RawEventRow): Appointment {
+  const creator     = one(raw.creator);
+  const athletePart = (raw.event_participants ?? [])
+    .find((p) => p.participant_type === 'athlete');
+  const athlete = athletePart ? one(athletePart.athlete) : null;
+
+  const dt   = new Date(raw.start_at);
+  const date = dt.toISOString().split('T')[0];
+  const time = `${String(dt.getUTCHours()).padStart(2, '0')}:${String(dt.getUTCMinutes()).padStart(2, '0')}`;
+
+  const athleteName    = [athlete?.first_name, athlete?.last_name].filter(Boolean).join(' ')
+    || athlete?.email || '';
+  const specialistName = [creator?.first_name, creator?.last_name].filter(Boolean).join(' ') || '';
+
+  return {
+    id:                      raw.id,
+    date,
+    time,
+    status:                  mapEventStatus(raw.status),
+    notes:                   raw.description,
+    service_type:            titleToServiceType(raw.title ?? ''),
+    original_date:           null,
+    original_appointment_id: null,
+    confirmed_by:            null,
+    confirmed_at:            null,
+    no_show_reason:          null,
+    reschedule_reason:       null,
+    athlete: {
+      id:         athlete?.id ?? '',
+      full_name:  athleteName,
+      email:      athlete?.email ?? '',
+      avatar_url: athlete?.avatar_url ?? null,
+    },
+    specialist: {
+      id:        creator?.id ?? '',
+      full_name: specialistName,
+      specialty: creator?.role ?? '',
+    },
+  };
+}
+
+// ─── KPIs ─────────────────────────────────────────────────────────────────────────────────────────
 
 export async function fetchKpis(
   from: string, to: string,
@@ -113,7 +162,7 @@ export async function fetchKpis(
 ): Promise<KpiSet> {
   await requireAdminAccess();
 
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const todayISO = new Date().toISOString().split('T')[0];
 
   const [
     { count: totalCurrent },
@@ -127,20 +176,39 @@ export async function fetchKpis(
     { count: noShowCurrent },
     { count: noShowPrev },
   ] = await Promise.all([
-    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).gte('date', from).lte('date', to),
-    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).gte('date', prevFrom).lte('date', prevTo),
-    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'show').gte('date', from).lte('date', to),
-    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'show').gte('date', prevFrom).lte('date', prevTo),
-    // Count only athletes with status='active' (athletes table, not profiles)
+    // Total events in current period
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .gte('start_at', fromISO(from)).lte('start_at', toISO(to)),
+    // Total events in previous period
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .gte('start_at', fromISO(prevFrom)).lte('start_at', toISO(prevTo)),
+    // Attended (show) in current period
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .eq('status', 'show')
+      .gte('start_at', fromISO(from)).lte('start_at', toISO(to)),
+    // Attended (show) in previous period
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .eq('status', 'show')
+      .gte('start_at', fromISO(prevFrom)).lte('start_at', toISO(prevTo)),
+    // Active athletes (global, not period-filtered)
     supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-    supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true }).eq('status', 'active').gte('created_at', from).lte('created_at', to),
-    supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true }).eq('status', 'active').gte('created_at', prevFrom).lte('created_at', prevTo),
-    // Citas programadas: confirmed + future date (global — not period-filtered)
-    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'confirmed').gte('date', today),
-    // No shows in current period
-    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'no_show').gte('date', from).lte('date', to),
-    // No shows in previous period (for trend)
-    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'no_show').gte('date', prevFrom).lte('date', prevTo),
+    // New athletes registered in current period
+    supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true })
+      .eq('status', 'active').gte('created_at', fromISO(from)).lte('created_at', toISO(to)),
+    // New athletes registered in previous period
+    supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true })
+      .eq('status', 'active').gte('created_at', fromISO(prevFrom)).lte('created_at', toISO(prevTo)),
+    // Upcoming scheduled events from today (global — not period-filtered)
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .eq('status', 'scheduled').gte('start_at', fromISO(todayISO)),
+    // No-shows in current period
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .eq('status', 'no_show')
+      .gte('start_at', fromISO(from)).lte('start_at', toISO(to)),
+    // No-shows in previous period
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .eq('status', 'no_show')
+      .gte('start_at', fromISO(prevFrom)).lte('start_at', toISO(prevTo)),
   ]);
 
   const tc  = totalCurrent ?? 0;
@@ -165,7 +233,7 @@ export async function fetchKpis(
   };
 }
 
-// ─── SERVICIOS ────────────────────────────────────────────────────────────────────────────
+// ─── SERVICIOS ──────────────────────────────────────────────────────────────────────────────────────────
 
 export async function fetchServiceStats(
   from: string, to: string,
@@ -174,12 +242,17 @@ export async function fetchServiceStats(
   await requireAdminAccess();
 
   const [{ data: current }, { data: prev }] = await Promise.all([
-    supabaseAdmin.from('appointments').select('service_type').gte('date', from).lte('date', to),
-    supabaseAdmin.from('appointments').select('service_type').gte('date', prevFrom).lte('date', prevTo),
+    supabaseAdmin.from('events').select('title')
+      .gte('start_at', fromISO(from)).lte('start_at', toISO(to)),
+    supabaseAdmin.from('events').select('title')
+      .gte('start_at', fromISO(prevFrom)).lte('start_at', toISO(prevTo)),
   ]);
 
-  const countBy = (rows: { service_type: string }[]) =>
-    rows.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.service_type]: (acc[r.service_type] ?? 0) + 1 }), {});
+  const countBy = (rows: { title: string | null }[]) =>
+    rows.reduce<Record<string, number>>((acc, r) => {
+      const st = titleToServiceType(r.title ?? '');
+      return { ...acc, [st]: (acc[st] ?? 0) + 1 };
+    }, {});
 
   const currCounts = countBy(current ?? []);
   const prevCounts = countBy(prev ?? []);
@@ -191,31 +264,31 @@ export async function fetchServiceStats(
     const { trend }    = calcTrend(count, previousCount);
     return {
       service_type: st,
-      label: SERVICE_LABELS[st],
+      label:        SERVICE_LABELS[st],
       count,
-      percentage: total > 0 ? Math.round((count / total) * 100) : 0,
+      percentage:   total > 0 ? Math.round((count / total) * 100) : 0,
       previousCount,
       trend,
     };
   }).sort((a, b) => b.count - a.count);
 }
 
-// ─── CITAS RECIENTES (resumen en página, últimas 20) ────────────────────────────────────
+// ─── CITAS RECIENTES (resumen en página, últimas 20) ───────────────────────────────────────────────
 
 export async function fetchRecentAppointments(from: string, to: string): Promise<Appointment[]> {
   await requireAdminAccess();
 
   const { data } = await supabaseAdmin
-    .from('appointments')
-    .select(APPOINTMENT_SELECT)
-    .gte('date', from).lte('date', to)
-    .order('date', { ascending: false })
+    .from('events')
+    .select(EVENT_SELECT)
+    .gte('start_at', fromISO(from)).lte('start_at', toISO(to))
+    .order('start_at', { ascending: false })
     .limit(20);
 
-  return (data ?? []).map((r) => toAppointment(r as unknown as RawAppointmentRow));
+  return (data ?? []).map((r) => toAppointment(r as unknown as RawEventRow));
 }
 
-// ─── CITAS FILTRADAS (drawer con paginación) ──────────────────────────────────────────────
+// ─── CITAS FILTRADAS (drawer con paginación) ─────────────────────────────────────────────────────
 
 export async function fetchFilteredAppointments(
   from: string,
@@ -227,21 +300,29 @@ export async function fetchFilteredAppointments(
   await requireAdminAccess();
 
   let query = supabaseAdmin
-    .from('appointments')
-    .select(APPOINTMENT_SELECT, { count: 'exact' })
-    .gte('date', filters.dateFrom || from)
-    .lte('date', filters.dateTo || to)
-    .order('date', { ascending: false });
+    .from('events')
+    .select(EVENT_SELECT, { count: 'exact' })
+    .gte('start_at', fromISO(filters.dateFrom || from))
+    .lte('start_at', toISO(filters.dateTo || to))
+    .order('start_at', { ascending: false });
 
-  if (filters.serviceType !== 'all') query = query.eq('service_type', filters.serviceType);
-  if (filters.status !== 'all')      query = query.eq('status', filters.status);
+  // Map AppointmentStatus back to events.status
+  if (filters.status !== 'all') {
+    const evStatus = filters.status === 'confirmed' ? 'scheduled' : filters.status;
+    query = query.eq('status', evStatus);
+  }
 
   const offset = page * pageSize;
   query = query.range(offset, offset + pageSize - 1);
 
   const { data, count } = await query;
 
-  let results = (data ?? []).map((r) => toAppointment(r as unknown as RawAppointmentRow));
+  let results = (data ?? []).map((r) => toAppointment(r as unknown as RawEventRow));
+
+  // Service type filter is applied client-side (derived from title)
+  if (filters.serviceType !== 'all') {
+    results = results.filter(a => a.service_type === filters.serviceType);
+  }
   if (filters.search) {
     const q = filters.search.toLowerCase();
     results = results.filter(a =>
@@ -253,7 +334,7 @@ export async function fetchFilteredAppointments(
   return { data: results, total: count ?? 0 };
 }
 
-// ─── CITAS PARA EXPORTACIÓN (todos los registros del filtro) ──────────────────────────────
+// ─── CITAS PARA EXPORTACIÓN ──────────────────────────────────────────────────────────────────────────────────
 
 export async function fetchAllAppointmentsForExport(
   from: string,
@@ -263,18 +344,23 @@ export async function fetchAllAppointmentsForExport(
   await requireAdminAccess();
 
   let query = supabaseAdmin
-    .from('appointments')
-    .select(APPOINTMENT_SELECT)
-    .gte('date', filters.dateFrom || from)
-    .lte('date', filters.dateTo || to)
-    .order('date', { ascending: false });
+    .from('events')
+    .select(EVENT_SELECT)
+    .gte('start_at', fromISO(filters.dateFrom || from))
+    .lte('start_at', toISO(filters.dateTo || to))
+    .order('start_at', { ascending: false });
 
-  if (filters.serviceType !== 'all') query = query.eq('service_type', filters.serviceType);
-  if (filters.status !== 'all')      query = query.eq('status', filters.status);
+  if (filters.status !== 'all') {
+    const evStatus = filters.status === 'confirmed' ? 'scheduled' : filters.status;
+    query = query.eq('status', evStatus);
+  }
 
   const { data } = await query;
-  let results = (data ?? []).map((r) => toAppointment(r as unknown as RawAppointmentRow));
+  let results = (data ?? []).map((r) => toAppointment(r as unknown as RawEventRow));
 
+  if (filters.serviceType !== 'all') {
+    results = results.filter(a => a.service_type === filters.serviceType);
+  }
   if (filters.search) {
     const q = filters.search.toLowerCase();
     results = results.filter(a =>
@@ -286,19 +372,19 @@ export async function fetchAllAppointmentsForExport(
   return results;
 }
 
-// ─── HEATMAP ────────────────────────────────────────────────────────────────────────────
+// ─── HEATMAP ─────────────────────────────────────────────────────────────────────────────────────
 
 export async function fetchHeatmapData(from: string, to: string): Promise<HeatmapCell[]> {
   await requireAdminAccess();
 
   const { data } = await supabaseAdmin
-    .from('appointments')
-    .select('date, time')
-    .gte('date', from).lte('date', to);
+    .from('events')
+    .select('start_at')
+    .gte('start_at', fromISO(from)).lte('start_at', toISO(to));
 
   const cells: Record<string, number> = {};
-  (data ?? []).forEach(({ date, time }: { date: string; time: string }) => {
-    const d = new Date(`${date}T${time}`);
+  (data ?? []).forEach(({ start_at }: { start_at: string }) => {
+    const d    = new Date(start_at);
     const day  = (d.getDay() + 6) % 7; // 0=Lun, 6=Dom
     const hour = d.getHours();
     const key  = `${day}-${hour}`;
@@ -314,20 +400,21 @@ export async function fetchHeatmapData(from: string, to: string): Promise<Heatma
   return result;
 }
 
-// ─── RANKING DE ESPECIALISTAS ─────────────────────────────────────────────────────────────
+// ─── RANKING DE ESPECIALISTAS ──────────────────────────────────────────────────────────────────────────────────
 
 export async function fetchSpecialistRanking(from: string, to: string): Promise<SpecialistLoad[]> {
   await requireAdminAccess();
 
   const { data } = await supabaseAdmin
-    .from('appointments')
-    .select('specialist_id, specialist:profiles!specialist_id(id, first_name, last_name, role)')
-    .gte('date', from).lte('date', to);
+    .from('events')
+    .select('created_by_profile_id, creator:profiles!created_by_profile_id(id, first_name, last_name, role)')
+    .gte('start_at', fromISO(from)).lte('start_at', toISO(to));
 
   const counts: Record<string, { full_name: string; specialty: string; count: number }> = {};
-  (data ?? []).forEach((row: RawSpecialistRow) => {
-    const id  = row.specialist_id;
-    const sp  = one(row.specialist);
+  (data ?? []).forEach((row: RawCreatorRow) => {
+    const id = row.created_by_profile_id;
+    if (!id) return;
+    const sp = one(row.creator);
     if (!counts[id]) {
       const name = [sp?.first_name, sp?.last_name].filter(Boolean).join(' ') || '';
       counts[id] = { full_name: name, specialty: sp?.role ?? '', count: 0 };
@@ -338,37 +425,39 @@ export async function fetchSpecialistRanking(from: string, to: string): Promise<
   return Object.entries(counts)
     .map(([id, info]) => ({
       id,
-      full_name: info.full_name,
-      specialty: info.specialty,
-      appointmentCount: info.count,
-      capacity: 40,
+      full_name:          info.full_name,
+      specialty:          info.specialty,
+      appointmentCount:   info.count,
+      capacity:           40,
       utilizationPercent: Math.round((info.count / 40) * 100),
     }))
     .sort((a, b) => b.appointmentCount - a.appointmentCount)
     .slice(0, 5);
 }
 
-// ─── ACTUALIZAR ESTADO DE CITA ────────────────────────────────────────────
+// ─── ACTUALIZAR ESTADO DE CITA ─────────────────────────────────────────────────────────────────────────────
 
 export async function updateAppointmentStatus(
   appointmentId: string,
   status: 'show' | 'no_show',
   extras?: { notes?: string; no_show_reason?: string },
 ) {
-  // Auth guard: only admin-level staff can confirm/update appointments
-  const adminUser = await requireAdminAccess();
-  const confirmedBy = adminUser.profile?.id ?? null;
+  await requireAdminAccess();
 
+  // Update events.status
   const { error } = await supabaseAdmin
-    .from('appointments')
+    .from('events')
     .update({
       status,
-      confirmed_by: confirmedBy,
-      confirmed_at: new Date().toISOString(),
-      ...(extras?.notes          && { notes: extras.notes }),
-      ...(extras?.no_show_reason && { no_show_reason: extras.no_show_reason }),
+      ...(extras?.notes && { description: extras.notes }),
     })
     .eq('id', appointmentId);
 
   if (error) throw error;
+
+  // Sync event_participants.attendance_status
+  await supabaseAdmin
+    .from('event_participants')
+    .update({ attendance_status: status })
+    .eq('event_id', appointmentId);
 }

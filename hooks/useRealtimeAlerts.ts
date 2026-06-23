@@ -20,61 +20,63 @@ export function useRealtimeAlerts() {
 
     const channel = supabase
       .channel('admin-console-alerts')
+      // Listen to changes in events (appointments in the platform)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'appointments' },
+        { event: '*', schema: 'public', table: 'events' },
         (payload) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const apt = payload.new as any;
+          const ev = payload.new as any;
 
           if (payload.eventType === 'INSERT') {
-            const aptDateTime = new Date(`${apt.date}T${apt.time}`);
-            if (apt.status === 'confirmed' && isBefore(aptDateTime, addHours(new Date(), 24))) {
+            // New event scheduled within the next 24 hours
+            const evDateTime = ev.start_at ? new Date(ev.start_at) : null;
+            if (ev.status === 'scheduled' && evDateTime && isBefore(evDateTime, addHours(new Date(), 24))) {
               addAlert({
-                id: `unconfirmed-${apt.id}-${Date.now()}`,
+                id: `unconfirmed-${ev.id}-${Date.now()}`,
                 type: 'unconfirmed',
-                message: 'Cita sin confirmar en menos de 24h',
-                appointmentId: apt.id,
-                createdAt: new Date().toISOString(),
-              });
-            }
-            if (apt.status === 'confirmed' && apt.original_appointment_id) {
-              addAlert({
-                id: `reschedule-${apt.id}-${Date.now()}`,
-                type: 'pending_reschedule',
-                message: 'Reagendamiento confirmado — pendiente de notificar al atleta',
-                appointmentId: apt.id,
+                message: 'Nueva cita programada en menos de 24h',
+                appointmentId: ev.id,
                 createdAt: new Date().toISOString(),
               });
             }
           }
 
-          if (payload.eventType === 'UPDATE' && apt.status === 'no_show') {
+          if (payload.eventType === 'UPDATE' && ev.status === 'no_show') {
             addAlert({
-              id: `noshow-${apt.id}-${Date.now()}`,
+              id: `noshow-${ev.id}-${Date.now()}`,
               type: 'consecutive_noshow',
               message: 'No Show registrado — revisar historial del atleta',
-              appointmentId: apt.id,
+              appointmentId: ev.id,
+              createdAt: new Date().toISOString(),
+            });
+          }
+
+          if (payload.eventType === 'UPDATE' && ev.status === 'rescheduled') {
+            addAlert({
+              id: `reschedule-${ev.id}-${Date.now()}`,
+              type: 'pending_reschedule',
+              message: 'Cita reagendada — pendiente de notificar al atleta',
+              appointmentId: ev.id,
               createdAt: new Date().toISOString(),
             });
           }
         }
       )
+      // Listen to new athlete registrations
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'profiles' },
+        { event: 'INSERT', schema: 'public', table: 'athletes' },
         (payload) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const profile = payload.new as any;
-          if (profile.role === 'athlete') {
-            addAlert({
-              id: `athlete-${profile.id}-${Date.now()}`,
-              type: 'new_athlete',
-              message: `Nuevo atleta registrado: ${profile.full_name ?? profile.email ?? ''}`,
-              athleteId: profile.id,
-              createdAt: new Date().toISOString(),
-            });
-          }
+          const athlete = payload.new as any;
+          addAlert({
+            id: `athlete-${athlete.id}-${Date.now()}`,
+            type: 'new_athlete',
+            message: `Nuevo atleta registrado: ${[athlete.first_name, athlete.last_name].filter(Boolean).join(' ') || athlete.email || ''}`,
+            athleteId: athlete.id,
+            createdAt: new Date().toISOString(),
+          });
         }
       )
       .subscribe();
