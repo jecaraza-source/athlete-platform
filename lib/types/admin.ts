@@ -1,6 +1,6 @@
 // Admin Console types
 
-export type AppointmentStatus = 'confirmed' | 'show' | 'no_show' | 'rescheduled' | 'cancelled';
+export type AppointmentStatus = 'confirmed' | 'show' | 'no_show' | 'no_show_remote' | 'rescheduled' | 'cancelled';
 export type ServiceType = 'medico' | 'nutricion' | 'fisioterapia' | 'psicologia' | 'evaluacion' | 'entrenamiento';
 
 export interface Appointment {

@@ -37,25 +37,13 @@ export async function confirmShow(eventId: string, notes: string) {
   const denied = await assertPermission('view_athletes');
   if (denied) return denied;
 
-  const user = await getCurrentUser();
-  const profileId = user?.profile?.id;
-
-  const now = new Date().toISOString();
-
   const { error: evErr } = await supabaseAdmin
     .from('events')
-    .update({
-      status:        'show',
-      description:   notes || null,
-      confirmed_by:  profileId,
-      confirmed_at:  now,
-      updated_at:    now,
-    })
+    .update({ status: 'show', description: notes || null })
     .eq('id', eventId);
 
   if (evErr) return { error: evErr.message };
 
-  // Update participant attendance
   await supabaseAdmin
     .from('event_participants')
     .update({ attendance_status: 'show' })
@@ -76,7 +64,7 @@ export async function autosaveNotes(eventId: string, notes: string) {
 
   const { error } = await supabaseAdmin
     .from('events')
-    .update({ description: notes || null, updated_at: new Date().toISOString() })
+    .update({ description: notes || null })
     .eq('id', eventId);
 
   if (error) return { error: error.message };
@@ -87,6 +75,40 @@ export async function autosaveNotes(eventId: string, notes: string) {
 // confirmNoShow — mark event as no-show, optionally notify athlete
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// confirmNoShowRemote — attended via phone call or message
+// ---------------------------------------------------------------------------
+
+export async function confirmNoShowRemote(
+  eventId: string,
+  method: string,   // 'llamada' | 'mensaje' | 'whatsapp' | 'otro'
+  notes: string,
+  athleteProfileId: string | null,
+) {
+  const denied = await assertPermission('view_athletes');
+  if (denied) return denied;
+
+  // Encode contact method and notes together in description
+  const desc = [method ? `CONTACTO: ${method}` : '', notes ? `NOTAS: ${notes}` : '']
+    .filter(Boolean).join('\n\n') || null;
+
+  const { error: evErr } = await supabaseAdmin
+    .from('events')
+    .update({ status: 'no_show_remote', description: desc })
+    .eq('id', eventId);
+
+  if (evErr) return { error: evErr.message };
+
+  await supabaseAdmin
+    .from('event_participants')
+    .update({ attendance_status: 'no_show_remote' })
+    .eq('event_id', eventId);
+
+  revalidatePath(`/medical/appointments/${eventId}`);
+  revalidatePath('/medical/appointments');
+  return { error: null };
+}
+
 export async function confirmNoShow(
   eventId: string,
   reason: string,
@@ -96,20 +118,21 @@ export async function confirmNoShow(
   const denied = await assertPermission('view_athletes');
   if (denied) return denied;
 
-  const user = await getCurrentUser();
-  const profileId = user?.profile?.id;
-  const now = new Date().toISOString();
+  // Store reason + notes in description since no dedicated column exists yet
+  const NO_SHOW_LABELS: Record<string, string> = {
+    no_notice:   'Sin aviso previo',
+    gave_notice: 'Aviso con anticipación',
+    emergency:   'Emergencia personal',
+    other:       'Otro motivo',
+  };
+  const desc = [
+    reason ? `MOTIVO: ${NO_SHOW_LABELS[reason] ?? reason}` : '',
+    notes  ? `NOTAS: ${notes}` : '',
+  ].filter(Boolean).join('\n\n') || null;
 
   const { error: evErr } = await supabaseAdmin
     .from('events')
-    .update({
-      status:          'no_show',
-      no_show_reason:  reason || null,
-      description:     notes || null,
-      confirmed_by:    profileId,
-      confirmed_at:    now,
-      updated_at:      now,
-    })
+    .update({ status: 'no_show', description: desc })
     .eq('id', eventId);
 
   if (evErr) return { error: evErr.message };
@@ -171,11 +194,8 @@ export async function confirmReschedule(
   const { error: origErr } = await supabaseAdmin
     .from('events')
     .update({
-      status:            'rescheduled',
-      reschedule_reason: rescheduleNotes || null,
-      confirmed_by:      profileId,
-      confirmed_at:      now,
-      updated_at:        now,
+      status:      'rescheduled',
+      description: rescheduleNotes ? `REAGENDADO: ${rescheduleNotes}` : 'Reagendado',
     })
     .eq('id', originalEventId);
 
@@ -186,7 +206,7 @@ export async function confirmReschedule(
     .update({ attendance_status: 'rescheduled' })
     .eq('event_id', originalEventId);
 
-  // 2. Create the new event
+  // 2. Create the new event (use created_by_profile_id as specialist identifier)
   const { data: newEvent, error: newErr } = await supabaseAdmin
     .from('events')
     .insert({
@@ -195,10 +215,8 @@ export async function confirmReschedule(
       start_at:             newStartAt,
       end_at:               newEndAt,
       status:               'scheduled',
-      specialist_id:        specialistId,
-      original_event_id:    originalEventId,
-      description:          rescheduleNotes || null,
-      created_by_profile_id: profileId,
+      description:          rescheduleNotes ? `Reagendado desde cita anterior.\n${rescheduleNotes}` : 'Reagendado desde cita anterior.',
+      created_by_profile_id: specialistId ?? profileId,
     })
     .select('id')
     .single();
@@ -299,10 +317,11 @@ export async function fetchAvailableSlots(
   const dayStart = dateStr + 'T00:00:00';
   const dayEnd   = dateStr + 'T23:59:59';
 
+  // Use created_by_profile_id to filter specialist's events
   const { data: booked } = await supabaseAdmin
     .from('events')
     .select('start_at')
-    .eq('specialist_id', specialistId)
+    .eq('created_by_profile_id', specialistId)
     .gte('start_at', dayStart)
     .lte('start_at', dayEnd)
     .in('status', ['scheduled', 'show', 'planned']);

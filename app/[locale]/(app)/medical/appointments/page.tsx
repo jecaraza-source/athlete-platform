@@ -13,19 +13,21 @@ const MEDICAL_ROLE_CODES = [
 ];
 
 const STATUS_PILL: Record<string, string> = {
-  scheduled:   'bg-blue-100 text-blue-700',
-  show:        'bg-emerald-100 text-emerald-700',
-  no_show:     'bg-red-100 text-red-700',
-  rescheduled: 'bg-amber-100 text-amber-700',
-  cancelled:   'bg-gray-100 text-gray-600',
+  scheduled:      'bg-blue-100 text-blue-700',
+  show:           'bg-emerald-100 text-emerald-700',
+  no_show:        'bg-red-100 text-red-700',
+  no_show_remote: 'bg-orange-100 text-orange-700',
+  rescheduled:    'bg-amber-100 text-amber-700',
+  cancelled:      'bg-gray-100 text-gray-600',
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  scheduled:   'Programada',
-  show:        'Atendida',
-  no_show:     'No asistió',
-  rescheduled: 'Reagendada',
-  cancelled:   'Cancelada',
+  scheduled:      'Programada',
+  show:           'Atendida',
+  no_show:        'No asistió',
+  no_show_remote: 'Llamada/Mensaje',
+  rescheduled:    'Reagendada',
+  cancelled:      'Cancelada',
 };
 
 type EventRow = {
@@ -67,8 +69,9 @@ export default async function AppointmentsListPage() {
     .order('start_at', { ascending: false })
     .limit(50);
 
+  // Filter by created_by_profile_id (used as specialist identifier)
   if (!isAdmin) {
-    query = query.eq('specialist_id', user.profile.id);
+    query = query.eq('created_by_profile_id', user.profile.id);
   }
 
   const { data, error } = await query;
@@ -76,8 +79,9 @@ export default async function AppointmentsListPage() {
 
   // Separate upcoming vs past
   const now = new Date();
-  const upcoming = events.filter((e) => new Date(e.start_at) >= now);
-  const past     = events.filter((e) => new Date(e.start_at) <  now);
+  const CLOSED = ['show', 'no_show', 'no_show_remote', 'rescheduled', 'cancelled'];
+  const upcoming = events.filter((e) => !CLOSED.includes(e.status) || new Date(e.start_at) >= now);
+  const past     = events.filter((e) => CLOSED.includes(e.status) && new Date(e.start_at) < now);
 
   function renderList(items: EventRow[]) {
     if (items.length === 0) {

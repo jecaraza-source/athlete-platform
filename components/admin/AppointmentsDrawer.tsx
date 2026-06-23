@@ -42,11 +42,12 @@ const EMPTY_FILTERS: AppointmentFilters = {
 };
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  confirmed:   { label: 'Confirmada', className: 'bg-blue-500/20  text-blue-300  border-blue-500/30' },
-  show:        { label: 'Atendió',    className: 'bg-green-500/20 text-green-300 border-green-500/30' },
-  no_show:     { label: 'No Atendió', className: 'bg-red-500/20   text-red-300   border-red-500/30' },
-  rescheduled: { label: 'Reagendada', className: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
-  cancelled:   { label: 'Cancelada',  className: 'bg-gray-500/20  text-gray-300  border-gray-500/30' },
+  confirmed:      { label: 'Confirmada',       className: 'bg-blue-500/20   text-blue-300   border-blue-500/30' },
+  show:           { label: 'Atendió',          className: 'bg-green-500/20  text-green-300  border-green-500/30' },
+  no_show:        { label: 'No Atendió',       className: 'bg-red-500/20    text-red-300    border-red-500/30' },
+  no_show_remote: { label: 'Llamada/Mensaje', className: 'bg-orange-500/20 text-orange-300 border-orange-500/30' },
+  rescheduled:    { label: 'Reagendada',       className: 'bg-amber-500/20  text-amber-300  border-amber-500/30' },
+  cancelled:      { label: 'Cancelada',        className: 'bg-gray-500/20   text-gray-300   border-gray-500/30' },
 };
 
 interface Props {
@@ -205,10 +206,12 @@ export function AppointmentsDrawer({ open, onClose, from, to, periodLabel, curre
             onChange={e => setFilters(f => ({ ...f, status: e.target.value as AppointmentFilters['status'] }))}
             className="bg-[#0F1117] border border-[#2A2D3A] text-[#F1F5F9] text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500">
             <option value="all">Todos los estados</option>
-            <option value="confirmed">Confirmada</option>
+            <option value="confirmed">Programada</option>
             <option value="show">Atendió</option>
             <option value="no_show">No Atendió</option>
+            <option value="no_show_remote">📞 Llamada/Mensaje</option>
             <option value="rescheduled">Reagendada</option>
+            <option value="cancelled">Cancelada</option>
           </select>
 
           <input type="date" value={filters.dateFrom}

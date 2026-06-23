@@ -91,11 +91,12 @@ function titleToServiceType(title: string): ServiceType {
 
 // Maps events.status to the Appointment.status union
 function mapEventStatus(status: string): Appointment['status'] {
-  if (status === 'scheduled') return 'confirmed';
-  if (status === 'show')      return 'show';
-  if (status === 'no_show')   return 'no_show';
-  if (status === 'rescheduled') return 'rescheduled';
-  if (status === 'cancelled') return 'cancelled';
+  if (status === 'scheduled')     return 'confirmed';
+  if (status === 'show')          return 'show';
+  if (status === 'no_show')       return 'no_show';
+  if (status === 'no_show_remote') return 'no_show_remote';
+  if (status === 'rescheduled')   return 'rescheduled';
+  if (status === 'cancelled')     return 'cancelled';
   return 'confirmed';
 }
 
@@ -204,13 +205,13 @@ export async function fetchKpis(
     // Upcoming scheduled events from today (global — not period-filtered)
     supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
       .eq('status', 'scheduled').gte('start_at', fromISO(todayISO)),
-    // No-shows in current period
+    // No-shows (presencial + remote) in current period
     supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
-      .eq('status', 'no_show')
+      .in('status', ['no_show', 'no_show_remote'])
       .gte('start_at', fromISO(from)).lte('start_at', toISO(to)),
-    // No-shows in previous period
+    // No-shows (presencial + remote) in previous period
     supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
-      .eq('status', 'no_show')
+      .in('status', ['no_show', 'no_show_remote'])
       .gte('start_at', fromISO(prevFrom)).lte('start_at', toISO(prevTo)),
   ]);
 
