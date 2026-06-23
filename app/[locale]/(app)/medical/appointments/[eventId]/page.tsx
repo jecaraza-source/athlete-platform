@@ -13,9 +13,9 @@ export const dynamic = 'force-dynamic';
 // Role codes that can access this view
 const MEDICAL_ROLE_CODES = [
   'medic', 'psychologist', 'nutritionist', 'physio',
-  'admin', 'super_admin', 'program_director',
+  'admin', 'super_admin', 'program_director', 'event_coordinator',
 ];
-const ADMIN_ROLE_CODES = ['admin', 'super_admin', 'program_director'];
+const ADMIN_ROLE_CODES = ['admin', 'super_admin', 'program_director', 'event_coordinator'];
 
 // Statuses that make the view read-only
 const CLOSED_STATUSES = ['show', 'no_show', 'rescheduled', 'cancelled'];

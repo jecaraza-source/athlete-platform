@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 const MEDICAL_ROLE_CODES = [
   'medic', 'psychologist', 'nutritionist', 'physio',
-  'admin', 'super_admin', 'program_director',
+  'admin', 'super_admin', 'program_director', 'event_coordinator',
 ];
 
 const STATUS_PILL: Record<string, string> = {
@@ -53,7 +53,7 @@ export default async function AppointmentsListPage() {
   }
 
   const isAdmin = userRoleCodes.some((c) =>
-    ['admin', 'super_admin', 'program_director'].includes(c),
+    ['admin', 'super_admin', 'program_director', 'event_coordinator'].includes(c),
   );
 
   // Build query — admins see all medical events, specialists see their own

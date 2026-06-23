@@ -13,9 +13,9 @@ export default async function AppShell({ children }: { children: ReactNode }) {
     hasRole('super_admin', 'admin', 'program_director'),
     hasRole('athlete'),
     hasPermission('view_finances'),
-    // Show 'Mis Citas' to medical staff and admins
+    // Show 'Mis Citas' to medical staff, coordinators and admins
     hasRole('medic', 'physio', 'nutritionist', 'psychologist',
-            'super_admin', 'admin', 'program_director'),
+            'super_admin', 'admin', 'program_director', 'event_coordinator'),
   ]);
 
   const profile  = currentUser?.profile ?? null;

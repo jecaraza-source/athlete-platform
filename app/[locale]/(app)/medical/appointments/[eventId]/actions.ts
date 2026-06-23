@@ -19,7 +19,7 @@ export type SlotInfo = {
 // Guard helper — medical staff only
 // ---------------------------------------------------------------------------
 
-const MEDICAL_ROLE_CODES = ['medic', 'psychologist', 'nutritionist', 'physio', 'admin', 'super_admin', 'program_director'];
+const MEDICAL_ROLE_CODES = ['medic', 'psychologist', 'nutritionist', 'physio', 'admin', 'super_admin', 'program_director', 'event_coordinator'];
 
 async function assertMedicalAccess(): Promise<{ error: string } | null> {
   const user = await getCurrentUser();
