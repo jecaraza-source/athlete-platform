@@ -94,7 +94,7 @@ export async function updatePhysioSession(id: string, formData: FormData) {
 
   const existingNotes = (formData.get('notes') as string) || null;
   const editReason = (formData.get('edit_reason') as string)?.trim();
-  const todayStr = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const todayStr = new Date().toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: '2-digit', month: '2-digit', year: 'numeric' });
   let notes = existingNotes;
   if (editReason) {
     const entry = `[Modificado ${todayStr}: ${editReason}]`;

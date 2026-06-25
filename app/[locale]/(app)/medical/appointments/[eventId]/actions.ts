@@ -248,6 +248,7 @@ export async function confirmReschedule(
 
     if (playerIds.length > 0) {
       const dateLabel = new Date(newStartAt).toLocaleString('es-MX', {
+        timeZone: 'America/Mexico_City',
         weekday: 'long',
         month:   'long',
         day:     'numeric',

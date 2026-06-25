@@ -17,6 +17,7 @@
 import { supabaseAdmin }    from '@/lib/supabase-admin';
 import { requireAdminAccess } from '@/lib/rbac/server';
 import { calcTrend }        from '@/lib/periods';
+import { todayInMX }        from '@/lib/timezone';
 import type {
   Appointment, AppointmentFilters, HeatmapCell,
   KpiSet, ServiceStat, SpecialistLoad, ServiceType,
@@ -182,7 +183,8 @@ export async function fetchKpis(
 ): Promise<KpiSet> {
   await requireAdminAccess();
 
-  const todayISO = new Date().toISOString().split('T')[0];
+  // Use Mexico City date so 'today' correctly reflects the local date (not UTC)
+  const todayISO = todayInMX();
 
   const [
     { count: totalCurrent },

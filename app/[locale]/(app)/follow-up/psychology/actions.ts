@@ -10,7 +10,7 @@ export async function updatePsychologyCase(id: string, formData: FormData) {
 
   const existingSummary = (formData.get('summary') as string) || null;
   const editReason = (formData.get('edit_reason') as string)?.trim();
-  const todayStr = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const todayStr = new Date().toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: '2-digit', month: '2-digit', year: 'numeric' });
   let summary = existingSummary;
   if (editReason) {
     const entry = `[Modificado ${todayStr}: ${editReason}]`;
@@ -56,7 +56,7 @@ export async function updatePsychologySession(id: string, formData: FormData) {
   const stressRaw = formData.get('stress_score') as string;
 
   const editReason = (formData.get('edit_reason') as string)?.trim();
-  const todayStr = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const todayStr = new Date().toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: '2-digit', month: '2-digit', year: 'numeric' });
   const topicBase = (formData.get('topic_summary') as string) || null;
   let topicSummary = topicBase;
   if (editReason) {
