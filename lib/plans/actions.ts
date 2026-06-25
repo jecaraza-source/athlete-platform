@@ -185,6 +185,9 @@ export async function createPlan(
   type: PlanType,
   formData: FormData
 ): Promise<{ error: string | null; planId: string | null }> {
+  // Outer try-catch ensures any unexpected throw is converted to a clean error
+  // response instead of a 500 crash that shows 'This page couldn't be loaded'.
+  try {
   const denied = await assertPermission('edit_athletes');
   if (denied) return { ...denied, planId: null };
 
@@ -292,6 +295,13 @@ export async function createPlan(
 
   revalidatePath(`/plans/${type}`);
   return { error: null, planId };
+
+  } catch (e) {
+    // Convert any unhandled exception into a safe error response
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[createPlan] Unhandled error:', msg);
+    return { error: `Error al crear el plan: ${msg}`, planId: null };
+  }
 }
 
 /** Permanently deletes a plan (file + DB row, cascades athlete_plans). */
