@@ -61,7 +61,12 @@ export default async function AthletesPage({
     .order('last_name', { ascending: true });
 
   if (q) {
-    baseQuery = baseQuery.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`);
+    // Split by spaces so a full-name query like "Alejandro Rodriguez Mariscal" works:
+    // each word must appear in either first_name OR last_name (ANDed per word).
+    const words = q.trim().split(/\s+/).filter(Boolean);
+    for (const word of words) {
+      baseQuery = baseQuery.or(`first_name.ilike.%${word}%,last_name.ilike.%${word}%`);
+    }
   }
   if (status) {
     baseQuery = baseQuery.eq('status', status);
