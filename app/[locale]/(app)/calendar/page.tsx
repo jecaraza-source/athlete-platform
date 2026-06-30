@@ -121,9 +121,9 @@ export default async function CalendarPage() {
   }
   const sports = Array.from(uniqueSportsMap.values());
 
-  // Build a map: event_id → athletes who are participants
+  // Build a map: event_id → athletes who are participants (includes discipline for filtering)
   const athleteById = Object.fromEntries(athletes.map((a) => [a.id, a]));
-  const participantsByEvent: Record<string, { id: string; first_name: string; last_name: string }[]> = {};
+  const participantsByEvent: Record<string, { id: string; first_name: string; last_name: string; discipline?: string | null }[]> = {};
   for (const p of participants) {
     const athlete = athleteById[p.participant_id];
     if (athlete) {
@@ -153,6 +153,7 @@ export default async function CalendarPage() {
         athletes={athletes}
         participantsByEvent={participantsByEvent}
         sports={sports}
+        disciplines={DISCIPLINES.map((d) => ({ value: d.value, label: d.label }))}
       />
     </main>
   );
