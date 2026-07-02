@@ -6,6 +6,8 @@ import { useTranslations } from 'next-intl';
 
 // Hrefs hidden from the 'athlete' role (staff/admin-only pages).
 const STAFF_ONLY_HREFS = new Set(['/athletes', '/follow-up']);
+// Follow-up is also gated separately (auditors see /athletes but not /follow-up).
+const FOLLOWUP_HREF = '/follow-up';
 
 // Hrefs hidden from non-athletes (athlete-specific pages).
 // Staff/admin use the full admin panel equivalents instead.
@@ -94,6 +96,8 @@ export default function NavLinks({
   showFinances = false,
   isAthlete = false,
   showAppointments = false,
+  showAthletes = true,
+  showFollowUp = true,
 }: {
   showAdmin?: boolean;
   /** When true, shows the Finanzas link (user has view_finances permission). */
@@ -102,6 +106,10 @@ export default function NavLinks({
   isAthlete?: boolean;
   /** When true, shows 'Mis Citas' link for medical staff (medic, physio, nutritionist, psychologist). */
   showAppointments?: boolean;
+  /** When true, shows the athlete list link (requires view_athletes permission). */
+  showAthletes?: boolean;
+  /** When true, shows the follow-up link (clinical/coaching staff only; auditors are excluded). */
+  showFollowUp?: boolean;
 }) {
   const pathname = usePathname();
   const t = useTranslations('nav');
@@ -132,6 +140,10 @@ export default function NavLinks({
         {mainLinks.map((link) => {
           // Staff-only items are hidden from athletes
           if (isAthlete && STAFF_ONLY_HREFS.has(link.href)) return null;
+          // Athlete list hidden from users without view_athletes permission
+          if (!showAthletes && link.href === '/athletes') return null;
+          // Follow-up hidden from users without clinical/coaching role (e.g. auditors)
+          if (!showFollowUp && link.href === FOLLOWUP_HREF) return null;
           // Athlete-only items are hidden from staff/admin
           if (!isAthlete && ATHLETE_ONLY_HREFS.has(link.href)) return null;
           return (

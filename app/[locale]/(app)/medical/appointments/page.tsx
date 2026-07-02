@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 const MEDICAL_ROLE_CODES = [
   'medic', 'psychologist', 'nutritionist', 'physio',
-  'admin', 'super_admin', 'program_director', 'event_coordinator',
+  'admin', 'super_admin', 'program_director', 'event_coordinator', 'auditor',
 ];
 
 const STATUS_PILL: Record<string, string> = {
@@ -67,7 +67,7 @@ export default async function AppointmentsListPage({
   }
 
   const isAdmin = userRoleCodes.some((c) =>
-    ['admin', 'super_admin', 'program_director', 'event_coordinator'].includes(c),
+    ['admin', 'super_admin', 'program_director', 'event_coordinator', 'auditor'].includes(c),
   );
 
   // Date range: full program Jun 2026 → Dec 2026 (including past appointments)

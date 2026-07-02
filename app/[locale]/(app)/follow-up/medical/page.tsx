@@ -1,7 +1,7 @@
 import BackButton from '@/components/back-button';
 import { getTranslations } from 'next-intl/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requirePermission } from '@/lib/rbac/server';
+import { requireRole } from '@/lib/rbac/server';
 import AthleteFilter from '../nutrition/athlete-filter';
 import NewCaseForm from './new-case-form';
 import NewMedicalSessionForm from './new-session-form';
@@ -58,7 +58,7 @@ export default async function MedicalPage({
 }: {
   searchParams: Promise<{ athlete?: string }>;
 }) {
-  await requirePermission('view_athletes');
+  await requireRole('medic', 'physio', 'nutritionist', 'psychologist', 'coach');
 
   const { athlete: selectedAthleteId = '' } = await searchParams;
 
