@@ -452,7 +452,7 @@ export default function IntegratedResultForm({
             {hasEvalData && (
               <button type="button" disabled={!!aiPending} onClick={() => handleAIGenerate('interdisciplinary')}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-md transition-colors disabled:opacity-50">
-                {aiPending === 'interdisciplinary' ? <>⏳ Generando…</> : <>✨ Generar con IA</>}
+                {aiPending === 'interdisciplinary' ? <>⏳ Generando…</> : <>✨ Generar Resumen General</>}
               </button>
             )}
           </div>
