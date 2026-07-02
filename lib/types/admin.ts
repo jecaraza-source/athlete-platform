@@ -45,6 +45,12 @@ export interface KpiSet {
   scheduledAppointments: KpiData;
   /** Appointments with status='no_show' in the selected period. */
   noShowAppointments:    KpiData;
+  /**
+   * Absolute count of attended interactions in the period:
+   * events.status='show' + training_sessions.is_done=true.
+   * Use this for the attendance donut instead of deriving from rate×total.
+   */
+  attendedCount:         KpiData;
 }
 
 export interface ServiceStat {

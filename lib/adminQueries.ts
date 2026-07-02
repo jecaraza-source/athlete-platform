@@ -197,6 +197,9 @@ export async function fetchKpis(
     { count: scheduledCount },
     { count: noShowCurrent },
     { count: noShowPrev },
+    // Training sessions completed (seguimientos) in each period
+    { count: trainingDoneCurrent },
+    { count: trainingDonePrev },
   ] = await Promise.all([
     // Total events in current period
     supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
@@ -231,6 +234,14 @@ export async function fetchKpis(
     supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
       .in('status', ['no_show', 'no_show_remote'])
       .gte('start_at', fromISO(prevFrom)).lte('start_at', toISO(prevTo)),
+    // Seguimientos: training sessions marked done (is_done=true) in current period
+    supabaseAdmin.from('training_sessions').select('*', { count: 'exact', head: true })
+      .eq('is_done', true)
+      .gte('session_date', from).lte('session_date', to),
+    // Seguimientos: training sessions marked done in previous period
+    supabaseAdmin.from('training_sessions').select('*', { count: 'exact', head: true })
+      .eq('is_done', true)
+      .gte('session_date', prevFrom).lte('session_date', prevTo),
   ]);
 
   const tc  = totalCurrent ?? 0;
@@ -241,9 +252,20 @@ export async function fetchKpis(
   const np  = newPrev      ?? 0;
   const nsc = noShowCurrent ?? 0;
   const nsp = noShowPrev    ?? 0;
+  const tdc = trainingDoneCurrent ?? 0; // seguimientos asistidos
+  const tdp = trainingDonePrev    ?? 0;
 
-  const attendanceRateCurrent = tc > 0 ? Math.round((sc / tc) * 100) : 0;
-  const attendanceRatePrev    = tp > 0 ? Math.round((sp / tp) * 100) : 0;
+  // attendedCount = events asistidos + seguimientos completados
+  const attendedCurrent = sc + tdc;
+  const attendedPrev    = sp + tdp;
+
+  // Attendance rate denominator = only events with a known outcome (show + no_show*).
+  // Excluding 'scheduled' (future) events avoids artificially deflating the rate.
+  const completedCurrent = attendedCurrent + nsc;
+  const completedPrev    = attendedPrev    + nsp;
+
+  const attendanceRateCurrent = completedCurrent > 0 ? Math.round((attendedCurrent / completedCurrent) * 100) : 0;
+  const attendanceRatePrev    = completedPrev    > 0 ? Math.round((attendedPrev    / completedPrev)    * 100) : 0;
 
   return {
     totalAppointments:     { value: tc,  previousValue: tp,  ...calcTrend(tc, tp) },
@@ -252,6 +274,7 @@ export async function fetchKpis(
     newRegistrations:      { value: nc,  previousValue: np,  ...calcTrend(nc, np) },
     scheduledAppointments: { value: scheduledCount ?? 0, previousValue: 0, trend: 'neutral', trendPercent: 0 },
     noShowAppointments:    { value: nsc, previousValue: nsp, ...calcTrend(nsc, nsp) },
+    attendedCount:         { value: attendedCurrent, previousValue: attendedPrev, ...calcTrend(attendedCurrent, attendedPrev) },
   };
 }
 

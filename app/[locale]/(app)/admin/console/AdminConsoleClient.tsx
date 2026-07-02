@@ -126,21 +126,26 @@ export default function AdminConsoleClient({
     window.location.href = '/login';
   };
 
-  const attendanceData = kpis
+  // Attendance donut: use absolute counts so future 'scheduled' events
+  // are not incorrectly counted as 'No Atendió'.
+  // attendedCount = events.show + training_sessions.is_done=true (seguimientos).
+  const attendedAbs  = kpis?.attendedCount.value         ?? 0;
+  const noShowAbs    = kpis?.noShowAppointments.value    ?? 0;
+  const completedAbs = attendedAbs + noShowAbs;
+
+  const attendanceData = kpis && completedAbs > 0
     ? [
-        {
-          name:  'Atendió',
-          value: Math.round((kpis.attendanceRate.value / 100) * kpis.totalAppointments.value),
-          color: '#10B981',
-        },
-        {
-          name:  'No Atendió',
-          value: kpis.totalAppointments.value
-            - Math.round((kpis.attendanceRate.value / 100) * kpis.totalAppointments.value),
-          color: '#EF4444',
-        },
+        { name: 'Atendió',    value: attendedAbs, color: '#10B981' },
+        { name: 'No Atendió', value: noShowAbs,   color: '#EF4444' },
       ]
     : [];
+
+  // Recompute attendance rate from the same corrected counts
+  // (overrides kpis.attendanceRate which is already correct from the server,
+  //  but kept here for clarity in case of a stale kpis object).
+  const computedAttendanceRate = completedAbs > 0
+    ? Math.round((attendedAbs / completedAbs) * 100)
+    : (kpis?.attendanceRate.value ?? 0);
 
   return (
     <div className="min-h-screen bg-[#0F1117]">
@@ -198,7 +203,7 @@ export default function AdminConsoleClient({
           <section aria-label="Indicadores operativos">
             <OperativeIndicators
               attendanceData={attendanceData}
-              attendanceRate={kpis?.attendanceRate.value ?? 0}
+              attendanceRate={computedAttendanceRate}
               heatmap={heatmap}
               specialists={specialists}
             />
