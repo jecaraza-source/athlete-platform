@@ -88,6 +88,45 @@ export interface RealtimeAlert {
 
 export type PeriodKey = 'today' | 'week' | 'month' | '3months';
 
+// ─── Report types ─────────────────────────────────────────────────────────────
+
+export type ReportPeriodKey = 'today' | 'week' | 'month' | 'quarter';
+
+export interface ReportServiceRow {
+  /** Display label, e.g. "MÉDICO" */
+  service: string;
+  /** All events in period regardless of status */
+  scheduled: number;
+  /** Events with status='show' */
+  attendedPresential: number;
+  /** Events with status='show_remote'; null = NO APLICA for this service */
+  attendedRemote: number | null;
+  /** Follow-up session notes logged in period */
+  followUpNotes: number;
+  /** Events with status IN ('no_show', 'no_show_remote') */
+  noShow: number;
+}
+
+export interface ReportCoachRow {
+  coachId: string;
+  coachName: string;
+  discipline: string;
+  /** Distinct athletes with training_sessions in period */
+  totalAthletes: number;
+  /** Plans of type='training' created by this coach in period */
+  totalPlans: number;
+  /** training_sessions logged by this coach in period */
+  totalNotes: number;
+}
+
+export interface ReportData {
+  activeAthletes: number;
+  from: string;
+  to: string;
+  services: ReportServiceRow[];
+  coaches: ReportCoachRow[];
+}
+
 export interface PeriodRange {
   from: string; // ISO date
   to: string;   // ISO date

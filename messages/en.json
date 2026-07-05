@@ -729,6 +729,14 @@
       "allRoles": "All roles",
       "noResults": "No staff members match the filters."
     },
+    "console": {
+      "title": "Admin Console",
+      "description": "KPIs, appointments, heatmap, real-time alerts and Excel export."
+    },
+    "reportesMetas": {
+      "title": "Goals Report",
+      "description": "Daily, weekly, monthly and quarterly summary with a print button."
+    },
     "disciplines": {
       "title": "Discipline Configuration",
       "description": "Manage sports disciplines available in the calendar and forms.",

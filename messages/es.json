@@ -729,6 +729,14 @@
       "allRoles": "Todos los roles",
       "noResults": "No hay miembros que coincidan con los filtros."
     },
+    "console": {
+      "title": "Admin Console",
+      "description": "KPIs, citas, heatmap, alertas en tiempo real y exportación a Excel."
+    },
+    "reportesMetas": {
+      "title": "Reportes de Metas",
+      "description": "Resumen diario, semanal, mensual y trimestral con botón de impresión."
+    },
     "disciplines": {
       "title": "Configuración de Disciplinas",
       "description": "Gestiona las disciplinas deportivas disponibles en el calendario y formularios.",

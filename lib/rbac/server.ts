@@ -196,6 +196,21 @@ export async function requireAdminAccess(): Promise<CurrentUser> {
   return user;
 }
 
+/**
+ * Ensures the current user holds one of the report-access roles:
+ * super_admin, admin, or coordinador.
+ * Redirects to /login if unauthenticated, or to /dashboard otherwise.
+ */
+export async function requireReportAccess(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect(await loginPath());
+  const isAllowed = user.roles.some((r) =>
+    ['super_admin', 'admin', 'coordinador'].includes(r.code)
+  );
+  if (!isAllowed) redirect(await dashboardPath());
+  return user;
+}
+
 // ---------------------------------------------------------------------------
 // Server Action guards  (return errors instead of redirecting)
 // ---------------------------------------------------------------------------

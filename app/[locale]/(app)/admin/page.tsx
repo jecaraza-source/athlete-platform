@@ -17,12 +17,23 @@ export default async function AdminPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Link
           href="/admin/console"
-          className="md:col-span-2 rounded-lg border border-indigo-400 bg-indigo-600 p-6 hover:bg-indigo-700 transition-colors flex items-start gap-4"
+          className="rounded-lg border border-indigo-400 bg-indigo-600 p-6 hover:bg-indigo-700 transition-colors flex items-start gap-4"
         >
           <span className="text-3xl mt-0.5">📊</span>
           <div>
-            <h2 className="text-lg font-semibold text-white">Admin Console</h2>
-            <p className="text-sm text-indigo-200 mt-1">KPIs, citas, heatmap, alertas en tiempo real y exportación a Excel.</p>
+            <h2 className="text-lg font-semibold text-white">{t('console.title')}</h2>
+            <p className="text-sm text-indigo-200 mt-1">{t('console.description')}</p>
+          </div>
+        </Link>
+
+        <Link
+          href="/admin/reportes"
+          className="rounded-lg border border-emerald-400 bg-emerald-600 p-6 hover:bg-emerald-700 transition-colors flex items-start gap-4"
+        >
+          <span className="text-3xl mt-0.5">📋</span>
+          <div>
+            <h2 className="text-lg font-semibold text-white">{t('reportesMetas.title')}</h2>
+            <p className="text-sm text-emerald-100 mt-1">{t('reportesMetas.description')}</p>
           </div>
         </Link>
         <Link
@@ -97,8 +108,8 @@ export default async function AdminPage() {
         >
           <span className="text-3xl mt-0.5">🏅</span>
           <div>
-            <h2 className="text-lg font-semibold text-indigo-800">Configuración de Disciplinas</h2>
-            <p className="text-sm text-indigo-600 mt-1">Gestiona las disciplinas deportivas del calendario y formularios.</p>
+            <h2 className="text-lg font-semibold text-indigo-800">{t('disciplines.title')}</h2>
+            <p className="text-sm text-indigo-600 mt-1">{t('disciplines.description')}</p>
           </div>
         </Link>
       </div>
