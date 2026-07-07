@@ -85,45 +85,55 @@ export default async function AppointmentsListPage({
     filterEnd   = `2026-${String(mo).padStart(2, '0')}-${lastDay}T23:59:59`;
   }
 
-  // Build query — ascending order, full program period
-  let query = supabaseAdmin
-    .from('events')
-    .select('id, title, start_at, end_at, status, event_participants(participant_id)')
-    .eq('event_type', 'medical')
-    .gte('start_at', filterStart)
-    .lte('start_at', filterEnd)
-    .order('start_at', { ascending: true })
-    .limit(500);
+  // Build query — paginated to bypass Supabase's 1,000-row server cap.
+  // With 2,800+ medical events in Jun-Dec 2026 a single limited query misses many.
+  const PAGE = 1000;
+  const allEvents: EventRow[] = [];
+  let fetchError: { message: string } | null = null;
+  let from = 0;
 
-  if (!isAdmin) {
-    query = query.eq('created_by_profile_id', user.profile.id);
+  while (true) {
+    let q = supabaseAdmin
+      .from('events')
+      .select('id, title, start_at, end_at, status, event_participants(participant_id)')
+      .eq('event_type', 'medical')
+      .gte('start_at', filterStart)
+      .lte('start_at', filterEnd)
+      .order('start_at', { ascending: true })
+      .range(from, from + PAGE - 1);
+
+    if (!isAdmin) q = q.eq('created_by_profile_id', user.profile.id);
+    if (serviceParam !== 'all') q = q.ilike('title', `%${serviceParam}%`);
+    if (statusParam !== 'all') q = q.eq('status', statusParam);
+
+    const { data: page, error: pageErr } = await q;
+    if (pageErr) { fetchError = pageErr; break; }
+    if (!page?.length) break;
+    allEvents.push(...(page as unknown as EventRow[]));
+    if (page.length < PAGE) break;
+    from += PAGE;
   }
 
-  // Service filter (title contains keyword)
-  if (serviceParam !== 'all') {
-    query = query.ilike('title', `%${serviceParam}%`);
-  }
+  const events = allEvents;
+  const error  = fetchError;
 
-  // Status filter
-  if (statusParam !== 'all') {
-    query = query.eq('status', statusParam);
-  }
-
-  const { data, error } = await query;
-  const events = (data ?? []) as unknown as EventRow[];
-
-  // Step 2: batch-fetch athlete names
+  // Step 2: batch-fetch athlete names for ALL participants across all events
   const athleteIds = [...new Set(
     events.flatMap((ev) => ev.event_participants.map((ep) => ep.participant_id))
   )].filter(Boolean);
 
   const athleteMap = new Map<string, AthleteStub>();
   if (athleteIds.length > 0) {
-    const { data: athletes } = await supabaseAdmin
-      .from('athletes')
-      .select('id, first_name, last_name')
-      .in('id', athleteIds);
-    (athletes ?? []).forEach((a) => athleteMap.set(a.id, a as AthleteStub));
+    // May exceed 1000 IDs — paginate the IN query too
+    const ID_PAGE = 500;
+    for (let i = 0; i < athleteIds.length; i += ID_PAGE) {
+      const chunk = athleteIds.slice(i, i + ID_PAGE);
+      const { data: athletes } = await supabaseAdmin
+        .from('athletes')
+        .select('id, first_name, last_name')
+        .in('id', chunk);
+      (athletes ?? []).forEach((a) => athleteMap.set(a.id, a as AthleteStub));
+    }
   }
 
   // Group events by date (MX timezone)
@@ -135,10 +145,13 @@ export default async function AppointmentsListPage({
   }
 
   function renderEvent(ev: EventRow, isPast: boolean) {
-    const pid = ev.event_participants?.[0]?.participant_id;
-    const athlete = pid ? athleteMap.get(pid) : undefined;
-    const athleteName = athlete
-      ? `${athlete.first_name} ${athlete.last_name}`
+    // Show ALL participants, not just the first — so that e.g. Alejandro
+    // is visible even when he was added as a secondary participant.
+    const allAthletes = (ev.event_participants ?? [])
+      .map((ep) => athleteMap.get(ep.participant_id))
+      .filter((a): a is AthleteStub => a != null);
+    const athleteName = allAthletes.length > 0
+      ? allAthletes.map((a) => `${a.first_name} ${a.last_name}`).join(', ')
       : 'Atleta no asignado';
     const needsAction = ev.status === 'scheduled' && !isPast;
     const isProcessed = ['show', 'no_show', 'no_show_remote', 'rescheduled'].includes(ev.status);
