@@ -74,7 +74,7 @@ export default async function NutritionPage({
 
   const [{ data, error }, { data: athletesData }, nutritionistsData, { data: checkinsData }, { data: globalPlansData }] = await Promise.all([
     buildPlansQuery(),
-    supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name', { ascending: true }),
+    supabaseAdmin.from('athletes').select('id, first_name, last_name').neq('status', 'inactive').order('last_name', { ascending: true }),
     // RBAC-aware: new system uses 'staff' for all specialists.
     // Falls back to legacy profiles.role = 'nutritionist'.
     getProfilesByRoleCodes(['staff'], ['nutritionist']),

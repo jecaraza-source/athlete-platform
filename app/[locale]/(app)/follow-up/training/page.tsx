@@ -55,6 +55,7 @@ export default async function TrainingPage({
     supabaseAdmin
       .from('athletes')
       .select('id, first_name, last_name')
+      .neq('status', 'inactive')
       .order('last_name', { ascending: true }),
     // RBAC-aware: queries user_roles → roles(code='coach').
     // Falls back to profiles.role = 'coach' if no RBAC assignments found.

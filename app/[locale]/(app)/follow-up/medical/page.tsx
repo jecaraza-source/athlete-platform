@@ -93,7 +93,7 @@ export default async function MedicalPage({
   const [{ data: casesData, error }, { data: athletesData }, medicProfilesResult, { data: plansData }] =
     await Promise.all([
       casesQuery,
-      supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name'),
+      supabaseAdmin.from('athletes').select('id, first_name, last_name').neq('status', 'inactive').order('last_name'),
       // Fetch profiles assigned the medic role via the RBAC user_roles table
       medicRole
         ? supabaseAdmin

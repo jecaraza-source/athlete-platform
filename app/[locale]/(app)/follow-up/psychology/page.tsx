@@ -72,7 +72,7 @@ export default async function PsychologyPage({
   const [{ data: casesData, error }, { data: athletesData }, psychologistsData, { data: plansData }] =
     await Promise.all([
       casesQuery,
-      supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name'),
+      supabaseAdmin.from('athletes').select('id, first_name, last_name').neq('status', 'inactive').order('last_name'),
       // RBAC-aware: new system uses 'staff' for all specialists.
       // Falls back to legacy profiles.role = 'psychologist'.
       getProfilesByRoleCodes(['staff'], ['psychologist']),
