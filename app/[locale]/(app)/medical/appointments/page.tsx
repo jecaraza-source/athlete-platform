@@ -67,8 +67,11 @@ export default async function AppointmentsListPage({
   }
 
   const isAdmin = userRoleCodes.some((c) =>
-    ['admin', 'super_admin', 'program_director', 'event_coordinator', 'auditor'].includes(c),
+    ['admin', 'super_admin', 'program_director', 'event_coordinator'].includes(c),
   );
+  // Auditors get a read-only view of all appointments (audit trail) but are
+  // NOT treated as admin — they cannot create, edit, or change appointment status.
+  const isAuditor = userRoleCodes.includes('auditor');
 
   // Date range: full program Jun 2026 → Dec 2026 (including past appointments)
   const todayMX      = todayInMX();           // 'YYYY-MM-DD' in Mexico City
@@ -102,7 +105,7 @@ export default async function AppointmentsListPage({
       .order('start_at', { ascending: true })
       .range(from, from + PAGE - 1);
 
-    if (!isAdmin) q = q.eq('created_by_profile_id', user.profile.id);
+    if (!isAdmin && !isAuditor) q = q.eq('created_by_profile_id', user.profile.id);
     if (serviceParam !== 'all') q = q.ilike('title', `%${serviceParam}%`);
     if (statusParam !== 'all') q = q.eq('status', statusParam);
 
@@ -222,7 +225,7 @@ export default async function AppointmentsListPage({
 
       <h1 className="mt-5 text-2xl font-bold text-gray-900">Mis Citas</h1>
       <p className="text-sm text-gray-500 mt-0.5 mb-3">
-        {isAdmin ? 'Todas las citas del sistema' : 'Citas asignadas a tu perfil'}
+        {isAdmin ? 'Todas las citas del sistema' : isAuditor ? 'Vista de auditoría — todas las citas (solo lectura)' : 'Citas asignadas a tu perfil'}
         {' — '}{monthLabel}
       </p>
 

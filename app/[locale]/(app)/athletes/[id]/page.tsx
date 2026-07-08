@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requirePermission } from '@/lib/rbac/server';
+import { requirePermission, hasRole } from '@/lib/rbac/server';
 import { getTranslations } from 'next-intl/server';
 import { GeneralInfoSection, GuardianSection, EmergencyContactSection } from './athlete-sections';
 import AthleteDocuments from './athlete-documents';
@@ -43,13 +43,15 @@ type AthleteDetail = {
   profile_id: string | null;
 };
 
-function SectionHeader({ title, href, viewAllLabel }: { title: string; href: string; viewAllLabel: string }) {
+function SectionHeader({ title, href, viewAllLabel }: { title: string; href?: string; viewAllLabel?: string }) {
   return (
     <div className="flex items-center justify-between mb-3">
       <h2 className="font-semibold text-base">{title}</h2>
-      <Link href={href} className="text-xs text-blue-600 hover:underline">
-        {viewAllLabel}
-      </Link>
+      {href && viewAllLabel && (
+        <Link href={href} className="text-xs text-blue-600 hover:underline">
+          {viewAllLabel}
+        </Link>
+      )}
     </div>
   );
 }
@@ -61,7 +63,10 @@ export default async function AthleteDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ docmodule?: string; docsearch?: string }>;
 }) {
-  await requirePermission('view_athletes');
+  const [, isAuditor] = await Promise.all([
+    requirePermission('view_athletes'),
+    hasRole('auditor'),
+  ]);
   const ta = await getTranslations('athletes');
 
   const { id } = await params;
@@ -196,12 +201,14 @@ export default async function AthleteDetailPage({
               {diagStatus === 'pendiente' && ta('diagnosticPendingNote')}
             </p>
           </div>
-          <Link
-            href={`/athletes/${id}/diagnostic`}
-            className="text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap"
-          >
-            {ta('diagnosticGoTo')}
-          </Link>
+          {!isAuditor && (
+            <Link
+              href={`/athletes/${id}/diagnostic`}
+              className="text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap"
+            >
+              {ta('diagnosticGoTo')}
+            </Link>
+          )}
         </div>
       )}
 
@@ -259,9 +266,11 @@ export default async function AthleteDetailPage({
       <div className="mt-8 rounded-lg border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-base">{ta('diagnosticTitle')}</h2>
-          <Link href={`/athletes/${id}/diagnostic`} className="text-xs text-blue-600 hover:underline">
-            {ta('diagnosticViewFull')}
-          </Link>
+          {!isAuditor && (
+            <Link href={`/athletes/${id}/diagnostic`} className="text-xs text-blue-600 hover:underline">
+              {ta('diagnosticViewFull')}
+            </Link>
+          )}
         </div>
         <div className="mb-3">
           <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
@@ -297,7 +306,11 @@ export default async function AthleteDetailPage({
 
         {/* Training */}
         <div className="rounded-lg border border-gray-200 p-5">
-          <SectionHeader title={ta('trainingSection')} href="/follow-up/training" viewAllLabel={ta('viewAll')} />
+          <SectionHeader
+            title={ta('trainingSection')}
+            href={isAuditor ? undefined : '/follow-up/training'}
+            viewAllLabel={isAuditor ? undefined : ta('viewAll')}
+          />
           {sessions.length === 0 ? (
             <p className="text-sm text-gray-500">{ta('noSessions')}</p>
           ) : (
@@ -314,7 +327,11 @@ export default async function AthleteDetailPage({
 
         {/* Nutrition */}
         <div className="rounded-lg border border-gray-200 p-5">
-          <SectionHeader title={ta('nutritionSection')} href={`/follow-up/nutrition?athlete=${id}`} viewAllLabel={ta('viewAll')} />
+          <SectionHeader
+            title={ta('nutritionSection')}
+            href={isAuditor ? undefined : `/follow-up/nutrition?athlete=${id}`}
+            viewAllLabel={isAuditor ? undefined : ta('viewAll')}
+          />
           {plans.length === 0 ? (
             <p className="text-sm text-gray-500">{ta('noPlans')}</p>
           ) : (
@@ -331,7 +348,11 @@ export default async function AthleteDetailPage({
 
         {/* Physio */}
         <div className="rounded-lg border border-gray-200 p-5">
-          <SectionHeader title={ta('physioSection')} href="/follow-up/physio" viewAllLabel={ta('viewAll')} />
+          <SectionHeader
+            title={ta('physioSection')}
+            href={isAuditor ? undefined : '/follow-up/physio'}
+            viewAllLabel={isAuditor ? undefined : ta('viewAll')}
+          />
           {cases.length === 0 ? (
             <p className="text-sm text-gray-500">{ta('noCases')}</p>
           ) : (
@@ -348,7 +369,11 @@ export default async function AthleteDetailPage({
 
         {/* Psychology */}
         <div className="rounded-lg border border-gray-200 p-5">
-          <SectionHeader title={ta('psychologySection')} href="/follow-up/psychology" viewAllLabel={ta('viewAll')} />
+          <SectionHeader
+            title={ta('psychologySection')}
+            href={isAuditor ? undefined : '/follow-up/psychology'}
+            viewAllLabel={isAuditor ? undefined : ta('viewAll')}
+          />
           {psychCases.length === 0 ? (
             <p className="text-sm text-gray-500">{ta('noCases')}</p>
           ) : (
@@ -366,12 +391,14 @@ export default async function AthleteDetailPage({
 
       </div>
 
-      {/* Documentos del expediente — vista consolidada */}
-      <AthleteDocuments
-        athleteId={id}
-        moduleFilter={docmodule}
-        search={docsearch}
-      />
+      {/* Documentos del expediente — ocultos para auditores */}
+      {!isAuditor && (
+        <AthleteDocuments
+          athleteId={id}
+          moduleFilter={docmodule}
+          search={docsearch}
+        />
+      )}
     </main>
   );
 }

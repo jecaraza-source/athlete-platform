@@ -34,7 +34,7 @@ async function assertMedicalAccess(): Promise<{ error: string } | null> {
 // ---------------------------------------------------------------------------
 
 export async function confirmShow(eventId: string, notes: string) {
-  const denied = await assertPermission('view_athletes');
+  const denied = await assertMedicalAccess();
   if (denied) return denied;
 
   const { error: evErr } = await supabaseAdmin
@@ -85,7 +85,7 @@ export async function confirmNoShowRemote(
   notes: string,
   athleteProfileId: string | null,
 ) {
-  const denied = await assertPermission('view_athletes');
+  const denied = await assertMedicalAccess();
   if (denied) return denied;
 
   // Encode contact method and notes together in description
@@ -115,7 +115,7 @@ export async function confirmNoShow(
   notes: string,
   athleteProfileId: string | null,
 ) {
-  const denied = await assertPermission('view_athletes');
+  const denied = await assertMedicalAccess();
   if (denied) return denied;
 
   // Store reason + notes in description since no dedicated column exists yet
@@ -183,7 +183,7 @@ export async function confirmReschedule(
   specialistId: string,
   serviceType: string,
 ) {
-  const denied = await assertPermission('view_athletes');
+  const denied = await assertMedicalAccess();
   if (denied) return denied;
 
   const user = await getCurrentUser();
