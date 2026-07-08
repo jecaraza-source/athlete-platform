@@ -196,6 +196,21 @@ export async function requireAdminAccess(): Promise<CurrentUser> {
   return user;
 }
 
+/**
+ * Ensures the current user holds one of the report-access roles:
+ * super_admin, admin, program_director, or event_coordinator.
+ * Redirects to /login if unauthenticated, or to /dashboard otherwise.
+ */
+export async function requireReportAccess(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect(await loginPath());
+  const isAllowed = user.roles.some((r) =>
+    ['super_admin', 'admin', 'program_director', 'event_coordinator'].includes(r.code)
+  );
+  if (!isAllowed) redirect(await dashboardPath());
+  return user;
+}
+
 // ---------------------------------------------------------------------------
 // Server Action guards  (return errors instead of redirecting)
 // ---------------------------------------------------------------------------
@@ -425,6 +440,80 @@ export async function getDiagnosticAccess(): Promise<{
   ];
 
   return { allowedSections: sections, canViewIntegratedResult: false };
+}
+
+// ---------------------------------------------------------------------------
+// Specialty section access
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps each follow-up / plans section to the specific role code(s) that own it.
+ * Admin roles (super_admin, admin, program_director) bypass this map and always
+ * have access to all sections.
+ */
+export const SECTION_ROLE_MAP: Record<string, string[]> = {
+  medical:        ['medic'],
+  nutrition:      ['nutritionist'],
+  psychology:     ['psychologist'],
+  physio:         ['physio'],
+  training:       ['coach'],
+  rehabilitation: ['physio'], // physio also handles rehabilitation plans
+};
+
+/** Roles that get full access to all specialty sections (same as admin access). */
+const FULL_ACCESS_ROLES = ['super_admin', 'admin', 'program_director'] as const;
+
+/**
+ * Page-level guard: ensures the current user holds at least one of the given
+ * role codes OR is an admin. Redirects to /dashboard if the check fails.
+ *
+ * Use this at the top of Server Components for specialty follow-up pages.
+ */
+export async function requireRole(...roleCodes: string[]): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect(await loginPath());
+  if (isSuperAdmin(user)) return user;
+  const codes = user.roles.map((r) => r.code);
+  // Admin-level roles always have full access to all specialty sections
+  if (codes.some((c) => (FULL_ACCESS_ROLES as readonly string[]).includes(c))) return user;
+  if (!codes.some((c) => roleCodes.includes(c))) redirect(await dashboardPath());
+  return user;
+}
+
+/**
+ * Server Action guard: checks that the current user holds at least one of the
+ * given role codes or is an admin. Returns { error } on failure instead of
+ * redirecting, so callers can surface the error to the UI.
+ */
+export async function assertRole(
+  ...roleCodes: string[]
+): Promise<{ error: string } | null> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Debes iniciar sesión para realizar esta acción.' };
+  if (isSuperAdmin(user)) return null;
+  const codes = user.roles.map((r) => r.code);
+  if (codes.some((c) => (FULL_ACCESS_ROLES as readonly string[]).includes(c))) return null;
+  if (!codes.some((c) => roleCodes.includes(c))) {
+    return { error: 'No tienes permiso para realizar esta acción en esta sección.' };
+  }
+  return null;
+}
+
+/**
+ * Given a list of section/discipline keys (e.g. ['medical','nutrition','physio']),
+ * returns only those the current user is allowed to see.
+ * Admins see all. Each specialist sees only their own section(s).
+ */
+export async function getAllowedSections(keys: string[]): Promise<string[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+  if (isSuperAdmin(user)) return keys;
+  const codes = user.roles.map((r) => r.code);
+  if (codes.some((c) => (FULL_ACCESS_ROLES as readonly string[]).includes(c))) return keys;
+  return keys.filter((key) => {
+    const allowed = SECTION_ROLE_MAP[key] ?? [];
+    return codes.some((c) => allowed.includes(c));
+  });
 }
 
 export async function getRoleWithPermissions(roleId: string) {

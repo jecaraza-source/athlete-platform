@@ -1,14 +1,29 @@
 'use server';
+// =============================================================================
+// lib/adminQueries.ts
+// Admin console data queries — reads from the EVENTS + EVENT_PARTICIPANTS tables.
+//
+// The platform stores appointments as `events` (2,900+ rows) with participants
+// in `event_participants`. The legacy `appointments` table is empty and unused.
+//
+// events schema: id, title, event_type, start_at, end_at, status, description,
+//               created_by_profile_id, created_at
+// events.status: 'scheduled' (=confirmed), 'show', 'no_show', 'rescheduled'
+//
+// event_participants: id, event_id, participant_id, participant_type,
+//                     attendance_status, notes
+// =============================================================================
 
 import { supabaseAdmin }    from '@/lib/supabase-admin';
 import { requireAdminAccess } from '@/lib/rbac/server';
 import { calcTrend }        from '@/lib/periods';
+import { todayInMX }        from '@/lib/timezone';
 import type {
   Appointment, AppointmentFilters, HeatmapCell,
   KpiSet, ServiceStat, SpecialistLoad, ServiceType,
 } from '@/lib/types/admin';
 
-// ─── Internal types for raw Supabase rows ─────────────────────────────────────
+// ─── Internal types ──────────────────────────────────────────────────────────────────────────────────
 
 type RawProfile = {
   id: string;
@@ -19,82 +34,35 @@ type RawProfile = {
   role?: string | null;
 };
 
-type RawAppointmentRow = {
-  id: string;
-  date: string;
-  time: string;
-  status: string;
-  notes: string | null;
-  service_type: string;
-  original_date: string | null;
-  original_appointment_id: string | null;
-  confirmed_by: string | null;
-  confirmed_at: string | null;
-  no_show_reason: string | null;
-  reschedule_reason: string | null;
+type RawParticipant = {
+  participant_id: string;
+  participant_type: string;
   athlete: RawProfile | RawProfile[] | null;
-  specialist: RawProfile | RawProfile[] | null;
 };
 
-type RawSpecialistRow = {
-  specialist_id: string;
-  specialist: Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'role'>
-    | Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'role'>[]  | null;
+type RawEventRow = {
+  id: string;
+  start_at: string;
+  status: string;
+  description: string | null;
+  title: string | null;
+  creator: RawProfile | RawProfile[] | null;
+  event_participants: RawParticipant[] | null;
 };
 
-// ─── Select fragments ─────────────────────────────────────────────────────────
-const APPOINTMENT_SELECT = `
-  id, date, time, status, notes, service_type,
-  original_date, original_appointment_id,
-  confirmed_by, confirmed_at, no_show_reason, reschedule_reason,
-  athlete:profiles!athlete_id(id, first_name, last_name, email, avatar_url),
-  specialist:profiles!specialist_id(id, first_name, last_name, role)
-`;
+type RawCreatorRow = {
+  created_by_profile_id: string | null;
+  creator: Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'role'>
+    | Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'role'>[] | null;
+};
 
-// Supabase may return the FK join as an array (when using !foreign_key notation)
-// or as a single object. This helper normalises both.
+// Normalise Supabase FK join (may return single object or array)
 function one<T>(v: T | T[] | null | undefined): T | null {
   if (!v) return null;
   return Array.isArray(v) ? (v[0] ?? null) : v;
 }
 
-function toAppointment(raw: RawAppointmentRow): Appointment {
-  const athlete     = one(raw.athlete);
-  const specialist  = one(raw.specialist);
-
-  const athleteName    = [athlete?.first_name, athlete?.last_name].filter(Boolean).join(' ')
-    || athlete?.email || '';
-  const specialistName = [specialist?.first_name, specialist?.last_name].filter(Boolean).join(' ') || '';
-
-  // Construct explicitly — avoids spread merging RawAppointmentRow fields into Appointment
-  const appointment: Appointment = {
-    id:                      raw.id,
-    date:                    raw.date,
-    time:                    raw.time,
-    // Cast status string to the typed union — values come from our own DB enum.
-    status:                  raw.status as Appointment['status'],
-    notes:                   raw.notes,
-    service_type:            raw.service_type as Appointment['service_type'],
-    original_date:           raw.original_date,
-    original_appointment_id: raw.original_appointment_id,
-    confirmed_by:            raw.confirmed_by,
-    confirmed_at:            raw.confirmed_at,
-    no_show_reason:          raw.no_show_reason,
-    reschedule_reason:       raw.reschedule_reason,
-    athlete: {
-      id:         athlete?.id ?? '',
-      full_name:  athleteName,
-      email:      athlete?.email ?? '',
-      avatar_url: athlete?.avatar_url ?? null,
-    },
-    specialist: {
-      id:        specialist?.id ?? '',
-      full_name: specialistName,
-      specialty: specialist?.role ?? '',
-    },
-  };
-  return appointment;
-}
+// ─── Service type helpers ────────────────────────────────────────────────────────────────────────────────
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
   medico: 'Consulta Médica',
@@ -105,13 +73,118 @@ const SERVICE_LABELS: Record<ServiceType, string> = {
   entrenamiento: 'Plan de Entrenamiento',
 };
 
-// ─── KPIs ───────────────────────────────────────────────────────────────────────────────────
+// Derives the service type from the event title (e.g. "FISIOTERAPIA 1" → 'fisioterapia')
+const SERVICE_KEYWORDS: [string, ServiceType][] = [
+  ['fisio', 'fisioterapia'],
+  ['psicol', 'psicologia'],
+  ['nutri', 'nutricion'],
+  ['entrena', 'entrenamiento'],
+  ['evalua', 'evaluacion'],
+];
+
+function titleToServiceType(title: string): ServiceType {
+  const t = (title || '').toLowerCase();
+  for (const [keyword, type] of SERVICE_KEYWORDS) {
+    if (t.includes(keyword)) return type;
+  }
+  return 'medico';
+}
+
+// Maps events.status to the Appointment.status union
+function mapEventStatus(status: string): Appointment['status'] {
+  if (status === 'scheduled')     return 'confirmed';
+  if (status === 'show')          return 'show';
+  if (status === 'no_show')       return 'no_show';
+  if (status === 'no_show_remote') return 'no_show_remote';
+  if (status === 'rescheduled')   return 'rescheduled';
+  if (status === 'cancelled')     return 'cancelled';
+  return 'confirmed';
+}
+
+// ISO datetime range helpers (events use TIMESTAMPTZ, not DATE)
+function fromISO(date: string): string { return `${date}T00:00:00`; }
+function toISO(date: string): string   { return `${date}T23:59:59`; }
+
+// ─── Select fragment ───────────────────────────────────────────────────────────────────────────────
+// event_participants.participant_id has no registered FK in PostgREST’s schema cache,
+// so we fetch participant_id only and resolve athlete in a separate query per batch.
+const EVENT_SELECT = `
+  id, start_at, status, description, title,
+  creator:profiles!created_by_profile_id(id, first_name, last_name, role),
+  event_participants(participant_id, participant_type)
+`;
+
+// Fetches athlete names for a list of athlete IDs in one round-trip
+async function fetchAthleteMap(
+  ids: string[],
+): Promise<Map<string, Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'email'>>> {
+  if (ids.length === 0) return new Map();
+  const { data } = await supabaseAdmin
+    .from('athletes')
+    .select('id, first_name, last_name, email')
+    .in('id', ids);
+  const map = new Map<string, Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'email'>>();
+  (data ?? []).forEach((a) => map.set(a.id, a as Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'email'>));
+  return map;
+}
+
+function toAppointment(
+  raw: RawEventRow,
+  athleteMap: Map<string, Pick<RawProfile, 'id' | 'first_name' | 'last_name' | 'email'>>,
+): Appointment {
+  const creator     = one(raw.creator);
+  const athletePart = (raw.event_participants ?? [])
+    .find((p) => p.participant_type === 'athlete');
+  const athlete = athletePart ? athleteMap.get(athletePart.participant_id) ?? null : null;
+
+  const dt   = new Date(raw.start_at);
+  // Extract date and time in Mexico City timezone
+  const date = dt.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' }); // YYYY-MM-DD
+  const time = dt.toLocaleTimeString('es-MX', {
+    timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+
+  const athleteName    = [athlete?.first_name, athlete?.last_name].filter(Boolean).join(' ')
+    || athlete?.email || '';
+  const specialistName = [creator?.first_name, creator?.last_name].filter(Boolean).join(' ') || '';
+
+  return {
+    id:                      raw.id,
+    date,
+    time,
+    status:                  mapEventStatus(raw.status),
+    notes:                   raw.description,
+    service_type:            titleToServiceType(raw.title ?? ''),
+    original_date:           null,
+    original_appointment_id: null,
+    confirmed_by:            null,
+    confirmed_at:            null,
+    no_show_reason:          null,
+    reschedule_reason:       null,
+    athlete: {
+      id:         athlete?.id ?? '',
+      full_name:  athleteName,
+      email:      athlete?.email ?? '',
+      avatar_url: null,   // athletes table has no avatar_url
+    },
+    specialist: {
+      id:        creator?.id ?? '',
+      full_name: specialistName,
+      specialty: creator?.role ?? '',
+    },
+  };
+}
+
+// ─── KPIs ─────────────────────────────────────────────────────────────────────────────────────────
 
 export async function fetchKpis(
   from: string, to: string,
   prevFrom: string, prevTo: string,
 ): Promise<KpiSet> {
   await requireAdminAccess();
+
+  // Use Mexico City date so 'today' correctly reflects the local date (not UTC)
+  const todayISO = todayInMX();
 
   const [
     { count: totalCurrent },
@@ -121,35 +194,91 @@ export async function fetchKpis(
     { count: activeAthletes },
     { count: newCurrent },
     { count: newPrev },
+    { count: scheduledCount },
+    { count: noShowCurrent },
+    { count: noShowPrev },
+    // Training sessions completed (seguimientos) in each period
+    { count: trainingDoneCurrent },
+    { count: trainingDonePrev },
   ] = await Promise.all([
-    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).gte('date', from).lte('date', to),
-    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).gte('date', prevFrom).lte('date', prevTo),
-    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'show').gte('date', from).lte('date', to),
-    supabaseAdmin.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'show').gte('date', prevFrom).lte('date', prevTo),
-    supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'athlete'),
-    supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'athlete').gte('created_at', from).lte('created_at', to),
-    supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'athlete').gte('created_at', prevFrom).lte('created_at', prevTo),
+    // Total events in current period
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .gte('start_at', fromISO(from)).lte('start_at', toISO(to)),
+    // Total events in previous period
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .gte('start_at', fromISO(prevFrom)).lte('start_at', toISO(prevTo)),
+    // Attended (show) in current period
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .eq('status', 'show')
+      .gte('start_at', fromISO(from)).lte('start_at', toISO(to)),
+    // Attended (show) in previous period
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .eq('status', 'show')
+      .gte('start_at', fromISO(prevFrom)).lte('start_at', toISO(prevTo)),
+    // Active athletes (global, not period-filtered)
+    supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+    // New athletes registered in current period
+    supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true })
+      .eq('status', 'active').gte('created_at', fromISO(from)).lte('created_at', toISO(to)),
+    // New athletes registered in previous period
+    supabaseAdmin.from('athletes').select('*', { count: 'exact', head: true })
+      .eq('status', 'active').gte('created_at', fromISO(prevFrom)).lte('created_at', toISO(prevTo)),
+    // Upcoming scheduled events from today (global — not period-filtered)
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .eq('status', 'scheduled').gte('start_at', fromISO(todayISO)),
+    // No-shows (presencial + remote) in current period
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .in('status', ['no_show', 'no_show_remote'])
+      .gte('start_at', fromISO(from)).lte('start_at', toISO(to)),
+    // No-shows (presencial + remote) in previous period
+    supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
+      .in('status', ['no_show', 'no_show_remote'])
+      .gte('start_at', fromISO(prevFrom)).lte('start_at', toISO(prevTo)),
+    // Seguimientos: training sessions marked done (is_done=true) in current period
+    supabaseAdmin.from('training_sessions').select('*', { count: 'exact', head: true })
+      .eq('is_done', true)
+      .gte('session_date', from).lte('session_date', to),
+    // Seguimientos: training sessions marked done in previous period
+    supabaseAdmin.from('training_sessions').select('*', { count: 'exact', head: true })
+      .eq('is_done', true)
+      .gte('session_date', prevFrom).lte('session_date', prevTo),
   ]);
 
-  const tc = totalCurrent ?? 0;
-  const tp = totalPrev ?? 0;
-  const sc = showsCurrent ?? 0;
-  const sp = showsPrev ?? 0;
-  const nc = newCurrent ?? 0;
-  const np = newPrev ?? 0;
+  const tc  = totalCurrent ?? 0;
+  const tp  = totalPrev    ?? 0;
+  const sc  = showsCurrent ?? 0;
+  const sp  = showsPrev    ?? 0;
+  const nc  = newCurrent   ?? 0;
+  const np  = newPrev      ?? 0;
+  const nsc = noShowCurrent ?? 0;
+  const nsp = noShowPrev    ?? 0;
+  const tdc = trainingDoneCurrent ?? 0; // seguimientos asistidos
+  const tdp = trainingDonePrev    ?? 0;
 
-  const attendanceRateCurrent = tc > 0 ? Math.round((sc / tc) * 100) : 0;
-  const attendanceRatePrev    = tp > 0 ? Math.round((sp / tp) * 100) : 0;
+  // attendedCount = events asistidos + seguimientos completados
+  const attendedCurrent = sc + tdc;
+  const attendedPrev    = sp + tdp;
+
+  // Attendance rate denominator = only events with a known outcome (show + no_show*).
+  // Excluding 'scheduled' (future) events avoids artificially deflating the rate.
+  const completedCurrent = attendedCurrent + nsc;
+  const completedPrev    = attendedPrev    + nsp;
+
+  const attendanceRateCurrent = completedCurrent > 0 ? Math.round((attendedCurrent / completedCurrent) * 100) : 0;
+  const attendanceRatePrev    = completedPrev    > 0 ? Math.round((attendedPrev    / completedPrev)    * 100) : 0;
 
   return {
-    totalAppointments: { value: tc, previousValue: tp, ...calcTrend(tc, tp) },
-    attendanceRate:    { value: attendanceRateCurrent, previousValue: attendanceRatePrev, ...calcTrend(attendanceRateCurrent, attendanceRatePrev) },
-    activeAthletes:    { value: activeAthletes ?? 0, previousValue: 0, trend: 'neutral', trendPercent: 0 },
-    newRegistrations:  { value: nc, previousValue: np, ...calcTrend(nc, np) },
+    totalAppointments:     { value: tc,  previousValue: tp,  ...calcTrend(tc, tp) },
+    attendanceRate:        { value: attendanceRateCurrent, previousValue: attendanceRatePrev, ...calcTrend(attendanceRateCurrent, attendanceRatePrev) },
+    activeAthletes:        { value: activeAthletes ?? 0, previousValue: 0, trend: 'neutral', trendPercent: 0 },
+    newRegistrations:      { value: nc,  previousValue: np,  ...calcTrend(nc, np) },
+    scheduledAppointments: { value: scheduledCount ?? 0, previousValue: 0, trend: 'neutral', trendPercent: 0 },
+    noShowAppointments:    { value: nsc, previousValue: nsp, ...calcTrend(nsc, nsp) },
+    attendedCount:         { value: attendedCurrent, previousValue: attendedPrev, ...calcTrend(attendedCurrent, attendedPrev) },
   };
 }
 
-// ─── SERVICIOS ────────────────────────────────────────────────────────────────────────────
+// ─── SERVICIOS ──────────────────────────────────────────────────────────────────────────────────────────
 
 export async function fetchServiceStats(
   from: string, to: string,
@@ -158,12 +287,17 @@ export async function fetchServiceStats(
   await requireAdminAccess();
 
   const [{ data: current }, { data: prev }] = await Promise.all([
-    supabaseAdmin.from('appointments').select('service_type').gte('date', from).lte('date', to),
-    supabaseAdmin.from('appointments').select('service_type').gte('date', prevFrom).lte('date', prevTo),
+    supabaseAdmin.from('events').select('title')
+      .gte('start_at', fromISO(from)).lte('start_at', toISO(to)),
+    supabaseAdmin.from('events').select('title')
+      .gte('start_at', fromISO(prevFrom)).lte('start_at', toISO(prevTo)),
   ]);
 
-  const countBy = (rows: { service_type: string }[]) =>
-    rows.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.service_type]: (acc[r.service_type] ?? 0) + 1 }), {});
+  const countBy = (rows: { title: string | null }[]) =>
+    rows.reduce<Record<string, number>>((acc, r) => {
+      const st = titleToServiceType(r.title ?? '');
+      return { ...acc, [st]: (acc[st] ?? 0) + 1 };
+    }, {});
 
   const currCounts = countBy(current ?? []);
   const prevCounts = countBy(prev ?? []);
@@ -175,31 +309,34 @@ export async function fetchServiceStats(
     const { trend }    = calcTrend(count, previousCount);
     return {
       service_type: st,
-      label: SERVICE_LABELS[st],
+      label:        SERVICE_LABELS[st],
       count,
-      percentage: total > 0 ? Math.round((count / total) * 100) : 0,
+      percentage:   total > 0 ? Math.round((count / total) * 100) : 0,
       previousCount,
       trend,
     };
   }).sort((a, b) => b.count - a.count);
 }
 
-// ─── CITAS RECIENTES (resumen en página, últimas 20) ────────────────────────────────────
+// ─── CITAS RECIENTES (resumen en página, últimas 20) ───────────────────────────────────────────────
 
 export async function fetchRecentAppointments(from: string, to: string): Promise<Appointment[]> {
   await requireAdminAccess();
 
   const { data } = await supabaseAdmin
-    .from('appointments')
-    .select(APPOINTMENT_SELECT)
-    .gte('date', from).lte('date', to)
-    .order('date', { ascending: false })
+    .from('events')
+    .select(EVENT_SELECT)
+    .gte('start_at', fromISO(from)).lte('start_at', toISO(to))
+    .order('start_at', { ascending: false })
     .limit(20);
 
-  return (data ?? []).map((r) => toAppointment(r as unknown as RawAppointmentRow));
+  const rows = (data ?? []) as unknown as RawEventRow[];
+  const ids  = rows.flatMap(r => r.event_participants?.map(p => p.participant_id) ?? []);
+  const aMap = await fetchAthleteMap([...new Set(ids)]);
+  return rows.map((r) => toAppointment(r, aMap));
 }
 
-// ─── CITAS FILTRADAS (drawer con paginación) ──────────────────────────────────────────────
+// ─── CITAS FILTRADAS (drawer con paginación) ─────────────────────────────────────────────────────
 
 export async function fetchFilteredAppointments(
   from: string,
@@ -211,21 +348,32 @@ export async function fetchFilteredAppointments(
   await requireAdminAccess();
 
   let query = supabaseAdmin
-    .from('appointments')
-    .select(APPOINTMENT_SELECT, { count: 'exact' })
-    .gte('date', filters.dateFrom || from)
-    .lte('date', filters.dateTo || to)
-    .order('date', { ascending: false });
+    .from('events')
+    .select(EVENT_SELECT, { count: 'exact' })
+    .gte('start_at', fromISO(filters.dateFrom || from))
+    .lte('start_at', toISO(filters.dateTo || to))
+    .order('start_at', { ascending: false });
 
-  if (filters.serviceType !== 'all') query = query.eq('service_type', filters.serviceType);
-  if (filters.status !== 'all')      query = query.eq('status', filters.status);
+  // Map AppointmentStatus back to events.status
+  if (filters.status !== 'all') {
+    const evStatus = filters.status === 'confirmed' ? 'scheduled' : filters.status;
+    query = query.eq('status', evStatus);
+  }
 
   const offset = page * pageSize;
   query = query.range(offset, offset + pageSize - 1);
 
   const { data, count } = await query;
 
-  let results = (data ?? []).map((r) => toAppointment(r as unknown as RawAppointmentRow));
+  const rows = (data ?? []) as unknown as RawEventRow[];
+  const ids  = rows.flatMap(r => r.event_participants?.map(p => p.participant_id) ?? []);
+  const aMap = await fetchAthleteMap([...new Set(ids)]);
+  let results = rows.map((r) => toAppointment(r, aMap));
+
+  // Service type filter is applied client-side (derived from title)
+  if (filters.serviceType !== 'all') {
+    results = results.filter(a => a.service_type === filters.serviceType);
+  }
   if (filters.search) {
     const q = filters.search.toLowerCase();
     results = results.filter(a =>
@@ -237,7 +385,7 @@ export async function fetchFilteredAppointments(
   return { data: results, total: count ?? 0 };
 }
 
-// ─── CITAS PARA EXPORTACIÓN (todos los registros del filtro) ──────────────────────────────
+// ─── CITAS PARA EXPORTACIÓN ──────────────────────────────────────────────────────────────────────────────────
 
 export async function fetchAllAppointmentsForExport(
   from: string,
@@ -247,18 +395,26 @@ export async function fetchAllAppointmentsForExport(
   await requireAdminAccess();
 
   let query = supabaseAdmin
-    .from('appointments')
-    .select(APPOINTMENT_SELECT)
-    .gte('date', filters.dateFrom || from)
-    .lte('date', filters.dateTo || to)
-    .order('date', { ascending: false });
+    .from('events')
+    .select(EVENT_SELECT)
+    .gte('start_at', fromISO(filters.dateFrom || from))
+    .lte('start_at', toISO(filters.dateTo || to))
+    .order('start_at', { ascending: false });
 
-  if (filters.serviceType !== 'all') query = query.eq('service_type', filters.serviceType);
-  if (filters.status !== 'all')      query = query.eq('status', filters.status);
+  if (filters.status !== 'all') {
+    const evStatus = filters.status === 'confirmed' ? 'scheduled' : filters.status;
+    query = query.eq('status', evStatus);
+  }
 
   const { data } = await query;
-  let results = (data ?? []).map((r) => toAppointment(r as unknown as RawAppointmentRow));
+  const rows2 = (data ?? []) as unknown as RawEventRow[];
+  const ids2  = rows2.flatMap(r => r.event_participants?.map(p => p.participant_id) ?? []);
+  const aMap2 = await fetchAthleteMap([...new Set(ids2)]);
+  let results = rows2.map((r) => toAppointment(r, aMap2));
 
+  if (filters.serviceType !== 'all') {
+    results = results.filter(a => a.service_type === filters.serviceType);
+  }
   if (filters.search) {
     const q = filters.search.toLowerCase();
     results = results.filter(a =>
@@ -270,21 +426,25 @@ export async function fetchAllAppointmentsForExport(
   return results;
 }
 
-// ─── HEATMAP ────────────────────────────────────────────────────────────────────────────
+// ─── HEATMAP ─────────────────────────────────────────────────────────────────────────────────────
 
 export async function fetchHeatmapData(from: string, to: string): Promise<HeatmapCell[]> {
   await requireAdminAccess();
 
   const { data } = await supabaseAdmin
-    .from('appointments')
-    .select('date, time')
-    .gte('date', from).lte('date', to);
+    .from('events')
+    .select('start_at')
+    .gte('start_at', fromISO(from)).lte('start_at', toISO(to));
 
   const cells: Record<string, number> = {};
-  (data ?? []).forEach(({ date, time }: { date: string; time: string }) => {
-    const d = new Date(`${date}T${time}`);
-    const day  = (d.getDay() + 6) % 7; // 0=Lun, 6=Dom
-    const hour = d.getHours();
+  (data ?? []).forEach(({ start_at }: { start_at: string }) => {
+    const d = new Date(start_at);
+    // Use Mexico City local day/hour for the heatmap
+    const mxStr = d.toLocaleString('en-US', { timeZone: 'America/Mexico_City', weekday: 'short', hour: 'numeric', hour12: false });
+    const mxDate = new Date(d.toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+    const day  = (mxDate.getDay() + 6) % 7; // 0=Lun, 6=Dom
+    const hour = mxDate.getHours();
+    void mxStr;
     const key  = `${day}-${hour}`;
     cells[key] = (cells[key] ?? 0) + 1;
   });
@@ -298,20 +458,21 @@ export async function fetchHeatmapData(from: string, to: string): Promise<Heatma
   return result;
 }
 
-// ─── RANKING DE ESPECIALISTAS ─────────────────────────────────────────────────────────────
+// ─── RANKING DE ESPECIALISTAS ──────────────────────────────────────────────────────────────────────────────────
 
 export async function fetchSpecialistRanking(from: string, to: string): Promise<SpecialistLoad[]> {
   await requireAdminAccess();
 
   const { data } = await supabaseAdmin
-    .from('appointments')
-    .select('specialist_id, specialist:profiles!specialist_id(id, first_name, last_name, role)')
-    .gte('date', from).lte('date', to);
+    .from('events')
+    .select('created_by_profile_id, creator:profiles!created_by_profile_id(id, first_name, last_name, role)')
+    .gte('start_at', fromISO(from)).lte('start_at', toISO(to));
 
   const counts: Record<string, { full_name: string; specialty: string; count: number }> = {};
-  (data ?? []).forEach((row: RawSpecialistRow) => {
-    const id  = row.specialist_id;
-    const sp  = one(row.specialist);
+  (data ?? []).forEach((row: RawCreatorRow) => {
+    const id = row.created_by_profile_id;
+    if (!id) return;
+    const sp = one(row.creator);
     if (!counts[id]) {
       const name = [sp?.first_name, sp?.last_name].filter(Boolean).join(' ') || '';
       counts[id] = { full_name: name, specialty: sp?.role ?? '', count: 0 };
@@ -322,37 +483,39 @@ export async function fetchSpecialistRanking(from: string, to: string): Promise<
   return Object.entries(counts)
     .map(([id, info]) => ({
       id,
-      full_name: info.full_name,
-      specialty: info.specialty,
-      appointmentCount: info.count,
-      capacity: 40,
+      full_name:          info.full_name,
+      specialty:          info.specialty,
+      appointmentCount:   info.count,
+      capacity:           40,
       utilizationPercent: Math.round((info.count / 40) * 100),
     }))
     .sort((a, b) => b.appointmentCount - a.appointmentCount)
     .slice(0, 5);
 }
 
-// ─── ACTUALIZAR ESTADO DE CITA ────────────────────────────────────────────
+// ─── ACTUALIZAR ESTADO DE CITA ─────────────────────────────────────────────────────────────────────────────
 
 export async function updateAppointmentStatus(
   appointmentId: string,
   status: 'show' | 'no_show',
   extras?: { notes?: string; no_show_reason?: string },
 ) {
-  // Auth guard: only admin-level staff can confirm/update appointments
-  const adminUser = await requireAdminAccess();
-  const confirmedBy = adminUser.profile?.id ?? null;
+  await requireAdminAccess();
 
+  // Update events.status
   const { error } = await supabaseAdmin
-    .from('appointments')
+    .from('events')
     .update({
       status,
-      confirmed_by: confirmedBy,
-      confirmed_at: new Date().toISOString(),
-      ...(extras?.notes          && { notes: extras.notes }),
-      ...(extras?.no_show_reason && { no_show_reason: extras.no_show_reason }),
+      ...(extras?.notes && { description: extras.notes }),
     })
     .eq('id', appointmentId);
 
   if (error) throw error;
+
+  // Sync event_participants.attendance_status
+  await supabaseAdmin
+    .from('event_participants')
+    .update({ attendance_status: status })
+    .eq('event_id', appointmentId);
 }

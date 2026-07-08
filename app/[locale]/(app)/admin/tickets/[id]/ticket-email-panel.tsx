@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { sendManualTicketEmail } from '../../notificaciones/tickets/actions';
+import { sendTicketPushNotification } from '../actions';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,17 +75,30 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }>
 // Component
 // ---------------------------------------------------------------------------
 
+type Tab = 'email' | 'push';
+
 export default function TicketEmailPanel({ ticketId, initialHistory, recipients }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>('email');
+
+  // ── Email state ─────────────────────────────────────────────────────
   const [history,   setHistory]  = useState<EmailJob[]>(initialHistory);
   const [showForm,  setShowForm] = useState(false);
   const [loading,   setLoading]  = useState(false);
   const [error,     setError]    = useState<string | null>(null);
   const [emailType, setEmailType] = useState(EMAIL_TYPES[0].value as string);
-  // 'custom' = show text input; otherwise value is the recipient's email
   const [recipientEmail,     setRecipientEmail]     = useState(recipients[0]?.email ?? '');
   const [recipientProfileId, setRecipientProfileId] = useState<string | null>(recipients[0]?.profileId ?? null);
   const [useCustomEmail, setUseCustomEmail] = useState(recipients.length === 0);
   const [customEmail,    setCustomEmail]    = useState('');
+
+  // ── Push state ─────────────────────────────────────────────────────
+  const pushRecipients = recipients.filter((r) => r.profileId);
+  const [pushProfileId,   setPushProfileId]   = useState<string>(pushRecipients[0]?.profileId ?? '');
+  const [pushMessage,     setPushMessage]     = useState('');
+  const [pushNoteType,    setPushNoteType]    = useState('update');
+  const [pushLoading,     setPushLoading]     = useState(false);
+  const [pushError,       setPushError]       = useState<string | null>(null);
+  const [pushSuccess,     setPushSuccess]     = useState<string | null>(null);
 
   function handleRecipientChange(value: string) {
     if (value === '__custom__') {
@@ -142,24 +156,147 @@ export default function TicketEmailPanel({ ticketId, initialHistory, recipients 
     }
   }
 
+  async function handlePushSend(e: React.FormEvent) {
+    e.preventDefault();
+    if (!pushProfileId) return;
+    setPushLoading(true);
+    setPushError(null);
+    setPushSuccess(null);
+    const result = await sendTicketPushNotification(ticketId, pushProfileId, pushMessage, pushNoteType);
+    setPushLoading(false);
+    if (result.error) {
+      setPushError(result.error);
+    } else {
+      setPushSuccess(`✅ Push enviado a ${result.deviceCount ?? 1} dispositivo(s).`);
+      setPushMessage('');
+    }
+  }
+
   return (
     <section>
-      {/* ── Header ──────────────────────────────────────────────── */}
+      {/* ── Tabs ────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">
-          Comunicación por Email
-          {history.length > 0 && (
-            <span className="ml-2 text-sm font-normal text-gray-400">({history.length})</span>
-          )}
-        </h2>
-        <button
-          type="button"
-          onClick={() => { setShowForm(!showForm); setError(null); }}
-          className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
-        >
-          {showForm ? 'Cancelar' : '+ Enviar email'}
-        </button>
+        <div className="flex gap-1 rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+          <button
+            type="button"
+            onClick={() => { setActiveTab('email'); setShowForm(false); }}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'email'
+                ? 'bg-white shadow-sm text-gray-900'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            ✉️ Email
+            {history.length > 0 && (
+              <span className="ml-1.5 text-xs text-gray-400">({history.length})</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActiveTab('push'); setShowForm(false); }}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'push'
+                ? 'bg-white shadow-sm text-gray-900'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            📲 Push
+          </button>
+        </div>
+
+        {activeTab === 'email' && (
+          <button
+            type="button"
+            onClick={() => { setShowForm(!showForm); setError(null); }}
+            className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
+          >
+            {showForm ? 'Cancelar' : '+ Enviar email'}
+          </button>
+        )}
       </div>
+
+      {/* ── Push tab ────────────────────────────────────────────── */}
+      {activeTab === 'push' && (
+        <form
+          onSubmit={handlePushSend}
+          className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 space-y-4"
+        >
+          <p className="text-xs text-indigo-600">
+            Envía una notificación push directamente al móvil del destinatario.
+            Solo funciona si tienen la app instalada y notificaciones activas.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Destinatario */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Destinatario</label>
+              {pushRecipients.length > 0 ? (
+                <select
+                  value={pushProfileId}
+                  onChange={(e) => setPushProfileId(e.target.value)}
+                  className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
+                  required
+                >
+                  {pushRecipients.map((r) => (
+                    <option key={r.profileId!} value={r.profileId!}>
+                      {r.label} ({r.role === 'creator' ? 'solicitante' : 'asignado'})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-xs text-gray-400 italic py-1.5">
+                  No hay destinatarios con perfil registrado.
+                </p>
+              )}
+            </div>
+
+            {/* Tipo */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+              <select
+                value={pushNoteType}
+                onChange={(e) => setPushNoteType(e.target.value)}
+                className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
+              >
+                <option value="update">Actualización</option>
+                <option value="reminder">Recordatorio</option>
+                <option value="urgent">Urgente</option>
+                <option value="resolved">Resolución</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Mensaje */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Mensaje <span className="text-gray-400">(él verá esto en su móvil)</span>
+            </label>
+            <textarea
+              value={pushMessage}
+              onChange={(e) => setPushMessage(e.target.value)}
+              rows={3}
+              required
+              maxLength={200}
+              placeholder="Escribe el mensaje que verá el destinatario en la notificación…"
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm resize-none"
+            />
+            <p className="text-xs text-gray-400 mt-0.5 text-right">{pushMessage.length}/200</p>
+          </div>
+
+          {pushError && <p className="text-sm text-red-600 bg-red-50 rounded p-2">{pushError}</p>}
+          {pushSuccess && <p className="text-sm text-green-700 bg-green-50 rounded p-2">{pushSuccess}</p>}
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={pushLoading || !pushProfileId || !pushMessage.trim()}
+              className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {pushLoading ? 'Enviando…' : '📲 Enviar push'}
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* ── Send form ───────────────────────────────────────────── */}
       {showForm && (

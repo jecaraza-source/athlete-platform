@@ -1,4 +1,4 @@
-import { requirePermission, hasPermission } from '@/lib/rbac/server';
+import { requirePermission, hasPermission, hasRole } from '@/lib/rbac/server';
 import { listExpenses, getExpenseCategories, listSuppliers } from '@/lib/finance/actions';
 import { ExpensesClient } from './expenses-client';
 import { ExpensesTableClient } from './expenses-table';
@@ -9,12 +9,13 @@ import { getTranslations } from 'next-intl/server';
 export default async function ExpensesPage() {
   await requirePermission('view_finances');
 
-  const [expenses, categories, suppliers, canManage, canApprove, t] = await Promise.all([
+  const [expenses, categories, suppliers, canManage, canApprove, canAdminDelete, t] = await Promise.all([
     listExpenses(),
     getExpenseCategories(),
     listSuppliers(),
     hasPermission('manage_finances'),
     hasPermission('approve_finances'),
+    hasRole('finance_admin'),
     getTranslations('finances'),
   ]);
 
@@ -52,6 +53,7 @@ export default async function ExpensesPage() {
         athletes={athleteList}
         canManage={canManage}
         canApprove={canApprove}
+        canAdminDelete={canAdminDelete}
       />
     </div>
   );

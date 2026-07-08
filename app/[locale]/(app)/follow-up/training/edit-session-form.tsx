@@ -55,7 +55,7 @@ export default function EditSessionForm({ session }: { session: TrainingSession 
             onClick={() => setEditing(true)}
             className="ml-auto text-xs text-blue-600 hover:underline"
           >
-            Edit
+            Editar
           </button>
         </div>
         {session.notes && (
@@ -77,7 +77,7 @@ export default function EditSessionForm({ session }: { session: TrainingSession 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <div>
             <label className="block text-xs font-medium mb-0.5">
-              Title <span className="text-red-500">*</span>
+              Título <span className="text-red-500">*</span>
             </label>
             <input
               name="title"
@@ -89,7 +89,7 @@ export default function EditSessionForm({ session }: { session: TrainingSession 
           </div>
           <div>
             <label className="block text-xs font-medium mb-0.5">
-              Date <span className="text-red-500">*</span>
+              Fecha <span className="text-red-500">*</span>
             </label>
             <input
               name="session_date"
@@ -100,7 +100,7 @@ export default function EditSessionForm({ session }: { session: TrainingSession 
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Location</label>
+            <label className="block text-xs font-medium mb-0.5">Lugar</label>
             <input
               name="location"
               type="text"
@@ -109,7 +109,7 @@ export default function EditSessionForm({ session }: { session: TrainingSession 
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">Start time</label>
+            <label className="block text-xs font-medium mb-0.5">Hora inicio</label>
             <input
               name="start_time"
               type="time"
@@ -118,7 +118,7 @@ export default function EditSessionForm({ session }: { session: TrainingSession 
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-0.5">End time</label>
+            <label className="block text-xs font-medium mb-0.5">Hora fin</label>
             <input
               name="end_time"
               type="time"
@@ -129,12 +129,24 @@ export default function EditSessionForm({ session }: { session: TrainingSession 
         </div>
 
         <div>
-          <label className="block text-xs font-medium mb-0.5">Notes</label>
+          <label className="block text-xs font-medium mb-0.5">Notas</label>
           <textarea
             name="notes"
             rows={2}
             defaultValue={session.notes ?? ''}
             className="w-full rounded border border-gray-300 px-2 py-1 text-xs resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium mb-0.5 text-amber-700">
+            Motivo de la edición
+          </label>
+          <textarea
+            name="edit_reason"
+            rows={2}
+            placeholder="¿Por qué se modifica esta información?"
+            className="w-full rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs resize-none placeholder:text-amber-400"
           />
         </div>
 
@@ -144,14 +156,14 @@ export default function EditSessionForm({ session }: { session: TrainingSession 
             disabled={isPending}
             className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {isPending ? 'Saving…' : 'Done'}
+            {isPending ? 'Guardando…' : 'Guardar'}
           </button>
           <button
             type="button"
             onClick={() => { setEditing(false); setError(null); }}
             className="rounded border border-gray-300 px-3 py-1 text-xs font-medium hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            Cancelar
           </button>
         </div>
       </form>

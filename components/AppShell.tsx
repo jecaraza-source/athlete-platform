@@ -8,11 +8,19 @@ import PrivacyConsentModal from './PrivacyConsentModal';
 
 export default async function AppShell({ children }: { children: ReactNode }) {
   // getCurrentUser() is memoized — hasRole/hasPermission() reuse the same resolved data.
-  const [currentUser, showAdmin, isAthlete, showFinances] = await Promise.all([
+  const [currentUser, showAdmin, isAthlete, showFinances, showAppointments, showAthletes, showFollowUp] = await Promise.all([
     getCurrentUser(),
     hasRole('super_admin', 'admin', 'program_director'),
     hasRole('athlete'),
     hasPermission('view_finances'),
+    // Show 'Mis Citas' to medical staff, coordinators, admins, and auditors
+    hasRole('medic', 'physio', 'nutritionist', 'psychologist',
+            'super_admin', 'admin', 'program_director', 'event_coordinator', 'auditor'),
+    // Show athlete list to roles with view_athletes (including auditor)
+    hasPermission('view_athletes'),
+    // Show follow-up to clinical/coaching staff and admins (auditors are excluded)
+    hasRole('medic', 'physio', 'nutritionist', 'psychologist', 'coach',
+            'super_admin', 'admin', 'program_director'),
   ]);
 
   const profile  = currentUser?.profile ?? null;
@@ -38,7 +46,7 @@ export default async function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Navigation */}
-        <NavLinks showAdmin={showAdmin} showFinances={showFinances} isAthlete={isAthlete} />
+        <NavLinks showAdmin={showAdmin} showFinances={showFinances} isAthlete={isAthlete} showAppointments={showAppointments} showAthletes={showAthletes} showFollowUp={showFollowUp} />
 
         {/* Footer */}
         <div className="border-t border-gray-200">

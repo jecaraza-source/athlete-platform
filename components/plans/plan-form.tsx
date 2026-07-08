@@ -59,18 +59,27 @@ export function PlanForm({ type, athletes, onSuccess }: Props) {
     }
 
     start(async () => {
-      const result = await createPlan(type, formData);
-      if (result.error) {
-        setError(result.error);
-      } else {
-        setSuccess(true);
-        setSelectedIds([]);
-        setAssignMode('collective');
-        setIsPublished(false);
-        setNotifyEmail(false);
-        setNotifyPush(false);
-        formRef.current?.reset();
-        onSuccess?.();
+      try {
+        const result = await createPlan(type, formData);
+        if (result.error) {
+          setError(result.error);
+        } else {
+          setSuccess(true);
+          setSelectedIds([]);
+          setAssignMode('collective');
+          setIsPublished(false);
+          setNotifyEmail(false);
+          setNotifyPush(false);
+          formRef.current?.reset();
+          onSuccess?.();
+        }
+      } catch (e) {
+        // Catch unhandled throws from the Server Action (network errors, timeouts, etc.)
+        console.error('[PlanForm] createPlan threw:', e);
+        setError(
+          'Error inesperado al crear el plan. Por favor intenta de nuevo. ' +
+          'Si el problema persiste contacta a soporte.'
+        );
       }
     });
   }

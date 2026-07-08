@@ -6,6 +6,7 @@
 
 import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
+import { TZ } from '@/lib/timezone';
 import type { NewsletterAudiencia, NewsletterContent, Tip } from './types';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -60,6 +61,7 @@ export async function generateNewsletterContent(
   const topicList = topics.map((t, i) => `  ${i + 1}. ${t}`).join('\n');
 
   const today = new Date().toLocaleDateString('es-MX', {
+    timeZone: TZ,
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
 
@@ -178,6 +180,7 @@ export function buildEmailHTML(
   `).join('');
 
   const today = new Date().toLocaleDateString('es-MX', {
+    timeZone: TZ,
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
 

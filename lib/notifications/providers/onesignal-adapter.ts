@@ -26,7 +26,7 @@ export class OneSignalPushAdapter implements PushProvider {
     try {
       const body: Record<string, unknown> = {
         app_id:             appId,
-        include_player_ids: params.player_ids,
+        include_subscription_ids: params.player_ids,
         headings:           { en: params.title },
         contents:           { en: params.message },
       };

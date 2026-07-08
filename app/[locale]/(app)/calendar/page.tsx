@@ -22,38 +22,80 @@ type EventRow = {
   description: string | null;
 };
 
+const PAGE = 1000;
+
+/** Paginates all events (bypasses Supabase's 1,000-row server cap). */
+async function fetchAllEvents() {
+  const all: Record<string, unknown>[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('events')
+      .select('id, title, event_type, sport_id, start_at, end_at, status, description, sports(id, name)')
+      .order('start_at', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error || !data?.length) break;
+    all.push(...(data as Record<string, unknown>[]));
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
+/** Paginates all event_participants (bypasses Supabase's 1,000-row server cap). */
+async function fetchAllParticipants() {
+  const all: { event_id: string; participant_id: string }[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('event_participants')
+      .select('event_id, participant_id')
+      .range(from, from + PAGE - 1);
+    if (error || !data?.length) break;
+    all.push(...(data as { event_id: string; participant_id: string }[]));
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
+/** Paginates all athletes. */
+async function fetchAllAthletes() {
+  const all: { id: string; first_name: string; last_name: string; discipline: string | null }[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('athletes')
+      .select('id, first_name, last_name, discipline')
+      .order('last_name', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error || !data?.length) break;
+    all.push(...(data as { id: string; first_name: string; last_name: string; discipline: string | null }[]));
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
 export default async function CalendarPage() {
   await requirePermission('view_calendar');
 
   const currentUser = await getCurrentUser();
   const currentProfileId = currentUser?.profile?.id ?? '';
 
-  const [
-    { data, error },
-    { data: athletesData },
-    { data: participantsData },
-    { data: sportsData },
-  ] = await Promise.all([
-    supabaseAdmin
-      .from('events')
-      .select('id, title, event_type, sport_id, start_at, end_at, status, description, sports(id, name)')
-      .order('start_at', { ascending: true }),
-    supabaseAdmin
-      .from('athletes')
-      .select('id, first_name, last_name, discipline')
-      .order('last_name', { ascending: true }),
-    supabaseAdmin
-      .from('event_participants')
-      .select('event_id, participant_id'),
-    supabaseAdmin
-      .from('sports')
-      .select('id, name, category_type')
-      .eq('status', 'active')
-      .order('name'),
+  // Fetch events, athletes, participants and sports in parallel.
+  // events and event_participants exceed 1,000 rows, so we use paginated fetchers.
+  const [rawEventsAll, athletesData, participantsAll, { data: sportsData }] = await Promise.all([
+    fetchAllEvents(),
+    fetchAllAthletes(),
+    fetchAllParticipants(),
+    supabaseAdmin.from('sports').select('id, name, category_type').eq('status', 'active').order('name'),
   ]);
 
+  const error = null; // paginated fetchers handle errors internally
+
   // Flatten the sports join on each event (Supabase returns sports as array from the join)
-  const rawEvents = (data ?? []) as unknown as (Omit<EventRow, 'sport_name'> & {
+  const rawEvents = rawEventsAll as unknown as (Omit<EventRow, 'sport_name'> & {
     sports: { id: string; name: string }[] | { id: string; name: string } | null;
   })[];
   const events: EventRow[] = Array.from(
@@ -65,8 +107,8 @@ export default async function CalendarPage() {
     ).values()
   );
 
-  const athletes    = (athletesData ?? []) as { id: string; first_name: string; last_name: string; discipline: string | null }[];
-  const participants = (participantsData ?? []) as { event_id: string; participant_id: string }[];
+  const athletes    = athletesData;
+  const participants = participantsAll;
 
   // Deduplicate sports by normalized name (strips accents, spaces, lowercases)
   // e.g. "Tae Kwon Do" and "Taekwondo" collapse to the same key
@@ -79,9 +121,9 @@ export default async function CalendarPage() {
   }
   const sports = Array.from(uniqueSportsMap.values());
 
-  // Build a map: event_id → athletes who are participants
+  // Build a map: event_id → athletes who are participants (includes discipline for filtering)
   const athleteById = Object.fromEntries(athletes.map((a) => [a.id, a]));
-  const participantsByEvent: Record<string, { id: string; first_name: string; last_name: string }[]> = {};
+  const participantsByEvent: Record<string, { id: string; first_name: string; last_name: string; discipline?: string | null }[]> = {};
   for (const p of participants) {
     const athlete = athleteById[p.participant_id];
     if (athlete) {
@@ -106,20 +148,13 @@ export default async function CalendarPage() {
         disciplines={DISCIPLINES}
       />
 
-      {error && (
-        <div className="mb-4 rounded border border-red-300 bg-red-50 p-4 text-red-700">
-          {t('errorLoadingEvents')} {error.message}
-        </div>
-      )}
-
-      {!error && (
-        <EventsListClient
-          events={events}
-          athletes={athletes}
-          participantsByEvent={participantsByEvent}
-          sports={sports}
-        />
-      )}
+      <EventsListClient
+        events={events}
+        athletes={athletes}
+        participantsByEvent={participantsByEvent}
+        sports={sports}
+        disciplines={DISCIPLINES.map((d) => ({ value: d.value, label: d.label }))}
+      />
     </main>
   );
 }

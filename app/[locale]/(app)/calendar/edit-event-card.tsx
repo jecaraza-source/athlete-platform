@@ -6,13 +6,32 @@ import { updateEvent, deleteEvent } from './actions';
 
 
 const TYPE_COLORS: Record<string, string> = {
-  training:    'bg-blue-100 text-blue-700',
-  match:       'bg-red-100 text-red-700',
-  competition: 'bg-red-100 text-red-700',
-  meeting:     'bg-yellow-100 text-yellow-700',
-  medical:     'bg-green-100 text-green-700',
-  evaluation:  'bg-violet-100 text-violet-700',
-  other:       'bg-gray-100 text-gray-600',
+  // English canonical keys
+  training:      'bg-blue-100 text-blue-700',
+  match:         'bg-red-100 text-red-700',
+  competition:   'bg-red-100 text-red-700',
+  meeting:       'bg-yellow-100 text-yellow-700',
+  medical:       'bg-green-100 text-green-700',
+  physio:        'bg-teal-100 text-teal-700',
+  nutrition:     'bg-orange-100 text-orange-700',
+  psychology:    'bg-purple-100 text-purple-700',
+  evaluation:    'bg-violet-100 text-violet-700',
+  other:         'bg-gray-100 text-gray-600',
+  // Spanish aliases
+  entrenamiento: 'bg-blue-100 text-blue-700',
+  competencia:   'bg-red-100 text-red-700',
+  reunion:       'bg-yellow-100 text-yellow-700',
+  reunión:       'bg-yellow-100 text-yellow-700',
+  medico:        'bg-green-100 text-green-700',
+  médico:        'bg-green-100 text-green-700',
+  fisioterapia:  'bg-teal-100 text-teal-700',
+  nutricion:     'bg-orange-100 text-orange-700',
+  nutrición:     'bg-orange-100 text-orange-700',
+  psicologia:    'bg-purple-100 text-purple-700',
+  psicología:    'bg-purple-100 text-purple-700',
+  evaluacion:    'bg-violet-100 text-violet-700',
+  evaluación:    'bg-violet-100 text-violet-700',
+  otro:          'bg-gray-100 text-gray-600',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -70,6 +89,9 @@ export default function EditEventCard({
     { value: 'competition', label: t('typeCompetition') },
     { value: 'meeting',     label: t('typeMeeting')     },
     { value: 'medical',     label: t('typeMedical')     },
+    { value: 'physio',      label: t('typePhysio')      },
+    { value: 'nutrition',   label: t('typeNutrition')   },
+    { value: 'psychology',  label: t('typePsychology')  },
     { value: 'evaluation',  label: t('typeEvaluation')  },
     { value: 'other',       label: t('typeOther')       },
   ];
@@ -78,8 +100,25 @@ export default function EditEventCard({
     { value: 'completed', label: t('statusCompleted')  },
     { value: 'cancelled', label: t('statusCancelled')  },
   ];
-  const EVENT_TYPE_LABEL = Object.fromEntries(EVENT_TYPES.map((et) => [et.value, et.label]));
-  const STATUS_LABEL     = Object.fromEntries(STATUSES.map((s) => [s.value, s.label]));
+  // Build label map — English canonical keys + Spanish aliases stored in DB
+  const EVENT_TYPE_LABEL: Record<string, string> = {
+    ...Object.fromEntries(EVENT_TYPES.map((et) => [et.value, et.label])),
+    entrenamiento: t('typeTraining'),
+    competencia:   t('typeCompetition'),
+    reunion:       t('typeMeeting'),
+    reunión:       t('typeMeeting'),
+    medico:        t('typeMedical'),
+    médico:        t('typeMedical'),
+    fisioterapia:  t('typePhysio'),
+    nutricion:     t('typeNutrition'),
+    nutrición:     t('typeNutrition'),
+    psicologia:    t('typePsychology'),
+    psicología:    t('typePsychology'),
+    evaluacion:    t('typeEvaluation'),
+    evaluación:    t('typeEvaluation'),
+    otro:          t('typeOther'),
+  };
+  const STATUS_LABEL = Object.fromEntries(STATUSES.map((s) => [s.value, s.label]));
 
   const [event,      setEvent]      = useState<Event>(initial);
   const [participants, setParticipants] = useState<Participant[]>(eventParticipants);

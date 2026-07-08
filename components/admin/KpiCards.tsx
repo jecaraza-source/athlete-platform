@@ -47,7 +47,8 @@ export function KpiCards({ kpis, periodLabel: _periodLabel, onOpenDrawer }: Prop
   const prevLabel = 'vs período anterior';
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Fila 1 */}
       <KpiCard
         title="Total de citas"
         value={kpis.totalAppointments.value.toString()}
@@ -58,6 +59,15 @@ export function KpiCards({ kpis, periodLabel: _periodLabel, onOpenDrawer }: Prop
         onDetail={onOpenDrawer}
       />
       <KpiCard
+        title="Citas programadas"
+        value={kpis.scheduledAppointments.value.toString()}
+        trend="neutral"
+        trendPercent={0}
+        trendLabel="pendientes por atender"
+        icon="🕒"
+        alert={kpis.scheduledAppointments.value === 0}
+      />
+      <KpiCard
         title="Tasa de asistencia"
         value={`${kpis.attendanceRate.value}%`}
         trend={kpis.attendanceRate.trend}
@@ -65,6 +75,17 @@ export function KpiCards({ kpis, periodLabel: _periodLabel, onOpenDrawer }: Prop
         trendLabel={prevLabel}
         icon="✅"
         alert={kpis.attendanceRate.value < 70}
+      />
+
+      {/* Fila 2 */}
+      <KpiCard
+        title="No asistencias"
+        value={kpis.noShowAppointments.value.toString()}
+        trend={kpis.noShowAppointments.trend}
+        trendPercent={kpis.noShowAppointments.trendPercent}
+        trendLabel={prevLabel}
+        icon="❌"
+        alert={kpis.noShowAppointments.value > 0}
       />
       <KpiCard
         title="Atletas activos"

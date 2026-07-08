@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { deleteExpense, updateExpense, submitExpense, processApproval,
+import { deleteExpense, adminDeleteExpense, updateExpense, submitExpense, processApproval,
   listFinanceAttachments, uploadFinanceAttachment, deleteFinanceAttachment,
   getFinanceAttachmentSignedUrl } from '@/lib/finance/actions';
 import { ExpenseStatusBadge } from '@/components/finances/expense-status-badge';
@@ -165,7 +165,7 @@ function ApprovalActions({
 
 // ── Single expense row ─────────────────────────────────────────────────────────
 function ExpenseRow({
-  expense, categories, suppliers, athletes, canManage, canApprove,
+  expense, categories, suppliers, athletes, canManage, canApprove, canAdminDelete,
 }: {
   expense: FinanceExpense;
   categories: FinanceExpenseCategory[];
@@ -173,12 +173,34 @@ function ExpenseRow({
   athletes: Athlete[];
   canManage: boolean;
   canApprove: boolean;
+  canAdminDelete: boolean;
 }) {
   const t = useTranslations('finances.expenses');
   const tApproval = useTranslations('finances.approval');
   const [mode, setMode] = useState<'collapsed' | 'view' | 'edit'>('collapsed');
   const [isPending, startTransition] = useTransition();
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Admin delete state
+  const [showAdminDelete, setShowAdminDelete] = useState(false);
+  const [justification, setJustification] = useState('');
+  const [justificationError, setJustificationError] = useState<string | null>(null);
+  const [adminDeleteError, setAdminDeleteError] = useState<string | null>(null);
+  const [isAdminDeleting, startAdminDeleteTransition] = useTransition();
+
+  function handleAdminDelete() {
+    const trimmed = justification.trim();
+    if (!trimmed) {
+      setJustificationError(t('adminDeleteJustificationRequired'));
+      return;
+    }
+    setJustificationError(null);
+    setAdminDeleteError(null);
+    startAdminDeleteTransition(async () => {
+      const res = await adminDeleteExpense(expense.id, trimmed);
+      if (res.error) setAdminDeleteError(res.error);
+    });
+  }
 
   const canEdit   = canManage;
   const isFullEdit = ['draft', 'rejected'].includes(expense.status);
@@ -281,6 +303,60 @@ function ExpenseRow({
                 signedUrlFn={getFinanceAttachmentSignedUrl}
               />
             </div>
+
+            {/* ── Admin delete section ───────────────────────────────────── */}
+            {canAdminDelete && (
+              <div className="mt-4 border-t border-red-200 pt-3">
+                {!showAdminDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => { setShowAdminDelete(true); setJustification(''); setJustificationError(null); setAdminDeleteError(null); }}
+                    className="px-3 py-1.5 text-xs font-medium rounded bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
+                  >
+                    {t('adminDeleteBtn')}
+                  </button>
+                ) : (
+                  <div className="rounded-md border border-red-300 bg-red-50 p-3 space-y-2">
+                    <p className="text-xs font-semibold text-red-700">{t('adminDeleteWarning')}</p>
+                    <div>
+                      <label className="block text-xs font-medium text-red-700 mb-1">
+                        {t('adminDeleteJustificationLabel')}
+                      </label>
+                      <textarea
+                        value={justification}
+                        onChange={e => { setJustification(e.target.value); setJustificationError(null); }}
+                        rows={3}
+                        placeholder={t('adminDeleteJustificationPlaceholder')}
+                        className="w-full rounded border border-red-300 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-red-400 bg-white"
+                      />
+                      {justificationError && (
+                        <p className="text-xs text-red-600 mt-1">{justificationError}</p>
+                      )}
+                    </div>
+                    {adminDeleteError && (
+                      <p className="text-xs text-red-600">{adminDeleteError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={isAdminDeleting}
+                        onClick={handleAdminDelete}
+                        className="px-3 py-1.5 text-xs font-semibold rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                      >
+                        {isAdminDeleting ? tApproval('processing') : t('adminDeleteConfirmBtn')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowAdminDelete(false); setJustification(''); setJustificationError(null); setAdminDeleteError(null); }}
+                        className="px-3 py-1.5 text-xs rounded border border-red-300 text-red-700 hover:bg-red-100"
+                      >
+                        {tApproval('cancel')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </td>
         </tr>
       )}
@@ -313,7 +389,7 @@ function ExpenseRow({
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export function ExpensesTableClient({
-  expenses, categories, suppliers, athletes, canManage, canApprove,
+  expenses, categories, suppliers, athletes, canManage, canApprove, canAdminDelete,
 }: {
   expenses: FinanceExpense[];
   categories: FinanceExpenseCategory[];
@@ -321,6 +397,7 @@ export function ExpensesTableClient({
   athletes: Athlete[];
   canManage: boolean;
   canApprove: boolean;
+  canAdminDelete: boolean;
 }) {
   const t = useTranslations('finances.expenses');
   const tStatus = useTranslations('finances.status');
@@ -430,6 +507,7 @@ export function ExpensesTableClient({
                   athletes={athletes}
                   canManage={canManage}
                   canApprove={canApprove}
+                  canAdminDelete={canAdminDelete}
                 />
               ))}
             </tbody>

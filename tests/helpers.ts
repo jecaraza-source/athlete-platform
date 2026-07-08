@@ -20,18 +20,21 @@ export const IDS = {
   authCoach:      'auth-coach-001',
   authAdmin:      'auth-admin-001',
   authSuperAdmin: 'auth-super-001',
+  authAuditor:    'auth-auditor-001',
 
   // Profiles
   profileAthlete:    'profile-athlete-001',
   profileCoach:      'profile-coach-001',
   profileAdmin:      'profile-admin-001',
   profileSuperAdmin: 'profile-super-001',
+  profileAuditor:    'profile-auditor-001',
 
   // Roles
   roleAthlete:    'role-athlete',
   roleCoach:      'role-coach',
   roleAdmin:      'role-admin',
   roleSuperAdmin: 'role-super-admin',
+  roleAuditor:    'role-auditor',
 
   // Permissions
   permViewAthletes:      'perm-view-athletes',
@@ -97,6 +100,10 @@ export const ROLES: Record<string, RoleRow> = {
     id: 1, code: 'super_admin', name: 'Super Admin',
     description: 'Full platform access', is_system: true, created_at: '2024-01-01T00:00:00Z',
   },
+  auditor: {
+    id: 9, code: 'auditor', name: 'Auditor',
+    description: 'Read-only audit access to calendar, athletes and appointments', is_system: false, created_at: '2024-01-01T00:00:00Z',
+  },
 };
 
 // Permissions granted to each role — mirrors the default seed data in 001_rbac.sql
@@ -131,6 +138,11 @@ const ROLE_PERMISSIONS: Record<string, Array<{ permId: string; name: string }>> 
     { permId: IDS.permManageUsers,       name: 'manage_users' },
     { permId: IDS.permManageRoles,       name: 'manage_roles' },
     { permId: IDS.permManagePermissions, name: 'manage_permissions' },
+  ],
+  // Auditor: read-only — view_athletes + view_calendar only (migration 061)
+  auditor: [
+    { permId: IDS.permViewAthletes, name: 'view_athletes' },
+    { permId: IDS.permViewCalendar, name: 'view_calendar' },
   ],
 };
 
@@ -175,6 +187,7 @@ export const SCENARIOS = {
   coach:      makeScenario('coach',      IDS.authCoach,      IDS.profileCoach),
   admin:      makeScenario('admin',      IDS.authAdmin,      IDS.profileAdmin),
   super_admin:makeScenario('super_admin',IDS.authSuperAdmin, IDS.profileSuperAdmin),
+  auditor:    makeScenario('auditor',    IDS.authAuditor,    IDS.profileAuditor),
 };
 
 // ---------------------------------------------------------------------------

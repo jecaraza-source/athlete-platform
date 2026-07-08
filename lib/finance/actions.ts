@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { assertPermission, getCurrentUser } from '@/lib/rbac/server';
+import { assertPermission, assertRole, getCurrentUser } from '@/lib/rbac/server';
 import {
   budgetSchema,
   budgetItemSchema,
@@ -907,6 +907,63 @@ export async function deleteFinanceAttachment(
 // ---------------------------------------------------------------------------
 // Delete / remove helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Eliminación administrativa de un gasto — exclusiva para el rol finance_admin.
+ * Funciona en cualquier estado del gasto. Requiere una justificación no vacía
+ * que queda registrada en la bitácora (finance_activity_log) antes de borrar.
+ */
+export async function adminDeleteExpense(
+  id: string,
+  justification: string
+): Promise<ActionResult> {
+  const denied = await assertRole('finance_admin');
+  if (denied) return denied;
+
+  const trimmed = justification?.trim();
+  if (!trimmed) return { error: 'La justificación de cancelación es requerida.' };
+
+  const user = await getCurrentUser();
+
+  const { data: expense } = await supabaseAdmin
+    .from('finance_expenses')
+    .select('status, title, amount')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!expense) return { error: 'Gasto no encontrado.' };
+
+  // Registrar en bitácora ANTES de eliminar para que quede trazabilidad
+  await logActivity('expense', id, 'admin_deleted', user?.profile?.id ?? null, {
+    title:         expense.title,
+    amount:        expense.amount,
+    status:        expense.status,
+    justification: trimmed,
+  });
+
+  // Eliminar adjuntos en storage (best-effort)
+  const { data: attachments } = await supabaseAdmin
+    .from('finance_attachments')
+    .select('file_path')
+    .eq('expense_id', id)
+    .eq('is_active', true);
+
+  if (attachments && attachments.length > 0) {
+    await supabaseAdmin.storage
+      .from('finance-files')
+      .remove(attachments.map((a: { file_path: string }) => a.file_path));
+  }
+
+  const { error } = await supabaseAdmin
+    .from('finance_expenses')
+    .delete()
+    .eq('id', id);
+
+  if (error) return { error: error.message };
+
+  revalidateFinancePaths();
+  return { error: null };
+}
 
 /** Elimina un gasto. Permitido en estado 'draft' o 'cancelled'. */
 export async function deleteExpense(id: string): Promise<ActionResult> {

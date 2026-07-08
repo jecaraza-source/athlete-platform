@@ -4,28 +4,33 @@ import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getCurrentUser } from '@/lib/rbac/server';
 import BackButton from '@/components/back-button';
+import { Suspense } from 'react';
+import AppointmentsFilters from './appointments-filters';
+import { todayInMX, TZ } from '@/lib/timezone';
 
 export const dynamic = 'force-dynamic';
 
 const MEDICAL_ROLE_CODES = [
   'medic', 'psychologist', 'nutritionist', 'physio',
-  'admin', 'super_admin', 'program_director',
+  'admin', 'super_admin', 'program_director', 'event_coordinator', 'auditor',
 ];
 
 const STATUS_PILL: Record<string, string> = {
-  scheduled:   'bg-blue-100 text-blue-700',
-  show:        'bg-emerald-100 text-emerald-700',
-  no_show:     'bg-red-100 text-red-700',
-  rescheduled: 'bg-amber-100 text-amber-700',
-  cancelled:   'bg-gray-100 text-gray-600',
+  scheduled:      'bg-blue-100 text-blue-700',
+  show:           'bg-emerald-100 text-emerald-700',
+  no_show:        'bg-red-100 text-red-700',
+  no_show_remote: 'bg-orange-100 text-orange-700',
+  rescheduled:    'bg-amber-100 text-amber-700',
+  cancelled:      'bg-gray-100 text-gray-600',
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  scheduled:   'Programada',
-  show:        'Atendida',
-  no_show:     'No asistió',
-  rescheduled: 'Reagendada',
-  cancelled:   'Cancelada',
+  scheduled:      'Programada',
+  show:           'Atendida',
+  no_show:        'No asistió',
+  no_show_remote: 'Llamada/Mensaje',
+  rescheduled:    'Reagendada',
+  cancelled:      'Cancelada',
 };
 
 type EventRow = {
@@ -34,13 +39,24 @@ type EventRow = {
   start_at: string;
   end_at: string;
   status: string;
-  event_participants: {
-    athletes: { first_name: string; last_name: string } | null;
-  }[];
+  event_participants: { participant_id: string }[];
 };
 
-export default async function AppointmentsListPage() {
+type AthleteStub = { id: string; first_name: string; last_name: string };
+
+const MONTH_LABELS: Record<string, string> = {
+  '6':'Junio','7':'Julio','8':'Agosto','9':'Septiembre',
+  '10':'Octubre','11':'Noviembre','12':'Diciembre',
+};
+
+export default async function AppointmentsListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string; service?: string; status?: string }>;
+}) {
   const locale = await getLocale();
+  const { month: monthParam = 'all', service: serviceParam = 'all', status: statusParam = 'all' } =
+    await searchParams;
 
   const user = await getCurrentUser();
   if (!user?.profile) redirect(`/${locale}/login`);
@@ -51,104 +67,192 @@ export default async function AppointmentsListPage() {
   }
 
   const isAdmin = userRoleCodes.some((c) =>
-    ['admin', 'super_admin', 'program_director'].includes(c),
+    ['admin', 'super_admin', 'program_director', 'event_coordinator'].includes(c),
   );
+  // Auditors get a read-only view of all appointments (audit trail) but are
+  // NOT treated as admin — they cannot create, edit, or change appointment status.
+  const isAuditor = userRoleCodes.includes('auditor');
 
-  // Build query — admins see all medical events, specialists see their own
-  let query = supabaseAdmin
-    .from('events')
-    .select(`
-      id, title, start_at, end_at, status,
-      event_participants(
-        athletes(first_name, last_name)
-      )
-    `)
-    .eq('event_type', 'medical')
-    .order('start_at', { ascending: false })
-    .limit(50);
+  // Date range: full program Jun 2026 → Dec 2026 (including past appointments)
+  const todayMX      = todayInMX();           // 'YYYY-MM-DD' in Mexico City
+  const PROGRAM_START = '2026-06-01T00:00:00'; // Start of the program
+  const PROGRAM_END   = '2026-12-31T23:59:59';
 
-  if (!isAdmin) {
-    query = query.eq('specialist_id', user.profile.id);
+  // Month filter overrides range start/end
+  let filterStart = PROGRAM_START;
+  let filterEnd   = PROGRAM_END;
+  if (monthParam !== 'all') {
+    const mo = parseInt(monthParam, 10);
+    const lastDay = new Date(2026, mo, 0).getDate();
+    filterStart = `2026-${String(mo).padStart(2, '0')}-01T00:00:00`;
+    filterEnd   = `2026-${String(mo).padStart(2, '0')}-${lastDay}T23:59:59`;
   }
 
-  const { data, error } = await query;
-  const events = (data ?? []) as unknown as EventRow[];
+  // Build query — paginated to bypass Supabase's 1,000-row server cap.
+  // With 2,800+ medical events in Jun-Dec 2026 a single limited query misses many.
+  const PAGE = 1000;
+  const allEvents: EventRow[] = [];
+  let fetchError: { message: string } | null = null;
+  let from = 0;
 
-  // Separate upcoming vs past
-  const now = new Date();
-  const upcoming = events.filter((e) => new Date(e.start_at) >= now);
-  const past     = events.filter((e) => new Date(e.start_at) <  now);
+  while (true) {
+    let q = supabaseAdmin
+      .from('events')
+      .select('id, title, start_at, end_at, status, event_participants(participant_id)')
+      .eq('event_type', 'medical')
+      .gte('start_at', filterStart)
+      .lte('start_at', filterEnd)
+      .order('start_at', { ascending: true })
+      .range(from, from + PAGE - 1);
 
-  function renderList(items: EventRow[]) {
-    if (items.length === 0) {
-      return <p className="text-sm text-gray-400 italic py-2">Sin citas en este período.</p>;
+    if (!isAdmin && !isAuditor) q = q.eq('created_by_profile_id', user.profile.id);
+    if (serviceParam !== 'all') q = q.ilike('title', `%${serviceParam}%`);
+    if (statusParam !== 'all') q = q.eq('status', statusParam);
+
+    const { data: page, error: pageErr } = await q;
+    if (pageErr) { fetchError = pageErr; break; }
+    if (!page?.length) break;
+    allEvents.push(...(page as unknown as EventRow[]));
+    if (page.length < PAGE) break;
+    from += PAGE;
+  }
+
+  const events = allEvents;
+  const error  = fetchError;
+
+  // Step 2: batch-fetch athlete names for ALL participants across all events
+  const athleteIds = [...new Set(
+    events.flatMap((ev) => ev.event_participants.map((ep) => ep.participant_id))
+  )].filter(Boolean);
+
+  const athleteMap = new Map<string, AthleteStub>();
+  if (athleteIds.length > 0) {
+    // May exceed 1000 IDs — paginate the IN query too
+    const ID_PAGE = 500;
+    for (let i = 0; i < athleteIds.length; i += ID_PAGE) {
+      const chunk = athleteIds.slice(i, i + ID_PAGE);
+      const { data: athletes } = await supabaseAdmin
+        .from('athletes')
+        .select('id, first_name, last_name')
+        .in('id', chunk);
+      (athletes ?? []).forEach((a) => athleteMap.set(a.id, a as AthleteStub));
     }
+  }
+
+  // Group events by date (MX timezone)
+  const grouped = new Map<string, EventRow[]>();
+  for (const ev of events) {
+    const dayKey = new Date(ev.start_at).toLocaleDateString('sv-SE', { timeZone: TZ }); // YYYY-MM-DD
+    if (!grouped.has(dayKey)) grouped.set(dayKey, []);
+    grouped.get(dayKey)!.push(ev);
+  }
+
+  function renderEvent(ev: EventRow, isPast: boolean) {
+    // Show ALL participants, not just the first — so that e.g. Alejandro
+    // is visible even when he was added as a secondary participant.
+    const allAthletes = (ev.event_participants ?? [])
+      .map((ep) => athleteMap.get(ep.participant_id))
+      .filter((a): a is AthleteStub => a != null);
+    const athleteName = allAthletes.length > 0
+      ? allAthletes.map((a) => `${a.first_name} ${a.last_name}`).join(', ')
+      : 'Atleta no asignado';
+    const needsAction = ev.status === 'scheduled' && !isPast;
+    const isProcessed = ['show', 'no_show', 'no_show_remote', 'rescheduled'].includes(ev.status);
+
     return (
-      <ul className="divide-y divide-gray-100">
-        {items.map((ev) => {
-          const athlete = ev.event_participants?.[0]?.athletes;
-          const athleteName = athlete
-            ? `${athlete.first_name} ${athlete.last_name}`
-            : 'Atleta no asignado';
-          const needsAction = ev.status === 'scheduled';
+      <li key={ev.id}>
+        <Link
+          href={`/medical/appointments/${ev.id}`}
+          className={`flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition-colors group ${
+            isPast && !isProcessed ? 'opacity-70' : ''
+          }`}
+        >
+          {/* Time */}
+          <div className="w-14 shrink-0 text-center">
+            <p className={`text-sm font-bold ${
+              isPast ? 'text-gray-400' : 'text-gray-700'
+            }`}>
+              {new Date(ev.start_at).toLocaleTimeString('es-MX', {
+                timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false,
+              })}
+            </p>
+          </div>
 
-          return (
-            <li key={ev.id}>
-              <Link
-                href={`/medical/appointments/${ev.id}`}
-                className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
-              >
-                {/* Date block */}
-                <div className="w-12 text-center shrink-0">
-                  <p className="text-xs font-medium text-gray-400 uppercase">
-                    {new Date(ev.start_at).toLocaleDateString('es-MX', { month: 'short' })}
-                  </p>
-                  <p className="text-2xl font-bold text-gray-800 leading-none">
-                    {new Date(ev.start_at).getDate()}
-                  </p>
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{athleteName}</p>
-                    {needsAction && (
-                      <span className="shrink-0 w-2 h-2 rounded-full bg-indigo-500" title="Requiere acción" />
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {new Date(ev.start_at).toLocaleTimeString('es-MX', {
-                      hour:   '2-digit',
-                      minute: '2-digit',
-                    })}
-                    {' · '}
-                    {ev.title}
-                  </p>
-                </div>
-
-                {/* Status pill */}
-                <span className={`shrink-0 text-xs font-medium px-2.5 py-0.5 rounded-full ${STATUS_PILL[ev.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                  {STATUS_LABEL[ev.status] ?? ev.status}
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className={`text-sm font-semibold truncate ${
+                isPast ? 'text-gray-500' : 'text-gray-800'
+              }`}>{athleteName}</p>
+              {needsAction && (
+                <span className="shrink-0 w-2 h-2 rounded-full bg-cyan-500" title="Pendiente" />
+              )}
+              {isPast && !isProcessed && ev.status === 'scheduled' && (
+                <span className="shrink-0 text-[10px] font-medium text-red-500 bg-red-50 border border-red-200 rounded px-1.5 py-0.5">
+                  Pendiente de registrar
                 </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-400 mt-0.5">{ev.title}</p>
+          </div>
 
-                {/* Arrow */}
-                <span className="text-gray-300 group-hover:text-gray-500 transition-colors text-sm">›</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+          {/* Status pill */}
+          <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
+            STATUS_PILL[ev.status] ?? 'bg-gray-100 text-gray-600'
+          }`}>
+            {STATUS_LABEL[ev.status] ?? ev.status}
+          </span>
+
+          <span className="text-gray-300 group-hover:text-gray-500 text-sm">›</span>
+        </Link>
+      </li>
     );
   }
+
+  const monthLabel = monthParam === 'all'
+    ? 'Programa completo Jun–Dic 2026'
+    : `${MONTH_LABELS[monthParam] ?? monthParam} 2026`;
+
+  // Pending-to-register count: past scheduled appointments
+  const pendingPast = events.filter(
+    (ev) => ev.status === 'scheduled' &&
+    new Date(ev.start_at).toLocaleDateString('sv-SE', { timeZone: TZ }) < todayMX
+  ).length;
 
   return (
     <main className="p-6 max-w-3xl mx-auto">
       <BackButton href="/dashboard" label="Volver al dashboard" />
 
-      <h1 className="mt-5 text-2xl font-bold text-gray-900">Mis citas médicas</h1>
-      <p className="text-sm text-gray-500 mt-1 mb-6">
-        {isAdmin ? 'Todas las citas médicas del sistema.' : 'Citas asignadas a tu perfil.'}
+      <h1 className="mt-5 text-2xl font-bold text-gray-900">Mis Citas</h1>
+      <p className="text-sm text-gray-500 mt-0.5 mb-3">
+        {isAdmin ? 'Todas las citas del sistema' : isAuditor ? 'Vista de auditoría — todas las citas (solo lectura)' : 'Citas asignadas a tu perfil'}
+        {' — '}{monthLabel}
       </p>
+
+      {/* Alert: past appointments pending to register */}
+      {pendingPast > 0 && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-center gap-3">
+          <span className="text-red-500 text-lg">⚠️</span>
+          <div>
+            <p className="text-sm font-semibold text-red-800">
+              {pendingPast} cita{pendingPast > 1 ? 's' : ''} pasada{pendingPast > 1 ? 's' : ''} pendiente{pendingPast > 1 ? 's' : ''} de registrar
+            </p>
+            <p className="text-xs text-red-600 mt-0.5">
+              Ingresa a cada cita para marcar asistencia, no-show o llamada.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      <Suspense>
+        <AppointmentsFilters
+          currentMonth={monthParam}
+          currentService={serviceParam}
+          currentStatus={statusParam}
+          totalCount={events.length}
+        />
+      </Suspense>
 
       {error && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -156,26 +260,59 @@ export default async function AppointmentsListPage() {
         </div>
       )}
 
-      {/* Upcoming */}
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-          Próximas · pendientes de acción
-        </h2>
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          {renderList(upcoming)}
+      {grouped.size === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center text-gray-400">
+          <p className="text-base">Sin citas para los filtros seleccionados.</p>
+          <p className="text-sm mt-1">Prueba cambiando el mes o removiendo filtros.</p>
         </div>
-      </section>
+      ) : (
+        <div className="space-y-6">
+          {[...grouped.entries()].map(([dayKey, dayEvents]) => {
+            const dayDate  = new Date(dayKey + 'T12:00:00');
+            const dayLabel = dayDate.toLocaleDateString('es-MX', {
+              weekday: 'long', day: 'numeric', month: 'long',
+            });
+            const isToday  = dayKey === todayMX;
+            const isPast   = dayKey < todayMX;
 
-      {/* Past */}
-      {past.length > 0 && (
-        <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            Historial reciente
-          </h2>
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            {renderList(past)}
-          </div>
-        </section>
+            // Count unregistered past appointments
+            const unregistered = isPast
+              ? dayEvents.filter((e) => e.status === 'scheduled').length
+              : 0;
+
+            return (
+              <section key={dayKey}>
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className={`text-sm font-semibold uppercase tracking-wide capitalize ${
+                    isToday ? 'text-cyan-700' : isPast ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                    {isToday
+                      ? `● Hoy — ${dayLabel}`
+                      : isPast
+                      ? `✓ ${dayLabel}`
+                      : dayLabel
+                    }
+                  </h2>
+                  <span className="text-xs text-gray-400">
+                    {dayEvents.length} {dayEvents.length === 1 ? 'cita' : 'citas'}
+                  </span>
+                  {unregistered > 0 && (
+                    <span className="text-[10px] font-medium text-red-600 bg-red-50 border border-red-200 rounded px-1.5 py-0.5">
+                      {unregistered} sin registrar
+                    </span>
+                  )}
+                </div>
+                <div className={`rounded-xl border overflow-hidden shadow-sm ${
+                  isPast ? 'border-gray-200 bg-gray-50' : 'border-gray-200 bg-white'
+                }`}>
+                  <ul className="divide-y divide-gray-100">
+                    {dayEvents.map((ev) => renderEvent(ev, isPast))}
+                  </ul>
+                </div>
+              </section>
+            );
+          })}
+        </div>
       )}
     </main>
   );

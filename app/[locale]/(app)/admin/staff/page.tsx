@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import NewStaffForm from './new-staff-form';
 import StaffCard from './staff-card';
 import type { Profile } from './staff-card';
+import StaffFilters from './staff-filters';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,15 +94,7 @@ export default async function StaffPage() {
               buttonLabel={t('addStaff')}
             />
           </div>
-          {staff.length === 0 ? (
-            <p className="text-sm text-gray-500">{t('noStaff')}</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {staff.map((p) => (
-                <StaffCard key={p.id} profile={p} hasExtendedColumns={hasExtendedColumns} />
-              ))}
-            </div>
-          )}
+          <StaffFilters staff={staff} hasExtendedColumns={hasExtendedColumns} />
         </section>
 
         {ungrouped.length > 0 && (

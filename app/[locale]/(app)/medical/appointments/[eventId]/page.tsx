@@ -13,12 +13,15 @@ export const dynamic = 'force-dynamic';
 // Role codes that can access this view
 const MEDICAL_ROLE_CODES = [
   'medic', 'psychologist', 'nutritionist', 'physio',
-  'admin', 'super_admin', 'program_director',
+  'admin', 'super_admin', 'program_director', 'event_coordinator',
+  'auditor', // read-only audit access
 ];
-const ADMIN_ROLE_CODES = ['admin', 'super_admin', 'program_director'];
+const ADMIN_ROLE_CODES = ['admin', 'super_admin', 'program_director', 'event_coordinator'];
+// Auditors can view any appointment in read-only mode but cannot modify status.
+const AUDITOR_ROLE_CODES = ['auditor'];
 
 // Statuses that make the view read-only
-const CLOSED_STATUSES = ['show', 'no_show', 'rescheduled', 'cancelled'];
+const CLOSED_STATUSES = ['show', 'no_show', 'no_show_remote', 'rescheduled', 'cancelled'];
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,7 +38,6 @@ type AthleteRow = {
 type ParticipantRow = {
   participant_id: string;
   attendance_status: string;
-  athletes: AthleteRow | AthleteRow[] | null;
 };
 
 type SpecialistRow = {
@@ -57,14 +59,8 @@ export type AppointmentEvent = {
   end_at: string;
   status: string;
   description: string | null;
-  no_show_reason: string | null;
-  reschedule_reason: string | null;
-  original_event_id: string | null;
-  confirmed_by: string | null;
-  confirmed_at: string | null;
-  specialist_id: string | null;
+  created_by_profile_id: string | null;
   specialist: SpecialistRow | SpecialistRow[] | null;
-  confirmed_by_profile: ConfirmedByRow | ConfirmedByRow[] | null;
   event_participants: ParticipantRow[];
 };
 
@@ -96,18 +92,14 @@ export default async function AppointmentDetailPage({
   if (!isMedicalStaff) redirect(`/${locale}/dashboard`);
 
   // Fetch the event with all related data
+  // Note: specialist is stored in created_by_profile_id (no separate specialist_id column yet)
   const { data: rawEvent, error } = await supabaseAdmin
     .from('events')
     .select(`
       id, title, event_type, start_at, end_at, status, description,
-      no_show_reason, reschedule_reason, original_event_id,
-      confirmed_by, confirmed_at, specialist_id,
-      specialist:profiles!specialist_id(id, first_name, last_name),
-      confirmed_by_profile:profiles!confirmed_by(first_name, last_name),
-      event_participants(
-        participant_id, attendance_status,
-        athletes(id, first_name, last_name, email, profile_id)
-      )
+      created_by_profile_id,
+      specialist:profiles!created_by_profile_id(id, first_name, last_name),
+      event_participants(participant_id, attendance_status)
     `)
     .eq('id', eventId)
     .single();
@@ -130,29 +122,31 @@ export default async function AppointmentDetailPage({
 
   const event = rawEvent as unknown as AppointmentEvent;
 
-  // Ownership check: specialist_id must match or user is admin
-  const isAdmin = userRoleCodes.some((c) => ADMIN_ROLE_CODES.includes(c));
-  const isOwner = event.specialist_id === user.profile.id;
-  if (!isOwner && !isAdmin) redirect(`/${locale}/dashboard`);
+  // Ownership check: created_by_profile_id must match, user is admin, or user is auditor
+  const isAdmin   = userRoleCodes.some((c) => ADMIN_ROLE_CODES.includes(c));
+  const isAuditor = userRoleCodes.some((c) => AUDITOR_ROLE_CODES.includes(c));
+  const isOwner   = event.created_by_profile_id === user.profile.id;
+  if (!isOwner && !isAdmin && !isAuditor) redirect(`/${locale}/dashboard`);
 
-  // Extract athlete from event_participants (individual medical appointments have one participant)
-  const participant = event.event_participants?.[0] ?? null;
-  const athleteRaw  = participant
-    ? (Array.isArray(participant.athletes) ? participant.athletes[0] : participant.athletes)
-    : null;
-  const athlete = athleteRaw as AthleteRow | null;
+  // Extract athlete from event_participants — fetch separately (no FK in PostgREST cache)
+  const participant     = event.event_participants?.[0] ?? null;
+  const participantId   = participant?.participant_id ?? null;
 
-  // Resolve specialist
+  let athlete: AthleteRow | null = null;
+  if (participantId) {
+    const { data: athleteData } = await supabaseAdmin
+      .from('athletes')
+      .select('id, first_name, last_name, email, profile_id')
+      .eq('id', participantId)
+      .maybeSingle();
+    athlete = (athleteData as AthleteRow | null) ?? null;
+  }
+
+  // Resolve specialist (stored in created_by_profile_id)
   const specialistRaw = Array.isArray(event.specialist)
     ? event.specialist[0]
     : event.specialist;
   const specialist = specialistRaw as SpecialistRow | null;
-
-  // Resolve confirmed-by
-  const confirmedByRaw = Array.isArray(event.confirmed_by_profile)
-    ? event.confirmed_by_profile[0]
-    : event.confirmed_by_profile;
-  const confirmedByProfile = confirmedByRaw as ConfirmedByRow | null;
 
   // Fetch athlete's appointment history
   let history: HistoryRow[] = [];
@@ -174,7 +168,8 @@ export default async function AppointmentDetailPage({
   }
 
   const isReadOnly = CLOSED_STATUSES.includes(event.status);
-  const canEdit = isOwner || isAdmin;
+  // Auditors never edit — they only observe for audit purposes.
+  const canEdit = (isOwner || isAdmin) && !isAuditor;
 
   return (
     <main className="p-6 max-w-3xl mx-auto">
@@ -214,17 +209,16 @@ export default async function AppointmentDetailPage({
       )}
 
       {/* Main section: read-only vs interactive */}
-      {isReadOnly ? (
+      {(isReadOnly || isAuditor) ? (
         <AppointmentReadOnly
           event={event}
-          confirmedBy={confirmedByProfile}
           canEdit={canEdit}
           currentUserId={user.profile.id}
         />
       ) : (
         <AttendanceActions
           eventId={eventId}
-          specialistId={event.specialist_id ?? user.profile.id}
+          specialistId={event.created_by_profile_id ?? user.profile.id}
           serviceType={event.title}
           athleteId={athlete?.id ?? ''}
           athleteProfileId={athlete?.profile_id ?? null}

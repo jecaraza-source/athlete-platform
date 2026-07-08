@@ -153,13 +153,122 @@ function Textarea({ label, name, value, onChange, placeholder, rows = 4 }: {
 // Main component
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Print helper — uses a popup window to avoid the global print CSS
+// (globals.css hides the entire React app during print for the admin console;
+//  a dedicated popup bypasses that entirely).
+// ---------------------------------------------------------------------------
+
+function buildPrintHTML(
+  fields: Fields,
+  athleteName: string,
+  generatedAt: string | null | undefined,
+): string {
+  const sections = [
+    { label: 'Resumen General del Diagnóstico Inicial',     value: fields.overall_summary },
+    { label: 'Resumen del Diagnóstico Médico',              value: fields.medical_summary },
+    { label: 'Resumen del Diagnóstico Nutricional',          value: fields.nutritional_summary },
+    { label: 'Resumen del Diagnóstico Psicológico',         value: fields.psychological_summary },
+    { label: 'Perfil Deportivo del Atleta',                  value: fields.sport_profile },
+    { label: 'Resumen del Diagnóstico Fisioterapéutico',    value: fields.physiotherapy_summary },
+    { label: 'Resultado Integrado Interdisciplinario Final', value: fields.interdisciplinary_result },
+  ].filter((s) => s.value.trim().length > 0);
+
+  const now = new Date().toLocaleDateString('es-MX', {
+    timeZone: 'America/Mexico_City',
+    day: 'numeric', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+
+  const sectionsHTML = sections.length === 0
+    ? '<p style="color:#6b7280;font-style:italic">Sin información capturada.</p>'
+    : sections.map((s) => `
+        <div style="margin-bottom:24px;page-break-inside:avoid">
+          <p style="font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;
+                     color:#374151;border-bottom:1px solid #d1d5db;padding-bottom:4px;margin:0 0 8px 0">
+            ${s.label}
+          </p>
+          <p style="font-size:10pt;color:#111827;white-space:pre-wrap;line-height:1.7;margin:0">
+            ${s.value.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+          </p>
+        </div>
+      `).join('');
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Diagnóstico Inicial Integral — ${athleteName}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, 'Helvetica Neue', sans-serif;
+      font-size: 11pt;
+      color: #111827;
+      background: #fff;
+      margin: 0;
+      padding: 0;
+    }
+    .page { padding: 2cm; max-width: 21cm; margin: 0 auto; }
+    .header { border-bottom: 2px solid #111827; padding-bottom: 10px; margin-bottom: 20px; }
+    .header h1 { font-size: 16pt; margin: 0 0 4px 0; }
+    .header h2 { font-size: 13pt; font-weight: normal; color: #374151; margin: 0 0 4px 0; }
+    .header .meta { font-size: 8pt; color: #6b7280; margin-top: 6px; }
+    .disclaimer {
+      font-size: 8pt; color: #6b7280; font-style: italic;
+      border: 1px solid #e5e7eb; background: #f9fafb;
+      padding: 8px 12px; border-radius: 4px; margin-bottom: 20px;
+    }
+    .footer { border-top: 1px solid #e5e7eb; margin-top: 24px; padding-top: 8px;
+               font-size: 8pt; color: #9ca3af; text-align: center; }
+    @page { margin: 1.5cm; size: portrait; }
+    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <h1>Resultado Integrado Interdisciplinario</h1>
+      <h2>Diagnóstico Inicial Integral</h2>
+      <div style="font-size:12pt;font-weight:600;margin-top:4px">${athleteName}</div>
+      <div class="meta">
+        Impreso: ${now}
+        ${generatedAt ? ` &nbsp;·&nbsp; Última generación: ${new Date(generatedAt).toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
+      </div>
+    </div>
+    <div class="disclaimer">
+      ℹ️ Este documento es un resumen asistido por IA basado en los diagnósticos capturados por los profesionales de cada rama.
+      Debe ser revisado y validado por el equipo médico-deportivo antes de su uso oficial.
+    </div>
+    ${sectionsHTML}
+    <div class="footer">AO Deportes &nbsp;·&nbsp; Diagnóstico Inicial Integral &nbsp;·&nbsp; Documento generado automáticamente</div>
+  </div>
+  <script>window.onload = function() { window.print(); };<\/script>
+</body>
+</html>`;
+}
+
+function openPrintWindow(html: string): void {
+  const popup = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+  if (!popup) {
+    // Fallback: browser blocked popup — warn user
+    alert('Por favor permite las ventanas emergentes para imprimir el diagnóstico.');
+    return;
+  }
+  popup.document.open();
+  popup.document.write(html);
+  popup.document.close();
+}
+
 export default function IntegratedResultForm({
   athleteId,
+  athleteName = '',
   existingData,
   sectionsComplete,
   evaluations,
 }: {
   athleteId: string;
+  athleteName?: string;
   existingData: IntegratedResults | null;
   sectionsComplete: boolean;
   evaluations: Evaluations;
@@ -238,50 +347,8 @@ export default function IntegratedResultForm({
 
   const hasEvalData = Object.values(evaluations).some(Boolean);
 
-  const printFields = [
-    { label: 'Resumen general del diagnóstico inicial',       value: fields.overall_summary },
-    { label: 'Resumen del diagnóstico médico',               value: fields.medical_summary },
-    { label: 'Resumen del diagnóstico nutricional',           value: fields.nutritional_summary },
-    { label: 'Resumen del diagnóstico psicológico',          value: fields.psychological_summary },
-    { label: 'Perfil deportivo del atleta',                   value: fields.sport_profile },
-    { label: 'Resumen del diagnóstico fisioterapéutico',     value: fields.physiotherapy_summary },
-    { label: 'Resultado Integrado Interdisciplinario Final',  value: fields.interdisciplinary_result },
-  ].filter((f) => f.value.trim().length > 0);
-
   return (
     <div>
-      {/* ── PRINT VIEW — hidden on screen, visible only when printing ── */}
-      <div className="hidden print:block font-sans text-gray-900">
-        <div className="border-b-2 border-gray-800 pb-3 mb-6">
-          <h2 className="text-xl font-bold tracking-tight">Resultado Integrado Interdisciplinario</h2>
-          {d?.generated_at && (
-            <p className="text-xs text-gray-500 mt-1">
-              Generado: {new Date(d.generated_at).toLocaleString('es-MX')}
-            </p>
-          )}
-          <p className="text-[9pt] text-gray-400 mt-1 italic">
-            Este documento es un resumen asistido por IA basado en los diagnósticos capturados por los profesionales de cada rama.
-            Debe ser revisado y validado por el equipo médico-deportivo antes de su uso oficial.
-          </p>
-        </div>
-        {printFields.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">Sin información capturada.</p>
-        ) : (
-          <div className="space-y-6">
-            {printFields.map((f, i) => (
-              <div key={i} style={{ breakInside: 'avoid' }}>
-                <p className="text-[9pt] font-bold uppercase tracking-widest text-gray-500 border-b border-gray-200 pb-1 mb-2">
-                  {f.label}
-                </p>
-                <p className="text-[10pt] text-gray-900 whitespace-pre-wrap leading-relaxed">
-                  {f.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* ── SCREEN VIEW ── */}
       <div className="print:hidden">
       <div className="flex items-center justify-between mb-5">
@@ -346,7 +413,7 @@ export default function IntegratedResultForm({
             {hasEvalData && (
               <button type="button" disabled={!!aiPending} onClick={() => handleAIGenerate('overall')}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-md transition-colors disabled:opacity-50">
-                {aiPending === 'overall' ? <>⏳ Generando…</> : <>✨ Generar con IA</>}
+                {aiPending === 'overall' ? <>⏳ Generando…</> : <>✨ Generar Resumen General</>}
               </button>
             )}
           </div>
@@ -385,7 +452,7 @@ export default function IntegratedResultForm({
             {hasEvalData && (
               <button type="button" disabled={!!aiPending} onClick={() => handleAIGenerate('interdisciplinary')}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-md transition-colors disabled:opacity-50">
-                {aiPending === 'interdisciplinary' ? <>⏳ Generando…</> : <>✨ Generar con IA</>}
+                {aiPending === 'interdisciplinary' ? <>⏳ Generando…</> : <>✨ Generar Resumen General</>}
               </button>
             )}
           </div>
@@ -401,7 +468,7 @@ export default function IntegratedResultForm({
         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={() => openPrintWindow(buildPrintHTML(fields, athleteName, d?.generated_at))}
             className="flex items-center gap-1.5 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

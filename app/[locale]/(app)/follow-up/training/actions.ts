@@ -33,13 +33,22 @@ export async function updateTrainingSession(id: string, formData: FormData) {
   const denied = await assertPermission('edit_athletes');
   if (denied) return denied;
 
+  const existingNotes = (formData.get('notes') as string) || null;
+  const editReason = (formData.get('edit_reason') as string)?.trim();
+  const todayStr = new Date().toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: '2-digit', month: '2-digit', year: 'numeric' });
+  let notes = existingNotes;
+  if (editReason) {
+    const entry = `[Modificado ${todayStr}: ${editReason}]`;
+    notes = existingNotes ? `${existingNotes}\n${entry}` : entry;
+  }
+
   const payload = {
     title:        formData.get('title')        as string,
     session_date: formData.get('session_date') as string,
     start_time:   (formData.get('start_time') as string) || null,
     end_time:     (formData.get('end_time')   as string) || null,
     location:     (formData.get('location')   as string) || null,
-    notes:        (formData.get('notes')      as string) || null,
+    notes,
   };
 
   const { error } = await supabaseAdmin

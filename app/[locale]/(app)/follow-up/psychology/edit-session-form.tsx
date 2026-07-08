@@ -137,6 +137,17 @@ export default function EditSessionForm({ session }: { session: Session }) {
             className="w-full rounded border border-gray-300 px-2 py-1 text-xs resize-none"
           />
         </div>
+        <div>
+          <label className="block text-xs font-medium mb-0.5 text-amber-700">
+            Motivo de la edición
+          </label>
+          <textarea
+            name="edit_reason"
+            rows={2}
+            placeholder="¿Por qué se modifica esta información?"
+            className="w-full rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs resize-none placeholder:text-amber-400"
+          />
+        </div>
         <div className="flex gap-2 pt-1">
           <button
             type="submit"

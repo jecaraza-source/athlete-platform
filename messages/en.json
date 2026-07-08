@@ -51,7 +51,8 @@
     "newsletter": "Daily Newsletter",
     "finances": "Finances",
     "preferences": "Preferences",
-    "admin": "Admin"
+    "admin": "Admin",
+    "appointments": "My Appointments"
   },
   "auth": {
     "signIn": "Sign in",
@@ -234,8 +235,13 @@
     "typeCompetition": "Competition",
     "typeMeeting": "Meeting",
     "typeMedical": "Medical",
+    "typePhysio": "Physio",
+    "typeNutrition": "Nutrition",
+    "typePsychology": "Psychology",
     "typeEvaluation": "Evaluation",
     "typeOther": "Other",
+    "allEventTypes": "All activity types",
+    "allMonths": "All months",
     "statusScheduled": "Scheduled",
     "statusCompleted": "Completed",
     "statusCancelled": "Cancelled",
@@ -247,7 +253,8 @@
     "clearFilters": "Clear filters",
     "eventsCount": "{count, plural, one {# event} other {# events}}",
     "noEventsForAthlete": "No events found for this athlete.",
-    "noEventsYet": "No events yet."
+    "noEventsYet": "No events yet.",
+    "noEventsForFilter": "No events match the selected filters."
   },
   "followUp": {
     "title": "Follow-up",
@@ -720,7 +727,21 @@
       "roleTrainer": "Trainer",
       "roleNutritionist": "Nutritionist",
       "rolePhysio": "Physio",
-      "roleMedic": "Medic"
+      "roleMedic": "Medic",
+      "roleCoach": "External coach",
+      "roleEventCoordinator": "Event coordinator",
+      "searchPlaceholder": "Search by name…",
+      "allSpecialties": "All specialties",
+      "allRoles": "All roles",
+      "noResults": "No staff members match the filters."
+    },
+    "console": {
+      "title": "Admin Console",
+      "description": "KPIs, appointments, heatmap, real-time alerts and Excel export."
+    },
+    "reportesMetas": {
+      "title": "Goals Report",
+      "description": "Daily, weekly, monthly and quarterly summary with a print button."
     },
     "disciplines": {
       "title": "Discipline Configuration",
@@ -919,6 +940,12 @@
       "actionNotePrompt": "{action} — add a note (optional):",
       "notePlaceholder": "Reason / comment...",
       "confirmBtn": "Confirm",
+      "adminDeleteBtn": "🗑 Delete expense (Admin)",
+      "adminDeleteWarning": "⚠️ This action permanently deletes the expense regardless of its status. The deletion will be recorded in the audit log with the provided justification.",
+      "adminDeleteJustificationLabel": "Deletion justification *",
+      "adminDeleteJustificationPlaceholder": "Describe the reason for deleting this expense…",
+      "adminDeleteJustificationRequired": "A justification is required to delete the expense.",
+      "adminDeleteConfirmBtn": "Confirm deletion",
       "form": {
         "titleLabel": "Title",
         "titlePlaceholder": "Brief expense description",

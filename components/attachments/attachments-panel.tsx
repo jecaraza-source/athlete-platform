@@ -46,12 +46,13 @@ export default function AttachmentsPanel({
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Upload state
-  const [stagedFiles, setStagedFiles]   = useState<File[]>([]);
-  const [description, setDescription]   = useState('');
-  const [stageErrors, setStageErrors]   = useState<string[]>([]);
-  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
-  const [successMsg, setSuccessMsg]     = useState<string | null>(null);
-  const [isPending, startTransition]    = useTransition();
+  const [stagedFiles, setStagedFiles]       = useState<File[]>([]);
+  const [description, setDescription]       = useState('');
+  const [stageErrors, setStageErrors]       = useState<string[]>([]);
+  const [uploadErrors, setUploadErrors]     = useState<string[]>([]);
+  const [fileErrors, setFileErrors]         = useState<Map<string, string>>(new Map()); // per-file errors
+  const [successMsg, setSuccessMsg]         = useState<string | null>(null);
+  const [isPending, startTransition]        = useTransition();
 
   // UI state
   const [dragging, setDragging]   = useState(false);
@@ -105,6 +106,7 @@ export default function AttachmentsPanel({
   function handleUpload() {
     if (!stagedFiles.length) return;
     setUploadErrors([]);
+    setFileErrors(new Map());
     setSuccessMsg(null);
 
     const formData = new FormData();
@@ -116,11 +118,36 @@ export default function AttachmentsPanel({
         formData
       );
 
-      if (result.errors.length > 0) setUploadErrors(result.errors);
+      if (result.errors.length > 0) {
+        // Map errors back to specific filenames for per-file display
+        const perFile = new Map<string, string>();
+        const generalErrors: string[] = [];
+        result.errors.forEach((err) => {
+          // Format: '"filename.pdf": error message'
+          const match = err.match(/^"(.+?)":\s*(.+)$/);
+          if (match) {
+            perFile.set(match[1], match[2]);
+          } else {
+            generalErrors.push(err);
+          }
+        });
+        setFileErrors(perFile);
+        if (generalErrors.length > 0) setUploadErrors(generalErrors);
+      }
 
       if (result.uploaded > 0) {
-        setStagedFiles([]);
-        setDescription('');
+        // Remove only SUCCESSFUL files from staging (keep failed ones for retry)
+        if (result.errors.length > 0) {
+          const failedNames = new Set(
+            result.errors
+              .map((e) => e.match(/^"(.+?)":/)?.[1])
+              .filter(Boolean) as string[]
+          );
+          setStagedFiles((prev) => prev.filter((f) => failedNames.has(f.name)));
+        } else {
+          setStagedFiles([]);
+          setDescription('');
+        }
         setSuccessMsg(
           result.uploaded === 1
             ? '1 archivo adjuntado correctamente.'
@@ -231,19 +258,34 @@ export default function AttachmentsPanel({
 
               {/* Staged files list */}
               {hasStagedFiles && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 overflow-hidden">
-                  <div className="flex items-center justify-between px-3 py-2 border-b border-emerald-200/60">
-                    <p className="text-xs font-semibold text-emerald-800">
-                      {stagedFiles.length} archivo{stagedFiles.length > 1 ? 's' : ''} seleccionado{stagedFiles.length > 1 ? 's' : ''}
+                <div className={`rounded-xl border overflow-hidden ${
+                  fileErrors.size > 0 ? 'border-red-200 bg-red-50/30' : 'border-emerald-200 bg-emerald-50/40'
+                }`}>
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-inherit">
+                    <p className={`text-xs font-semibold ${
+                      fileErrors.size > 0 ? 'text-red-800' : 'text-emerald-800'
+                    }`}>
+                      {fileErrors.size > 0
+                        ? `${fileErrors.size} archivo${fileErrors.size > 1 ? 's' : ''} con error — reinténtalo o elimínalo`
+                        : `${stagedFiles.length} archivo${stagedFiles.length > 1 ? 's' : ''} seleccionado${stagedFiles.length > 1 ? 's' : ''}`
+                      }
                     </p>
-                    <button type="button" onClick={() => { setStagedFiles([]); setStageErrors([]); }}
-                      className="text-xs text-emerald-600 hover:text-emerald-800 hover:underline">
+                    <button type="button" onClick={() => { setStagedFiles([]); setStageErrors([]); setFileErrors(new Map()); }}
+                      className="text-xs text-gray-500 hover:text-red-600 hover:underline">
                       Limpiar todo
                     </button>
                   </div>
-                  <ul className="divide-y divide-emerald-100">
+                  <ul className="divide-y divide-inherit">
                     {stagedFiles.map((file, i) => (
-                      <StagedFileItem key={`${file.name}-${i}`} file={file} onRemove={() => removeStagedFile(i)} />
+                      <StagedFileItem
+                        key={`${file.name}-${i}`}
+                        file={file}
+                        error={fileErrors.get(file.name)}
+                        onRemove={() => {
+                          removeStagedFile(i);
+                          setFileErrors((prev) => { const m = new Map(prev); m.delete(file.name); return m; });
+                        }}
+                      />
                     ))}
                   </ul>
                 </div>
@@ -263,10 +305,14 @@ export default function AttachmentsPanel({
                     type="button"
                     disabled={isPending}
                     onClick={handleUpload}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition-colors whitespace-nowrap flex-shrink-0"
+                    className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 transition-colors whitespace-nowrap flex-shrink-0 ${
+                      fileErrors.size > 0
+                        ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
+                        : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800'
+                    }`}
                   >
                     <UploadIcon className="text-white" />
-                    Subir {stagedFiles.length} archivo{stagedFiles.length > 1 ? 's' : ''}
+                    {fileErrors.size > 0 ? 'Reintentar' : `Subir ${stagedFiles.length} archivo${stagedFiles.length > 1 ? 's' : ''}`}
                   </button>
                 </div>
               )}
@@ -327,7 +373,7 @@ export default function AttachmentsPanel({
 // StagedFileItem — file in staging before upload
 // ---------------------------------------------------------------------------
 
-function StagedFileItem({ file, onRemove }: { file: File; onRemove: () => void }) {
+function StagedFileItem({ file, onRemove, error }: { file: File; onRemove: () => void; error?: string }) {
   const isImage = file.type.startsWith('image/');
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
 
@@ -339,29 +385,44 @@ function StagedFileItem({ file, onRemove }: { file: File; onRemove: () => void }
   }, [file, isImage]);
 
   return (
-    <li className="flex items-center gap-2.5 px-3 py-2.5">
-      {/* Thumbnail or icon */}
-      {previewSrc ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={previewSrc} alt={file.name}
-          className="w-9 h-9 rounded-lg object-cover flex-shrink-0 border border-emerald-200" />
-      ) : (
-        <FileIcon mimeType={file.type} size="sm" />
-      )}
+    <li className={`flex flex-col px-3 py-2.5 gap-1 ${
+      error ? 'bg-red-50/60' : ''
+    }`}>
+      <div className="flex items-center gap-2.5">
+        {/* Thumbnail or icon */}
+        {previewSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={previewSrc} alt={file.name}
+            className="w-9 h-9 rounded-lg object-cover flex-shrink-0 border border-emerald-200" />
+        ) : (
+          <FileIcon mimeType={file.type} size="sm" />
+        )}
 
-      {/* Name + size */}
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-gray-800 truncate">{file.name}</p>
-        <p className="text-xs text-gray-400">{formatFileSize(file.size)}</p>
+        {/* Name + size */}
+        <div className="flex-1 min-w-0">
+          <p className={`text-xs font-medium truncate ${
+            error ? 'text-red-800' : 'text-gray-800'
+          }`}>{file.name}</p>
+          <p className="text-xs text-gray-400">{formatFileSize(file.size)}</p>
+        </div>
+
+        {/* Status + Remove */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {error && (
+            <span className="text-[10px] font-medium text-red-600 bg-red-100 rounded px-1.5 py-0.5">Error</span>
+          )}
+          <button type="button" onClick={onRemove} title="Quitar"
+            className="w-5 h-5 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
-
-      {/* Remove */}
-      <button type="button" onClick={onRemove} title="Quitar"
-        className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+      {/* Per-file error message */}
+      {error && (
+        <p className="text-[11px] text-red-600 pl-11.5 leading-tight">⚠️ {error}</p>
+      )}
     </li>
   );
 }

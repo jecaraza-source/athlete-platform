@@ -1,11 +1,12 @@
 import BackButton from '@/components/back-button';
 import { getTranslations } from 'next-intl/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requirePermission, getProfilesByRoleCodes } from '@/lib/rbac/server';
+import { requireRole, getProfilesByRoleCodes } from '@/lib/rbac/server';
 import NewCaseForm from './new-case-form';
 import NewPhysioSessionForm from './new-session-form';
 import AthleteFilter from '../nutrition/athlete-filter';
 import EditSessionForm from './edit-session-form';
+import EditCaseForm from './edit-case-form';
 import CaseStatusSelect from './case-status-select';
 import AttachmentsLoader from '@/components/attachments/attachments-loader';
 import LinkedPlansSection, { type LinkedPlan } from '@/components/follow-up/linked-plans-section';
@@ -49,7 +50,7 @@ export default async function PhysioPage({
 }: {
   searchParams: Promise<{ athlete?: string }>;
 }) {
-  await requirePermission('view_athletes');
+  await requireRole('medic', 'physio', 'nutritionist', 'psychologist', 'coach');
 
   const { athlete: selectedAthleteId = '' } = await searchParams;
 
@@ -72,7 +73,7 @@ export default async function PhysioPage({
   const [{ data: casesData, error }, { data: athletesData }, physiosData, { data: injuriesData }, { data: plansData }] =
     await Promise.all([
       casesQuery,
-      supabaseAdmin.from('athletes').select('id, first_name, last_name').order('last_name'),
+      supabaseAdmin.from('athletes').select('id, first_name, last_name').neq('status', 'inactive').order('last_name'),
       // RBAC-aware: new system uses 'staff' for all specialists.
       // Falls back to legacy profiles.role = 'physio'.
       getProfilesByRoleCodes(['staff'], ['physio']),
@@ -132,21 +133,20 @@ export default async function PhysioPage({
           status: c.status,
           node: (
             <div className="rounded-lg border border-gray-200 p-5">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                <div>
-                  <h2 className="text-lg font-semibold">
-                    {c.athletes ? `${c.athletes.first_name} ${c.athletes.last_name}` : 'Atleta desconocido'}
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Fisioterapeuta: {c.profiles ? `${c.profiles.first_name} ${c.profiles.last_name}` : 'N/D'}
-                    {c.injuries ? ` · ${c.injuries.injury_type}` : ''}
-                  </p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <EditCaseForm
+                    caseId={c.id}
+                    openedAt={c.opened_at}
+                    athleteName={c.athletes ? `${c.athletes.first_name} ${c.athletes.last_name}` : 'Atleta desconocido'}
+                    profileName={c.profiles ? `${c.profiles.first_name} ${c.profiles.last_name}` : 'N/D'}
+                    injuryType={c.injuries ? c.injuries.injury_type : null}
+                  />
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusColors[c.status] ?? 'bg-gray-100 text-gray-600'}`}>
                     {STATUS_LABELS[c.status] ?? c.status}
                   </span>
-                  <span className="text-sm text-gray-500">{new Date(c.opened_at).toLocaleDateString()}</span>
                   <CaseStatusSelect caseId={c.id} currentStatus={c.status} />
                 </div>
               </div>

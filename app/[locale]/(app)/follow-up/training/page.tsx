@@ -1,6 +1,6 @@
 import BackButton from '@/components/back-button';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requirePermission, getProfilesByRoleCodes } from '@/lib/rbac/server';
+import { requireRole, getProfilesByRoleCodes } from '@/lib/rbac/server';
 import { getTranslations } from 'next-intl/server';
 import NewSessionForm from './new-session-form';
 import AthleteFilter from '../nutrition/athlete-filter';
@@ -30,7 +30,7 @@ export default async function TrainingPage({
 }: {
   searchParams: Promise<{ athlete?: string }>;
 }) {
-  await requirePermission('view_athletes');
+  await requireRole('medic', 'physio', 'nutritionist', 'psychologist', 'coach');
 
   const { athlete: selectedAthleteId = '' } = await searchParams;
 
@@ -55,6 +55,7 @@ export default async function TrainingPage({
     supabaseAdmin
       .from('athletes')
       .select('id, first_name, last_name')
+      .neq('status', 'inactive')
       .order('last_name', { ascending: true }),
     // RBAC-aware: queries user_roles → roles(code='coach').
     // Falls back to profiles.role = 'coach' if no RBAC assignments found.

@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ShowForm from './ShowForm';
 import NoShowForm from './NoShowForm';
+import NoShowRemoteForm from './NoShowRemoteForm';
 import RescheduleCalendar from './RescheduleCalendar';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type AttendanceStatus = 'show' | 'no_show' | 'reschedule' | null;
+type AttendanceStatus = 'show' | 'no_show' | 'no_show_remote' | 'reschedule' | null;
 
 type Props = {
   eventId: string;
@@ -65,9 +66,10 @@ export default function AttendanceActions({
     'flex-1 flex flex-col sm:flex-row items-center justify-center gap-2 h-16 rounded-xl font-semibold text-base transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 sm:text-lg';
 
   const activeRing: Record<NonNullable<AttendanceStatus>, string> = {
-    show:       'ring-2 ring-emerald-500 ring-offset-2 shadow-lg scale-[1.02]',
-    no_show:    'ring-2 ring-red-500    ring-offset-2 shadow-lg scale-[1.02]',
-    reschedule: 'ring-2 ring-amber-500  ring-offset-2 shadow-lg scale-[1.02]',
+    show:           'ring-2 ring-emerald-500 ring-offset-2 shadow-lg scale-[1.02]',
+    no_show:        'ring-2 ring-red-500    ring-offset-2 shadow-lg scale-[1.02]',
+    no_show_remote: 'ring-2 ring-orange-500 ring-offset-2 shadow-lg scale-[1.02]',
+    reschedule:     'ring-2 ring-amber-500  ring-offset-2 shadow-lg scale-[1.02]',
   };
 
   return (
@@ -119,6 +121,18 @@ export default function AttendanceActions({
 
           <button
             type="button"
+            onClick={() => select('no_show_remote')}
+            aria-pressed={selected === 'no_show_remote'}
+            className={`${btnBase} bg-orange-600 text-white hover:bg-orange-500 focus:ring-orange-500 ${
+              selected === 'no_show_remote' ? activeRing.no_show_remote : ''
+            }`}
+          >
+            <span className="text-xl">📞</span>
+            <span>Llamada/Msg</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => select('reschedule')}
             aria-pressed={selected === 'reschedule'}
             className={`${btnBase} bg-amber-600 text-white hover:bg-amber-500 focus:ring-amber-500 ${
@@ -148,6 +162,15 @@ export default function AttendanceActions({
           onSuccess={handleSuccess}
           onError={handleError}
           onSwitchToReschedule={switchToReschedule}
+        />
+      )}
+
+      {selected === 'no_show_remote' && (
+        <NoShowRemoteForm
+          eventId={eventId}
+          athleteProfileId={athleteProfileId}
+          onSuccess={handleSuccess}
+          onError={handleError}
         />
       )}
 

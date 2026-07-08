@@ -8,6 +8,33 @@ import { assertPermission } from '@/lib/rbac/server';
 // Medical cases
 // ---------------------------------------------------------------------------
 
+export async function updateMedicalCase(id: string, formData: FormData) {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return denied;
+
+  const existingNotes = (formData.get('notes') as string) || null;
+  const editReason = (formData.get('edit_reason') as string)?.trim();
+  const todayStr = new Date().toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: '2-digit', month: '2-digit', year: 'numeric' });
+  let notes = existingNotes;
+  if (editReason) {
+    const entry = `[Modificado ${todayStr}: ${editReason}]`;
+    notes = existingNotes ? `${existingNotes}\n${entry}` : entry;
+  }
+
+  const { error } = await supabaseAdmin
+    .from('medical_cases')
+    .update({
+      condition: (formData.get('condition') as string) || null,
+      notes,
+    })
+    .eq('id', id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath('/follow-up/medical');
+  return { error: null };
+}
+
 export async function createMedicalCase(formData: FormData) {
   const denied = await assertPermission('edit_athletes');
   if (denied) return denied;
@@ -93,6 +120,15 @@ export async function updateMedicalSession(id: string, formData: FormData) {
     return v ? parseFloat(v) : null;
   };
 
+  const existingNotes = (formData.get('notes') as string) || null;
+  const editReason = (formData.get('edit_reason') as string)?.trim();
+  const todayStr = new Date().toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: '2-digit', month: '2-digit', year: 'numeric' });
+  let notes = existingNotes;
+  if (editReason) {
+    const entry = `[Modificado ${todayStr}: ${editReason}]`;
+    notes = existingNotes ? `${existingNotes}\n${entry}` : entry;
+  }
+
   const payload = {
     session_date:      formData.get('session_date') as string,
     treatment_summary: (formData.get('treatment_summary') as string) || null,
@@ -101,7 +137,7 @@ export async function updateMedicalSession(id: string, formData: FormData) {
     weight_kg:         float('weight_kg'),
     blood_pressure:    (formData.get('blood_pressure') as string) || null,
     adherence_score:   num('adherence_score'),
-    notes:             (formData.get('notes') as string) || null,
+    notes,
     next_session_date: (formData.get('next_session_date') as string) || null,
   };
 

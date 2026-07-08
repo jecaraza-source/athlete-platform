@@ -6,6 +6,8 @@ import { useTranslations } from 'next-intl';
 
 // Hrefs hidden from the 'athlete' role (staff/admin-only pages).
 const STAFF_ONLY_HREFS = new Set(['/athletes', '/follow-up']);
+// Follow-up is also gated separately (auditors see /athletes but not /follow-up).
+const FOLLOWUP_HREF = '/follow-up';
 
 // Hrefs hidden from non-athletes (athlete-specific pages).
 // Staff/admin use the full admin panel equivalents instead.
@@ -93,12 +95,21 @@ export default function NavLinks({
   showAdmin = false,
   showFinances = false,
   isAthlete = false,
+  showAppointments = false,
+  showAthletes = true,
+  showFollowUp = true,
 }: {
   showAdmin?: boolean;
   /** When true, shows the Finanzas link (user has view_finances permission). */
   showFinances?: boolean;
   /** When true, hides staff-only sections (athlete list, follow-up, communications). */
   isAthlete?: boolean;
+  /** When true, shows 'Mis Citas' link for medical staff (medic, physio, nutritionist, psychologist). */
+  showAppointments?: boolean;
+  /** When true, shows the athlete list link (requires view_athletes permission). */
+  showAthletes?: boolean;
+  /** When true, shows the follow-up link (clinical/coaching staff only; auditors are excluded). */
+  showFollowUp?: boolean;
 }) {
   const pathname = usePathname();
   const t = useTranslations('nav');
@@ -129,6 +140,10 @@ export default function NavLinks({
         {mainLinks.map((link) => {
           // Staff-only items are hidden from athletes
           if (isAthlete && STAFF_ONLY_HREFS.has(link.href)) return null;
+          // Athlete list hidden from users without view_athletes permission
+          if (!showAthletes && link.href === '/athletes') return null;
+          // Follow-up hidden from users without clinical/coaching role (e.g. auditors)
+          if (!showFollowUp && link.href === FOLLOWUP_HREF) return null;
           // Athlete-only items are hidden from staff/admin
           if (!isAthlete && ATHLETE_ONLY_HREFS.has(link.href)) return null;
           return (
@@ -141,6 +156,20 @@ export default function NavLinks({
             </Link>
           );
         })}
+
+        {/* ── Mis Citas — medical staff and admins only ────────── */}
+        {!isAthlete && showAppointments && (
+          <Link
+            href="/medical/appointments"
+            className={linkClass(
+              '/medical/appointments',
+              'bg-cyan-50 text-cyan-600 hover:bg-cyan-100 hover:text-cyan-800',
+              'bg-cyan-100 text-cyan-900',
+            )}
+          >
+            {t('appointments')}
+          </Link>
+        )}
 
         {/* ── Communications accordion — staff / admin only ──────── */}
         {!isAthlete && (

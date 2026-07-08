@@ -41,22 +41,58 @@ const TYPE_COLORS: Record<string, string> = {
   match:       'bg-red-500',
   competition: 'bg-red-500',
   meeting:     'bg-yellow-500',
-  medical:     'bg-green-500',
+  medical:     'bg-green-600',
   other:       'bg-gray-400',
 };
+
+// Title-keyword overrides for the four medical disciplines
+const TITLE_COLORS: { pattern: RegExp; color: string }[] = [
+  { pattern: /fisio/i,              color: 'bg-orange-500'  },
+  { pattern: /psicol/i,             color: 'bg-purple-500'  },
+  { pattern: /nutri/i,              color: 'bg-teal-500'    },
+  { pattern: /m[eé]dic/i,           color: 'bg-green-600'   },
+];
 
 const LEGEND = [
   { label: 'Entrenamiento', color: 'bg-blue-500'   },
   { label: 'Competencia',   color: 'bg-red-500'    },
   { label: 'Reunión',       color: 'bg-yellow-500' },
-  { label: 'Médico',        color: 'bg-green-500'  },
+  { label: 'Médico',        color: 'bg-green-600'  },
+  { label: 'Fisioterapia',  color: 'bg-orange-500' },
+  { label: 'Nutrición',     color: 'bg-teal-500'   },
+  { label: 'Psicología',    color: 'bg-purple-500' },
   { label: 'Evaluación / Otro', color: 'bg-gray-400' },
 ];
 
-function eventColor(type: string) { return TYPE_COLORS[type.toLowerCase()] ?? 'bg-gray-400'; }
+function eventColor(type: string, title?: string): string {
+  if (title) {
+    for (const { pattern, color } of TITLE_COLORS) {
+      if (pattern.test(title)) return color;
+    }
+  }
+  return TYPE_COLORS[type.toLowerCase()] ?? 'bg-gray-400';
+}
 
 function toDateKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/** Returns the Mexico City local date string (YYYY-MM-DD) for a UTC ISO timestamp. */
+function mxDateKey(isoStr: string): string {
+  return new Date(isoStr).toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
+}
+
+/** Returns the Mexico City local hour (0-23) for a UTC ISO timestamp. */
+function mxHour(isoStr: string): number {
+  // 'en-US' + hour12:false gives '0'..'23'
+  return parseInt(
+    new Date(isoStr).toLocaleString('en-US', {
+      timeZone: 'America/Mexico_City',
+      hour: 'numeric',
+      hour12: false,
+    }),
+    10,
+  );
 }
 
 function formatHour(h: number) {
@@ -80,7 +116,7 @@ function MonthView({ events, year, month }: { events: CalendarEvent[]; year: num
   const todayKey = toDateKey(today);
 
   const byDate: Record<string, CalendarEvent[]> = {};
-  for (const e of events) { (byDate[e.start_at.slice(0,10)] ??= []).push(e); }
+  for (const e of events) { (byDate[mxDateKey(e.start_at)] ??= []).push(e); }
 
   const firstDay    = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -110,7 +146,7 @@ function MonthView({ events, year, month }: { events: CalendarEvent[]; year: num
               </span>
               <div className="mt-1 space-y-0.5">
                 {dayEvts.slice(0,3).map((e) => (
-                  <div key={e.id} className={`truncate text-white text-[10px] leading-4 px-1 rounded ${eventColor(e.event_type)}`} title={e.title}>{e.title}</div>
+                  <div key={e.id} className={`truncate text-white text-[10px] leading-4 px-1 rounded ${eventColor(e.event_type, e.title)}`} title={e.title}>{e.title}</div>
                 ))}
                 {dayEvts.length > 3 && <div className="text-[10px] text-gray-400 px-1">+{dayEvts.length - 3} más</div>}
               </div>
@@ -132,7 +168,7 @@ function TimeGrid({ dates, events }: { dates: Date[]; events: CalendarEvent[] })
   const nowH     = today.getHours() + today.getMinutes() / 60;
 
   const byDate: Record<string, CalendarEvent[]> = {};
-  for (const e of events) { (byDate[e.start_at.slice(0,10)] ??= []).push(e); }
+  for (const e of events) { (byDate[mxDateKey(e.start_at)] ??= []).push(e); }
 
   const cols     = dates.length;
   const gridCols = `56px repeat(${cols}, 1fr)`;
@@ -166,7 +202,7 @@ function TimeGrid({ dates, events }: { dates: Date[]; events: CalendarEvent[] })
               const dk      = toDateKey(date);
               const isToday = dk === todayKey;
 
-              const hourEvts = (byDate[dk] ?? []).filter((e) => new Date(e.start_at).getHours() === hour);
+              const hourEvts = (byDate[dk] ?? []).filter((e) => mxHour(e.start_at) === hour);
 
               return (
                 <div key={dk} className={`border-l border-gray-100 relative ${isToday ? 'bg-sky-50/30' : ''}`}>
@@ -187,7 +223,7 @@ function TimeGrid({ dates, events }: { dates: Date[]; events: CalendarEvent[] })
                     return (
                       <div
                         key={e.id}
-                        className={`absolute left-0.5 right-0.5 rounded px-1 text-white overflow-hidden z-10 ${eventColor(e.event_type)}`}
+                        className={`absolute left-0.5 right-0.5 rounded px-1 text-white overflow-hidden z-10 ${eventColor(e.event_type, e.title)}`}
                         style={{ top: topPx, height: Math.max(heightPx, 18) }}
                         title={`${e.title} — ${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                       >

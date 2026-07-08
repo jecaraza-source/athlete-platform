@@ -1,22 +1,24 @@
 'use client';
 
-import type { Profile } from '../staff/staff-card';
+import type { AthleteProfile } from './page';
+import { getAthleteStatusLabel } from '@/lib/types/athlete';
 
 export default function ExportAthletesButton({
   athletes,
   discipline,
 }: {
-  athletes: Profile[];
+  athletes: AthleteProfile[];
   discipline: string;
 }) {
   function downloadCSV() {
-    const headers = ['Nombre', 'Apellido', 'Email', 'Teléfono', 'Disciplina', 'Rol'];
+    const headers = ['Nombre', 'Apellido', 'Email', 'Teléfono', 'Disciplina', 'Estado', 'Rol'];
     const rows = athletes.map((a) => [
       a.first_name,
       a.last_name,
       a.email ?? '',
       a.phone ?? '',
       a.specialty ?? '',
+      getAthleteStatusLabel(a.athlete_status ?? null),
       a.role ?? '',
     ]);
 

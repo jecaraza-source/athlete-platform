@@ -51,7 +51,8 @@
     "newsletter": "Newsletter Diario",
     "finances": "Finanzas",
     "preferences": "Preferencias",
-    "admin": "Admin"
+    "admin": "Admin",
+    "appointments": "Mis Citas"
   },
   "auth": {
     "signIn": "Iniciar sesión",
@@ -234,8 +235,13 @@
     "typeCompetition": "Competencia",
     "typeMeeting": "Reunión",
     "typeMedical": "Médico",
+    "typePhysio": "Fisioterapia",
+    "typeNutrition": "Nutrición",
+    "typePsychology": "Psicología",
     "typeEvaluation": "Evaluación",
     "typeOther": "Otro",
+    "allEventTypes": "Todas las actividades",
+    "allMonths": "Todos los meses",
     "statusScheduled": "Programado",
     "statusCompleted": "Completado",
     "statusCancelled": "Cancelado",
@@ -247,7 +253,8 @@
     "clearFilters": "Limpiar filtros",
     "eventsCount": "{count, plural, one {# evento} other {# eventos}}",
     "noEventsForAthlete": "Sin eventos para este atleta.",
-    "noEventsYet": "Sin eventos todavía."
+    "noEventsYet": "Sin eventos todavía.",
+    "noEventsForFilter": "Sin eventos con los filtros seleccionados."
   },
   "followUp": {
     "title": "Seguimiento",
@@ -720,7 +727,21 @@
       "roleTrainer": "Entrenador",
       "roleNutritionist": "Nutricionista",
       "rolePhysio": "Fisioterapeuta",
-      "roleMedic": "Médico"
+      "roleMedic": "Médico",
+      "roleCoach": "Entrenador externo",
+      "roleEventCoordinator": "Coordinador de eventos",
+      "searchPlaceholder": "Buscar por nombre…",
+      "allSpecialties": "Todas las especialidades",
+      "allRoles": "Todos los roles",
+      "noResults": "No hay miembros que coincidan con los filtros."
+    },
+    "console": {
+      "title": "Admin Console",
+      "description": "KPIs, citas, heatmap, alertas en tiempo real y exportación a Excel."
+    },
+    "reportesMetas": {
+      "title": "Reportes de Metas",
+      "description": "Resumen diario, semanal, mensual y trimestral con botón de impresión."
     },
     "disciplines": {
       "title": "Configuración de Disciplinas",
@@ -919,6 +940,12 @@
       "actionNotePrompt": "{action} — añade una nota (opcional):",
       "notePlaceholder": "Motivo / comentario...",
       "confirmBtn": "Confirmar",
+      "adminDeleteBtn": "🗑 Eliminar gasto (Admin)",
+      "adminDeleteWarning": "⚠️ Esta acción elimina el gasto permanentemente en cualquier estado. La eliminación quedará registrada en la bitácora con la justificación proporcionada.",
+      "adminDeleteJustificationLabel": "Justificación de eliminación *",
+      "adminDeleteJustificationPlaceholder": "Describe el motivo por el que se elimina este gasto…",
+      "adminDeleteJustificationRequired": "La justificación es requerida para eliminar el gasto.",
+      "adminDeleteConfirmBtn": "Confirmar eliminación",
       "form": {
         "titleLabel": "Título",
         "titlePlaceholder": "Descripción breve del gasto",
