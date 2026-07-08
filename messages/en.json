@@ -235,8 +235,13 @@
     "typeCompetition": "Competition",
     "typeMeeting": "Meeting",
     "typeMedical": "Medical",
+    "typePhysio": "Physio",
+    "typeNutrition": "Nutrition",
+    "typePsychology": "Psychology",
     "typeEvaluation": "Evaluation",
     "typeOther": "Other",
+    "allEventTypes": "All activity types",
+    "allMonths": "All months",
     "statusScheduled": "Scheduled",
     "statusCompleted": "Completed",
     "statusCancelled": "Cancelled",
@@ -248,7 +253,8 @@
     "clearFilters": "Clear filters",
     "eventsCount": "{count, plural, one {# event} other {# events}}",
     "noEventsForAthlete": "No events found for this athlete.",
-    "noEventsYet": "No events yet."
+    "noEventsYet": "No events yet.",
+    "noEventsForFilter": "No events match the selected filters."
   },
   "followUp": {
     "title": "Follow-up",
