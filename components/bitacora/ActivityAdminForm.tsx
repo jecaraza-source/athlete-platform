@@ -473,7 +473,7 @@ export function ActivityAdminForm({ activity, locale }: ActivityAdminFormProps) 
             >
               {saving ? 'Publicando…' : '↑ Publicar'}
             </button>
-          </>>
+          </>
         )}
 
         {!isNew && isPublished && (
