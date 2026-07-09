@@ -161,6 +161,22 @@ export async function getPlanSignedUrl(filePath: string): Promise<string | null>
   return data?.signedUrl ?? null;
 }
 
+export type DisciplineOption = {
+  id:   string;
+  code: string;
+  name: string;
+};
+
+/** Returns all disciplines from the catalogue (for assignment-filter UI). */
+export async function getAvailableDisciplines(): Promise<DisciplineOption[]> {
+  const { data, error } = await supabaseAdmin
+    .from('cat_disciplines')
+    .select('id, code, name')
+    .order('name');
+  if (error) return [];
+  return (data ?? []) as DisciplineOption[];
+}
+
 /** Returns all active athletes for the assignment picker. */
 export async function getActiveAthletes(): Promise<AthleteSummary[]> {
   const { data, error } = await supabaseAdmin
@@ -302,6 +318,55 @@ export async function createPlan(
     console.error('[createPlan] Unhandled error:', msg);
     return { error: `Error al crear el plan: ${msg}`, planId: null };
   }
+}
+
+/**
+ * Removes athlete_plans rows for a plan where the athlete's discipline does
+ * NOT match the given code. Use to fix accidental "collective" assignments.
+ */
+export async function removeAssignmentsOutsideDiscipline(
+  planId:         string,
+  disciplineCode: string,
+): Promise<{ error: string | null; removed: number }> {
+  const denied = await assertPermission('edit_athletes');
+  if (denied) return { ...denied, removed: 0 };
+
+  // 1. IDs of athletes that SHOULD keep the plan
+  const { data: kept, error: keptErr } = await supabaseAdmin
+    .from('athletes')
+    .select('id')
+    .eq('discipline', disciplineCode);
+
+  if (keptErr) return { error: keptErr.message, removed: 0 };
+
+  const keepSet = new Set((kept ?? []).map((a: { id: string }) => a.id));
+
+  // 2. All current assignments for this plan
+  const { data: assignments, error: assignErr } = await supabaseAdmin
+    .from('athlete_plans')
+    .select('id, athlete_id')
+    .eq('plan_id', planId);
+
+  if (assignErr) return { error: assignErr.message, removed: 0 };
+  if (!assignments || assignments.length === 0) return { error: null, removed: 0 };
+
+  // 3. Keep only rows whose athlete is NOT in the target discipline
+  const toDelete = (assignments as { id: string; athlete_id: string }[])
+    .filter((ap) => !keepSet.has(ap.athlete_id))
+    .map((ap) => ap.id);
+
+  if (toDelete.length === 0) return { error: null, removed: 0 };
+
+  const { error: delErr } = await supabaseAdmin
+    .from('athlete_plans')
+    .delete()
+    .in('id', toDelete);
+
+  if (delErr) return { error: delErr.message, removed: 0 };
+
+  revalidatePath('/plans', 'layout');
+  revalidatePath('/follow-up/training');
+  return { error: null, removed: toDelete.length };
 }
 
 /** Permanently deletes a plan (file + DB row, cascades athlete_plans). */

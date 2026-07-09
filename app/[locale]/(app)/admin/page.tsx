@@ -115,10 +115,8 @@ export default async function AdminPage() {
         </Link>
 
         {isAdmin && (
-          <a
-            href="https://aodeporte.com/es/revista"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/admin/bitacora"
             className="rounded-lg border border-rose-300 bg-rose-50 p-6 hover:bg-rose-100 transition-colors flex items-start gap-4"
           >
             <span className="text-3xl mt-0.5">📰</span>
@@ -126,7 +124,7 @@ export default async function AdminPage() {
               <h2 className="text-lg font-semibold text-rose-800">{t('revista.title')}</h2>
               <p className="text-sm text-rose-600 mt-1">{t('revista.description')}</p>
             </div>
-          </a>
+          </Link>
         )}
       </div>
     </main>

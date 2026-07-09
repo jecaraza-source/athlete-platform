@@ -1,16 +1,24 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { deletePlan, togglePlanPublished, type Plan } from '@/lib/plans/actions';
+import {
+  deletePlan,
+  togglePlanPublished,
+  removeAssignmentsOutsideDiscipline,
+  type Plan,
+  type DisciplineOption,
+} from '@/lib/plans/actions';
 
 type Props = {
-  plan:      Plan;
-  signedUrl: string | null;
+  plan:        Plan;
+  signedUrl:   string | null;
   /**
    * When true, hides admin-only actions (publish toggle, delete).
    * Use for athletes who can only VIEW plans, not manage them.
    */
-  readOnly?: boolean;
+  readOnly?:   boolean;
+  /** Available disciplines for the "filter by discipline" cleanup action. */
+  disciplines?: DisciplineOption[];
 };
 
 function formatSize(bytes: number | null): string {
@@ -19,10 +27,13 @@ function formatSize(bytes: number | null): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function PlanCard({ plan, signedUrl, readOnly = false }: Props) {
+export function PlanCard({ plan, signedUrl, readOnly = false, disciplines }: Props) {
   const [isPending, start] = useTransition();
-  const [error, setError]  = useState<string | null>(null);
+  const [error, setError]      = useState<string | null>(null);
   const [published, setPublished] = useState(plan.is_published);
+  const [showCleanup, setShowCleanup] = useState(false);
+  const [cleanupDisc, setCleanupDisc] = useState('');
+  const [cleanupMsg,  setCleanupMsg]  = useState<string | null>(null);
 
   const athleteCount = plan.athlete_plans?.length ?? 0;
   const formattedDate = new Date(plan.created_at).toLocaleDateString('es-MX', {
@@ -31,6 +42,31 @@ export function PlanCard({ plan, signedUrl, readOnly = false }: Props) {
     year:  'numeric',
   });
   const isNew = Date.now() - new Date(plan.created_at).getTime() < 7 * 24 * 60 * 60 * 1000;
+
+  function handleCleanupByDiscipline() {
+    if (!cleanupDisc) return;
+    const disc = disciplines?.find((d) => d.code === cleanupDisc);
+    const discName = disc?.name ?? cleanupDisc;
+    if (!confirm(
+      `¿Quitar el plan de todos los atletas que NO sean de "${discName}"?\n\nEsta acción no se puede deshacer.`
+    )) return;
+    setCleanupMsg(null);
+    setError(null);
+    start(async () => {
+      const result = await removeAssignmentsOutsideDiscipline(plan.id, cleanupDisc);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setCleanupMsg(
+          result.removed === 0
+            ? 'No había atletas fuera de esa disciplina.'
+            : `Se quitó el plan de ${result.removed} atleta${result.removed !== 1 ? 's' : ''}.`,
+        );
+        setShowCleanup(false);
+        setCleanupDisc('');
+      }
+    });
+  }
 
   function handleDelete() {
     if (!confirm(`¿Eliminar el plan "${plan.title}"? Esta acción no se puede deshacer.`)) return;
@@ -143,6 +179,58 @@ export function PlanCard({ plan, signedUrl, readOnly = false }: Props) {
         </div>
       )}
 
+      {/* Cleanup success message */}
+      {cleanupMsg && (
+        <div className="mx-4 mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700 flex items-center justify-between">
+          <span>{cleanupMsg}</span>
+          <button
+            type="button"
+            onClick={() => setCleanupMsg(null)}
+            className="ml-2 text-emerald-500 hover:text-emerald-700"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Inline cleanup form */}
+      {!readOnly && showCleanup && disciplines && disciplines.length > 0 && (
+        <div className="mx-4 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+          <p className="text-xs text-amber-800 font-medium mb-2">
+            Mantener solo atletas de la disciplina:
+          </p>
+          <div className="flex items-center gap-2">
+            <select
+              value={cleanupDisc}
+              onChange={(e) => setCleanupDisc(e.target.value)}
+              disabled={isPending}
+              className="flex-1 rounded border border-amber-200 bg-white px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-400 disabled:opacity-50"
+            >
+              <option value="">— Selecciona disciplina —</option>
+              {disciplines.map((d) => (
+                <option key={d.code} value={d.code}>{d.name}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleCleanupByDiscipline}
+              disabled={isPending || !cleanupDisc}
+              className="text-xs rounded-md border border-amber-400 bg-amber-100 text-amber-800 px-2 py-1 hover:bg-amber-200 transition-colors disabled:opacity-50"
+            >
+              {isPending ? '…' : 'Confirmar'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowCleanup(false); setCleanupDisc(''); }}
+              disabled={isPending}
+              className="text-xs text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="border-t border-gray-100 px-4 py-2 flex items-center justify-between gap-2">
         {/* PDF link — visible to everyone */}
@@ -162,6 +250,19 @@ export function PlanCard({ plan, signedUrl, readOnly = false }: Props) {
         {/* Admin-only actions — hidden in readOnly mode */}
         {!readOnly && (
           <div className="flex items-center gap-2">
+            {/* Filter by discipline — only when there are athletes and disciplines available */}
+            {athleteCount > 0 && disciplines && disciplines.length > 0 && !showCleanup && (
+              <button
+                type="button"
+                onClick={() => { setShowCleanup(true); setCleanupMsg(null); }}
+                disabled={isPending}
+                className="text-xs rounded-md border border-amber-200 text-amber-700 px-2 py-1 hover:bg-amber-50 transition-colors disabled:opacity-50"
+                title="Quitar el plan de atletas que no son de la disciplina indicada"
+              >
+                🧹 Filtrar disciplina
+              </button>
+            )}
+
             {/* Publish toggle */}
             <button
               type="button"

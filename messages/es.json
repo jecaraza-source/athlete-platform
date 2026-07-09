@@ -762,8 +762,8 @@
       "errorLoading": "Error al cargar disciplinas:"
     },
     "revista": {
-      "title": "Revista AO Deportes",
-      "description": "Accede a la revista digital de AO Deportes."
+      "title": "AO Deporte Magazine",
+      "description": "Gestiona actividades, fotos, narrativas AI y publicaciones de la Revista."
     }
   },
   "finances": {

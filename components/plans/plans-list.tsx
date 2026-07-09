@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { PlanCard } from './plan-card';
-import type { Plan } from '@/lib/plans/actions';
+import type { Plan, DisciplineOption } from '@/lib/plans/actions';
 
 type SortKey = 'newest' | 'oldest' | 'athlete' | 'title';
 
@@ -37,10 +37,12 @@ export function PlansList({
   plans,
   signedUrls,
   readOnly = false,
+  disciplines,
 }: {
-  plans: Plan[];
-  signedUrls: Record<string, string | null>;
-  readOnly?: boolean;
+  plans:        Plan[];
+  signedUrls:   Record<string, string | null>;
+  readOnly?:    boolean;
+  disciplines?: DisciplineOption[];
 }) {
   const [sortKey, setSortKey] = useState<SortKey>('newest');
   const sorted = sortPlans(plans, sortKey);
@@ -70,6 +72,7 @@ export function PlansList({
             plan={plan}
             signedUrl={signedUrls[plan.id] ?? null}
             readOnly={readOnly}
+            disciplines={disciplines}
           />
         ))}
       </div>

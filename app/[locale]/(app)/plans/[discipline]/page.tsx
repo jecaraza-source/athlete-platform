@@ -7,6 +7,7 @@ import {
   getPlanSignedUrl,
   getActiveAthletes,
   getMyPlansForAthlete,
+  getAvailableDisciplines,
   type PlanType,
 } from '@/lib/plans/actions';
 import { PlanForm }  from '@/components/plans/plan-form';
@@ -76,9 +77,10 @@ export default async function PlansDisciplinePage({
   const isAthlete = currentUser.roles.some((r) => r.code === 'athlete');
 
   // Parallel data fetches — athletes only see their own published plans
-  const [plans, athletes, tp, tc] = await Promise.all([
+  const [plans, athletes, disciplines, tp, tc] = await Promise.all([
     isAthlete ? getMyPlansForAthlete(type) : getPlansByType(type),
     isAthlete ? Promise.resolve([])        : getActiveAthletes(),
+    isAthlete ? Promise.resolve([])        : getAvailableDisciplines(),
     getTranslations('plans'),
     getTranslations('common'),
   ]);
@@ -134,10 +136,11 @@ export default async function PlansDisciplinePage({
               )}
             </div>
           ) : (
-            <PlansList
+          <PlansList
               plans={plans}
               signedUrls={signedUrls}
               readOnly={isAthlete}
+              disciplines={isAthlete ? undefined : disciplines}
             />
           )}
         </section>

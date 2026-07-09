@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { compressImage, formatFileSize } from '@/lib/bitacora/image-utils';
 import { upsertPhotos, deletePhoto, setFeaturedPhoto, reorderPhotos } from '@/lib/bitacora/actions';
@@ -25,6 +26,7 @@ interface LocalPhoto extends ActivityPhoto {
 }
 
 export function PhotoUploader({ activityId, initialPhotos }: PhotoUploaderProps) {
+  const router   = useRouter();
   const [photos,   setPhotos]   = useState<LocalPhoto[]>(initialPhotos);
   const [error,    setError]    = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null); // photo id being dragged
@@ -120,6 +122,7 @@ export function PhotoUploader({ activityId, initialPhotos }: PhotoUploaderProps)
     const result = await setFeaturedPhoto(activityId, photo.id);
     if (result.error) { setError(result.error); return; }
     setPhotos((prev) => prev.map((p) => ({ ...p, featured: p.id === photo.id })));
+    router.refresh(); // sync stepper (cover photo affects step 2)
   }
 
   // Drag-and-drop reorder (simplified)
