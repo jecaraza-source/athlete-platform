@@ -4,7 +4,8 @@ import { getTranslations } from 'next-intl/server';
 import { requireAdminAccess } from '@/lib/rbac/server';
 
 export default async function AdminPage() {
-  await requireAdminAccess();
+  const user = await requireAdminAccess();
+  const isAdmin = user.roles.some((r) => ['super_admin', 'admin'].includes(r.code));
   const t = await getTranslations('admin');
   const tc = await getTranslations('common');
 
@@ -113,18 +114,20 @@ export default async function AdminPage() {
           </div>
         </Link>
 
-        <a
-          href="https://aodeporte.com/es/revista"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-lg border border-rose-300 bg-rose-50 p-6 hover:bg-rose-100 transition-colors flex items-start gap-4"
-        >
-          <span className="text-3xl mt-0.5">📰</span>
-          <div>
-            <h2 className="text-lg font-semibold text-rose-800">{t('revista.title')}</h2>
-            <p className="text-sm text-rose-600 mt-1">{t('revista.description')}</p>
-          </div>
-        </a>
+        {isAdmin && (
+          <a
+            href="https://aodeporte.com/es/revista"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg border border-rose-300 bg-rose-50 p-6 hover:bg-rose-100 transition-colors flex items-start gap-4"
+          >
+            <span className="text-3xl mt-0.5">📰</span>
+            <div>
+              <h2 className="text-lg font-semibold text-rose-800">{t('revista.title')}</h2>
+              <p className="text-sm text-rose-600 mt-1">{t('revista.description')}</p>
+            </div>
+          </a>
+        )}
       </div>
     </main>
   );
