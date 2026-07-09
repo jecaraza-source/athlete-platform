@@ -149,9 +149,10 @@ export async function getPublicActivityBySlug(
 /** Listado admin con todas las actividades y sus conteos. */
 export async function getAdminActivities(filters: ActivityFilters = {}): Promise<{
   activities: (Activity & {
-    photo_count:   number;
-    comment_count: number;
-    has_narrative: boolean;
+    photo_count:      number;
+    comment_count:    number;
+    has_narrative:    boolean;
+    narrative_status: string | null;
   })[];
   total:   number;
   page:    number;
@@ -196,7 +197,7 @@ export async function getAdminActivities(filters: ActivityFilters = {}): Promise
 
   const photoMap    = new Map<string, number>();
   const commentMap  = new Map<string, number>();
-  const narrativeMap = new Map<string, boolean>();
+  const narrativeMap = new Map<string, string>();
 
   for (const p of (photoCounts.data ?? []) as { activity_id: string }[]) {
     photoMap.set(p.activity_id, (photoMap.get(p.activity_id) ?? 0) + 1);
@@ -205,14 +206,15 @@ export async function getAdminActivities(filters: ActivityFilters = {}): Promise
     commentMap.set(c.activity_id, (commentMap.get(c.activity_id) ?? 0) + 1);
   }
   for (const n of (narratives.data ?? []) as { activity_id: string; status: string }[]) {
-    narrativeMap.set(n.activity_id, true);
+    narrativeMap.set(n.activity_id, n.status);
   }
 
   const activities = rows.map((r: Activity) => ({
     ...r,
-    photo_count:   photoMap.get(r.id)   ?? 0,
-    comment_count: commentMap.get(r.id) ?? 0,
-    has_narrative: narrativeMap.get(r.id) ?? false,
+    photo_count:      photoMap.get(r.id)     ?? 0,
+    comment_count:    commentMap.get(r.id)   ?? 0,
+    narrative_status: narrativeMap.get(r.id) ?? null,
+    has_narrative:    narrativeMap.has(r.id),
   }));
 
   return { activities, total: count ?? 0, page, perPage };

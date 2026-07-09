@@ -13,20 +13,34 @@ export type MagazineStatus  = 'borrador' | 'publicado';
 // ---------------------------------------------------------------------------
 
 export interface Activity {
-  id:                 string;
-  type:               ActivityType;
-  title:              string;
-  slug:               string;
-  description:        string | null;
-  event_date:         string | null;   // date → ISO string (YYYY-MM-DD)
-  location:           string | null;
-  tags:               string[];
-  status:             ActivityStatus;
-  editorial_eligible: boolean;
-  created_by:         string | null;
-  notified_at:        string | null;
-  created_at:         string;
-  updated_at:         string;
+  id:                   string;
+  type:                 ActivityType;
+  title:                string;
+  slug:                 string;
+  description:          string | null;
+  event_date:           string | null;
+  location:             string | null;
+  tags:                 string[];
+  status:               ActivityStatus;
+  editorial_eligible:   boolean;
+  created_by:           string | null;
+  notified_at:          string | null;
+  created_at:           string;
+  updated_at:           string;
+  // Campos extendidos de planificación
+  disciplina:           string | null;
+  especialidad:         string | null;
+  actividad_tipo:       string | null;
+  sede:                 string | null;
+  horario:              string | null;   // time → "HH:MM"
+  requerimiento:        string | null;
+  numero_participantes: number | null;
+  personal_requerido:   string | null;
+  equipo_requerido:     string | null;
+  objetivo:             string | null;
+  // Atención Operativa (interno)
+  atencion_actividad:   string | null;
+  atencion_fecha:       string | null;
 }
 
 export interface ActivityPhoto {
@@ -128,14 +142,27 @@ export interface ActivityFilters {
 // ---------------------------------------------------------------------------
 
 export interface ActivityInput {
-  type:               ActivityType;
-  title:              string;
-  slug?:              string;  // si está vacío se autogenera
-  description?:       string;
-  event_date?:        string;
-  location?:          string;
-  tags?:              string[];
-  editorial_eligible?: boolean;
+  type:                 ActivityType;
+  title:                string;
+  slug?:                string;
+  description?:         string;
+  event_date?:          string;
+  location?:            string;
+  tags?:                string[];
+  editorial_eligible?:  boolean;
+  // Campos extendidos
+  disciplina?:          string;
+  especialidad?:        string;
+  actividad_tipo?:      string;
+  sede?:                string;
+  horario?:             string;
+  requerimiento?:       string;
+  numero_participantes?: number;
+  personal_requerido?:  string;
+  equipo_requerido?:    string;
+  objetivo?:            string;
+  atencion_actividad?:  string;
+  atencion_fecha?:      string;
 }
 
 export interface PhotoInput {

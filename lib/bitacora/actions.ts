@@ -66,6 +66,18 @@ export async function createActivity(
       tags:               input.tags         ?? [],
       editorial_eligible: editorialEligible,
       created_by:         authUser?.id       ?? null,
+      disciplina:           input.disciplina           ?? null,
+      especialidad:         input.especialidad         ?? null,
+      actividad_tipo:       input.actividad_tipo       ?? null,
+      sede:                 input.sede                 ?? null,
+      horario:              input.horario              ?? null,
+      requerimiento:        input.requerimiento        ?? null,
+      numero_participantes: input.numero_participantes ?? null,
+      personal_requerido:   input.personal_requerido   ?? null,
+      equipo_requerido:     input.equipo_requerido     ?? null,
+      objetivo:             input.objetivo             ?? null,
+      atencion_actividad:   input.atencion_actividad   ?? null,
+      atencion_fecha:       input.atencion_fecha        ?? null,
     })
     .select('id, slug')
     .single();
@@ -91,6 +103,18 @@ export async function updateActivity(
   if (input.location    !== undefined) updates.location    = input.location    ?? null;
   if (input.tags        !== undefined) updates.tags        = input.tags;
   if (input.editorial_eligible !== undefined) updates.editorial_eligible = input.editorial_eligible;
+  if (input.disciplina           !== undefined) updates.disciplina           = input.disciplina           ?? null;
+  if (input.especialidad         !== undefined) updates.especialidad         = input.especialidad         ?? null;
+  if (input.actividad_tipo       !== undefined) updates.actividad_tipo       = input.actividad_tipo       ?? null;
+  if (input.sede                 !== undefined) updates.sede                 = input.sede                 ?? null;
+  if (input.horario              !== undefined) updates.horario              = input.horario              ?? null;
+  if (input.requerimiento        !== undefined) updates.requerimiento        = input.requerimiento        ?? null;
+  if (input.numero_participantes !== undefined) updates.numero_participantes = input.numero_participantes ?? null;
+  if (input.personal_requerido   !== undefined) updates.personal_requerido   = input.personal_requerido   ?? null;
+  if (input.equipo_requerido     !== undefined) updates.equipo_requerido     = input.equipo_requerido     ?? null;
+  if (input.objetivo             !== undefined) updates.objetivo             = input.objetivo             ?? null;
+  if (input.atencion_actividad   !== undefined) updates.atencion_actividad   = input.atencion_actividad   ?? null;
+  if (input.atencion_fecha       !== undefined) updates.atencion_fecha       = input.atencion_fecha       ?? null;
 
   // Si cambia el título, regenerar el slug
   if (input.title && !input.slug) {

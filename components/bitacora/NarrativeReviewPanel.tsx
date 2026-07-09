@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { ActivityNarrative } from '@/lib/types/bitacora';
 import { approveNarrative, rejectNarrative, deleteNarrative } from '@/lib/bitacora/actions';
 
@@ -9,6 +11,7 @@ interface NarrativeReviewPanelProps {
   narrative:     ActivityNarrative | null;
   isEligible:    boolean;  // editorial_eligible
   isPublished:   boolean;  // status === 'publicado'
+  locale:        string;
   onNarrativeChange?: (narrative: ActivityNarrative | null) => void;
 }
 
@@ -23,8 +26,10 @@ export function NarrativeReviewPanel({
   narrative,
   isEligible,
   isPublished,
+  locale,
   onNarrativeChange,
 }: NarrativeReviewPanelProps) {
+  const router   = useRouter();
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [localNarrative, setLocalNarrative] = useState(narrative);
@@ -62,6 +67,7 @@ export function NarrativeReviewPanel({
       };
       setLocalNarrative(updated);
       onNarrativeChange?.(updated);
+      router.refresh(); // sync stepper
     } catch (err) {
       setError('Error de red al generar narrativa.');
     } finally {
@@ -79,6 +85,7 @@ export function NarrativeReviewPanel({
     const updated = { ...current, status: 'aprobado' as const, approved_at: new Date().toISOString() };
     setLocalNarrative(updated);
     onNarrativeChange?.(updated);
+    router.refresh(); // sync stepper
   }
 
   async function handleReject() {
@@ -91,6 +98,7 @@ export function NarrativeReviewPanel({
     const updated = { ...current, status: 'rechazado' as const };
     setLocalNarrative(updated);
     onNarrativeChange?.(updated);
+    router.refresh(); // sync stepper
   }
 
   async function handleDelete() {
@@ -179,7 +187,7 @@ export function NarrativeReviewPanel({
             </button>
           )}
 
-          {/* Rechazar */}
+          {/* Rechazar aprobación */}
           {current && current.status === 'aprobado' && (
             <button
               type="button"
@@ -189,6 +197,18 @@ export function NarrativeReviewPanel({
             >
               ✕ Retirar aprobación
             </button>
+          )}
+
+          {/* Ver en Revista (solo si aprobado) */}
+          {current && current.status === 'aprobado' && (
+            <Link
+              href={`/${locale}/revista/${current.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="border border-red-300 text-red-600 hover:bg-red-50 text-sm font-semibold px-3 py-2 rounded-lg transition-colors"
+            >
+              ↗ Ver en Revista
+            </Link>
           )}
 
           {/* Eliminar */}
