@@ -760,6 +760,10 @@
       "inactiveStatus": "Inactiva",
       "noActiveDisciplines": "No hay disciplinas activas.",
       "errorLoading": "Error al cargar disciplinas:"
+    },
+    "revista": {
+      "title": "Revista AO Deportes",
+      "description": "Accede a la revista digital de AO Deportes."
     }
   },
   "finances": {

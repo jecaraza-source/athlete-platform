@@ -112,6 +112,19 @@ export default async function AdminPage() {
             <p className="text-sm text-indigo-600 mt-1">{t('disciplines.description')}</p>
           </div>
         </Link>
+
+        <a
+          href="https://aodeporte.com/es/revista"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-lg border border-rose-300 bg-rose-50 p-6 hover:bg-rose-100 transition-colors flex items-start gap-4"
+        >
+          <span className="text-3xl mt-0.5">📰</span>
+          <div>
+            <h2 className="text-lg font-semibold text-rose-800">{t('revista.title')}</h2>
+            <p className="text-sm text-rose-600 mt-1">{t('revista.description')}</p>
+          </div>
+        </a>
       </div>
     </main>
   );
