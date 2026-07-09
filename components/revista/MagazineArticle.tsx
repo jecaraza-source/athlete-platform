@@ -147,17 +147,6 @@ export function MagazineArticle({ article, appUrl, showShare = true }: MagazineA
           Imprimir / PDF
         </button>
       </div>
-
-      {/* Print styles */}
-      <style jsx global>{`
-        @media print {
-          body { font-size: 12pt; }
-          .print\\:hidden { display: none !important; }
-          .print\\:break-inside-avoid { break-inside: avoid; }
-          .print\\:break-before-page { break-before: page; }
-          img { max-width: 100%; }
-        }
-      `}</style>
     </article>
   );
 }
