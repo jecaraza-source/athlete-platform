@@ -375,6 +375,7 @@ export async function getStorageUsage(): Promise<{
   totalBytes: number;
 }> {
   const { data, error } = await supabaseAdmin
+    .schema('storage')
     .from('objects')
     .select('metadata')
     .eq('bucket_id', 'activity-photos');
