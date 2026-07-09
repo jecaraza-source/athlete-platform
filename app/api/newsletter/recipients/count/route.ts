@@ -13,10 +13,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser }             from '@/lib/rbac/server';
 import { supabaseAdmin }              from '@/lib/supabase-admin';
+import { getProfileIdsForRoleCodes }  from '@/lib/newsletter/audience-roles';
 
 export const runtime = 'nodejs';
 
-// Legacy profiles.role → audience mapping (mirrors newsletter-send/route.ts)
+// RBAC role codes (roles.code, via user_roles) → audience mapping.
+// Mirrors newsletter-send/route.ts.
 const AUDIENCE_ROLES: Record<string, string[]> = {
   atleta:     ['athlete', 'guardian'],
   coach:      ['coach'],
@@ -77,7 +79,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     .eq('newsletter_enabled', true);
 
   if (roles.length > 0) {
-    query = query.in('role', roles);
+    const profileIds = await getProfileIdsForRoleCodes(roles);
+    if (profileIds.length === 0) {
+      return NextResponse.json({ count: 0, profiles: [] });
+    }
+    query = query.in('id', profileIds);
   }
 
   const { count, error } = await query;

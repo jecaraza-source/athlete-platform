@@ -11,11 +11,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser }             from '@/lib/rbac/server';
 import { supabaseAdmin }              from '@/lib/supabase-admin';
+import { getProfileIdsForRoleCodes }  from '@/lib/newsletter/audience-roles';
 
 export const runtime = 'nodejs';
 
+// RBAC role codes (roles.code, via user_roles) — not the legacy profiles.role
+// text column, which uses a different vocabulary (e.g. 'trainer' vs 'coach').
 const SEGMENT_ROLES: Record<string, string[]> = {
-  staff:  ['super_admin', 'admin', 'program_director', 'event_coordinator',
+  staff:  ['super_admin', 'program_director', 'event_coordinator',
            'medic', 'physio', 'psychologist', 'nutritionist'],
   coach:  ['coach'],
   atleta: ['athlete', 'guardian'],
@@ -55,7 +58,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     .limit(limit);
 
   if (roles) {
-    query = query.in('role', roles);
+    const profileIds = await getProfileIdsForRoleCodes(roles);
+    if (profileIds.length === 0) {
+      return NextResponse.json({ ok: true, profiles: [], count: 0 });
+    }
+    query = query.in('id', profileIds);
   }
 
   if (q.length > 0) {

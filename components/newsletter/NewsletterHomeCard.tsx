@@ -1,12 +1,16 @@
 // =============================================================================
 // components/newsletter/NewsletterHomeCard.tsx
-// Server Component — shows the latest sent newsletter on the dashboard home.
+// Server Component — shows the latest published newsletter on the dashboard home.
+//
+// "Published" = status 'approved' or 'sent'. Drafts auto-approve without human
+// review, so 'approved' is already the live/current newsletter regardless of
+// whether the email dispatch (status -> 'sent') has run yet.
 //
 // For staff/coaches: shows the latest newsletter for 'coach' audience.
 // For athletes:      shows the latest newsletter for 'atleta' audience.
 // For admins (super_admin, program_director, event_coordinator):
 //   also shows a pending approval banner inside the card.
-// Returns null if no newsletter has been sent yet.
+// Returns null if no newsletter has been published yet.
 // =============================================================================
 
 import { getCurrentUser }  from '@/lib/rbac/server';
@@ -27,17 +31,21 @@ export default async function NewsletterHomeCard() {
   const isAdmin   = user.roles.some((r) => ADMIN_ROLES.has(r.code));
   const audiencia = isAthlete ? 'atleta' : 'coach';
 
-  // Fetch latest sent newsletter for this audience (or 'all')
-  const { data: latest } = await supabaseAdmin
+  // Fetch latest published newsletter for this audience (or 'all').
+  // "Published" = approved or sent — auto-approval means 'approved' is
+  // already live, independent of whether the email dispatch has run.
+  const { data: candidates } = await supabaseAdmin
     .from('newsletter_drafts')
-    .select('id, audiencia, asunto, preview_text, intro, tips_json, html_content, sent_at')
-    .eq('status', 'sent')
+    .select('id, audiencia, asunto, preview_text, intro, tips_json, html_content, sent_at, approved_at')
+    .in('status', ['approved', 'sent'])
     .in('audiencia', [audiencia, 'all'])
-    .order('sent_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order('approved_at', { ascending: false })
+    .limit(1);
 
+  const latest = candidates?.[0];
   if (!latest) return null;
+
+  const publishedAt = latest.sent_at ?? latest.approved_at;
 
   // Count pending drafts (admins only)
   let pendingCount = 0;
@@ -51,17 +59,17 @@ export default async function NewsletterHomeCard() {
 
   const tips = (latest.tips_json as Tip[]) ?? [];
 
-  const sentLabel = latest.sent_at
-    ? new Date(latest.sent_at).toLocaleDateString('es-MX', {
+  const sentLabel = publishedAt
+    ? new Date(publishedAt).toLocaleDateString('es-MX', {
         weekday: 'short', day: 'numeric', month: 'long',
       })
     : null;
 
   // Relative time
-  const sentRelative = latest.sent_at
+  const sentRelative = publishedAt
     ? (() => {
         const diffHours = Math.floor(
-          (Date.now() - new Date(latest.sent_at).getTime()) / 3_600_000
+          (Date.now() - new Date(publishedAt).getTime()) / 3_600_000
         );
         if (diffHours < 1)  return 'hace menos de 1 h';
         if (diffHours < 24) return `hace ${diffHours} h`;

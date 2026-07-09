@@ -11,13 +11,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireCronAuth }             from '@/lib/cron/auth';
 import { supabaseAdmin }               from '@/lib/supabase-admin';
 import { sendNewsletterViaOneSignal }   from '@/lib/newsletter/onesignal';
+import { getProfileIdsForRoleCodes }   from '@/lib/newsletter/audience-roles';
 import type { NewsletterAudiencia }    from '@/lib/newsletter/types';
 
 export const runtime    = 'nodejs';
 export const maxDuration = 120;
 
-// Which legacy `profiles.role` values map to each newsletter audience.
-// Mirrors the RLS policy in migration 044.
+// Which RBAC role codes (roles.code, via user_roles) map to each newsletter
+// audience. Mirrors the RLS policy in migration 044.
 const AUDIENCE_ROLES: Record<NewsletterAudiencia, string[]> = {
   atleta: ['athlete', 'guardian'],
   coach:  ['coach', 'super_admin', 'program_director', 'event_coordinator',
@@ -27,6 +28,9 @@ const AUDIENCE_ROLES: Record<NewsletterAudiencia, string[]> = {
 
 async function getSubscriberIds(audiencia: NewsletterAudiencia): Promise<string[]> {
   const roles = AUDIENCE_ROLES[audiencia];
+  if (!roles) {
+    throw new Error(`Unknown newsletter audiencia: "${audiencia}"`);
+  }
 
   let query = supabaseAdmin
     .from('profiles')
@@ -34,7 +38,9 @@ async function getSubscriberIds(audiencia: NewsletterAudiencia): Promise<string[
     .eq('newsletter_enabled', true);
 
   if (roles.length > 0) {
-    query = query.in('role', roles);
+    const profileIds = await getProfileIdsForRoleCodes(roles);
+    if (profileIds.length === 0) return [];
+    query = query.in('id', profileIds);
   }
 
   const { data, error } = await query;

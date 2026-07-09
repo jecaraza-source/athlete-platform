@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser }             from '@/lib/rbac/server';
 import { supabaseAdmin }              from '@/lib/supabase-admin';
 import { sendNewsletterViaResend }    from '@/lib/newsletter/resend-sender';
+import { getProfileIdsForRoleCodes }  from '@/lib/newsletter/audience-roles';
 
 export const runtime     = 'nodejs';
 export const maxDuration = 300; // Resend batching may take longer for large lists
@@ -32,7 +33,7 @@ const SEND_ROLES = new Set([
   'nutritionist',
 ]);
 
-// Role → profiles.role mapping (same as newsletter-send cron)
+// RBAC role codes (roles.code, via user_roles) — same as newsletter-send cron
 const AUDIENCE_ROLES: Record<string, string[]> = {
   atleta:     ['athlete', 'guardian'],
   coach:      ['coach'],
@@ -63,7 +64,11 @@ async function resolveRecipients(
     .select('id')
     .eq('newsletter_enabled', true);
 
-  if (roles.length > 0) query = query.in('role', roles);
+  if (roles.length > 0) {
+    const profileIds = await getProfileIdsForRoleCodes(roles);
+    if (profileIds.length === 0) return [];
+    query = query.in('id', profileIds);
+  }
 
   const { data } = await query;
   return (data ?? []).map((p: { id: string }) => p.id);
