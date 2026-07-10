@@ -14,7 +14,7 @@ export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
 /** Target de compresión client-side (en bytes). El uploader rechaza subidas
  *  que superen este valor después de comprimir. */
-export const TARGET_COMPRESSED_SIZE_BYTES = 800 * 1024; // 800 KB
+export const TARGET_COMPRESSED_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 
 /** Tamaño mínimo que dispara la compresión (imágenes menores a esto se
  *  suben directamente sin procesar). */
@@ -27,7 +27,7 @@ export const COMPRESSION_QUALITY = 0.8;
 export const MAX_IMAGE_DIMENSION = 1920; // px
 
 /** Número máximo de fotos por actividad. */
-export const MAX_PHOTOS_PER_ACTIVITY = 8;
+export const MAX_PHOTOS_PER_ACTIVITY = 25;
 
 /** Tipos MIME aceptados en el uploader. */
 export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];

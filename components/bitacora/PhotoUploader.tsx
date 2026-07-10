@@ -94,12 +94,16 @@ export function PhotoUploader({ activityId, initialPhotos }: PhotoUploaderProps)
           featured:      false,
         };
 
-        await upsertPhotos(activityId, [photoInput]);
+        const upsertResult = await upsertPhotos(activityId, [photoInput]);
+        if (upsertResult.error) throw new Error(upsertResult.error);
+
+        // Usar el UUID real devuelto por la BD
+        const realId = upsertResult.data?.[0]?.id ?? path;
 
         // Reemplazar placeholder con la foto real
         setPhotos((prev) => prev.map((p) =>
           p.id === tempId
-            ? { ...tempPhoto, id: path, storage_path: path, isUploading: false }
+            ? { ...tempPhoto, id: realId, storage_path: path, isUploading: false }
             : p
         ));
       } catch (err) {

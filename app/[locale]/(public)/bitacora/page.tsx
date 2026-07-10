@@ -29,13 +29,15 @@ export default async function BitacoraPage({ params, searchParams }: PageProps) 
   const { locale }  = await params;
   const sp          = await searchParams;
 
-  const type    = sp.type as ActivityType | undefined;
-  const tag     = sp.tag;
-  const month   = sp.month;
-  const page    = sp.page ? Number(sp.page) : 1;
+  const type      = sp.type as ActivityType | undefined;
+  const tag       = sp.tag;
+  const month     = sp.month;
+  const search    = sp.search;
+  const narrativa = sp.narrativa === 'si';
+  const page      = sp.page ? Number(sp.page) : 1;
 
   const [{ activities, total, perPage }, tags] = await Promise.all([
-    getPublicActivities({ type, tag, month, page }),
+    getPublicActivities({ type, tag, month, search, hasNarrative: narrativa || undefined, page }),
     getPublicTags(),
   ]);
 
@@ -52,16 +54,23 @@ export default async function BitacoraPage({ params, searchParams }: PageProps) 
       </div>
 
       {/* Filtros */}
-      <div className="mb-6">
+      <div className="mb-8">
         <Suspense fallback={null}>
           <ActivityFilters
             availableTags={tags}
             selectedType={type}
             selectedTag={tag}
             selectedMonth={month}
+            selectedSearch={search}
+            selectedNarrativa={narrativa || undefined}
           />
         </Suspense>
       </div>
+
+      {/* Contador de resultados */}
+      <p className="text-xs text-gray-400 mb-4">
+        {total} {total === 1 ? 'actividad' : 'actividades'}{(search || type || tag || month || narrativa) ? ' encontradas' : ' en total'}
+      </p>
 
       {/* Grid */}
       {activities.length === 0 ? (

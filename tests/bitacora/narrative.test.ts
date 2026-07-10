@@ -51,11 +51,28 @@ vi.mock('@/lib/storage-config', () => ({
   getHeroUrl: vi.fn().mockReturnValue('https://example.com/photo.jpg'),
 }));
 
+// Campos extendidos que se agregó a Activity después de crear los tests originales
+const NULL_EXTENDED_FIELDS = {
+  disciplina:           null,
+  especialidad:         null,
+  actividad_tipo:       null,
+  sede:                 null,
+  horario:              null,
+  requerimiento:        null,
+  numero_participantes: null,
+  personal_requerido:   null,
+  equipo_requerido:     null,
+  objetivo:             null,
+  atencion_actividad:   null,
+  atencion_fecha:       null,
+} as const;
+
 describe('generateNarrative privacy guard', () => {
   it('throws when activity is not editorial_eligible', async () => {
     const { generateNarrative } = await import('@/lib/bitacora/narrative');
 
     const ineligibleActivity = {
+      ...NULL_EXTENDED_FIELDS,
       id:                 'act-1',
       type:               'consulta' as const,
       title:              'Consulta médica',
@@ -84,6 +101,7 @@ describe('generateNarrative privacy guard', () => {
     const { generateNarrative } = await import('@/lib/bitacora/narrative');
 
     const eligibleActivity = {
+      ...NULL_EXTENDED_FIELDS,
       id:                 'act-2',
       type:               'evento_deportivo' as const,
       title:              'Torneo Nacional',

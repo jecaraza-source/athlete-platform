@@ -11,10 +11,12 @@ import type {
   Activity,
   ActivityCardData,
   ActivityFilters,
+  ActivityNarrative,
   ActivityPhoto,
   ActivityWithRelations,
   MagazineArticle,
   MagazineIssue,
+  RevistaFilters,
 } from '@/lib/types/bitacora';
 
 const DEFAULT_PER_PAGE = 12;
@@ -35,14 +37,27 @@ export async function getPublicActivities(filters: ActivityFilters = {}): Promis
   const from    = (page - 1) * perPage;
   const to      = from + perPage - 1;
 
+  // hasNarrative filter: pre-fetch approved narrative activity IDs so pagination is accurate
+  let allowedIds: string[] | null = null;
+  if (filters.hasNarrative) {
+    const { data: approved } = await supabaseAdmin
+      .from('activity_narratives')
+      .select('activity_id')
+      .eq('status', 'aprobado');
+    allowedIds = (approved ?? []).map((n: { activity_id: string }) => n.activity_id);
+    if (allowedIds.length === 0) return { activities: [], total: 0, page, perPage };
+  }
+
   let query = supabaseAdmin
     .from('activities')
     .select('id, slug, type, title, description, event_date, location, tags', { count: 'exact' })
     .eq('status', 'publicado')
     .order('event_date', { ascending: false });
 
-  if (filters.type)  query = query.eq('type', filters.type);
-  if (filters.tag)   query = query.contains('tags', [filters.tag]);
+  if (filters.type)        query = query.eq('type', filters.type);
+  if (filters.tag)         query = query.contains('tags', [filters.tag]);
+  if (filters.search)      query = query.ilike('title', `%${filters.search}%`);
+  if (allowedIds)          query = query.in('id', allowedIds);
   if (filters.month) {
     const [year, month] = filters.month.split('-');
     const start = `${year}-${month}-01`;
@@ -153,6 +168,7 @@ export async function getAdminActivities(filters: ActivityFilters = {}): Promise
     comment_count:    number;
     has_narrative:    boolean;
     narrative_status: string | null;
+    narrative_id:     string | null;
   })[];
   total:   number;
   page:    number;
@@ -191,13 +207,13 @@ export async function getAdminActivities(filters: ActivityFilters = {}): Promise
 
     supabaseAdmin
       .from('activity_narratives')
-      .select('activity_id, status')
+      .select('id, activity_id, status')
       .in('activity_id', ids),
   ]);
 
   const photoMap    = new Map<string, number>();
   const commentMap  = new Map<string, number>();
-  const narrativeMap = new Map<string, string>();
+  const narrativeMap = new Map<string, { id: string; status: string }>();
 
   for (const p of (photoCounts.data ?? []) as { activity_id: string }[]) {
     photoMap.set(p.activity_id, (photoMap.get(p.activity_id) ?? 0) + 1);
@@ -205,15 +221,16 @@ export async function getAdminActivities(filters: ActivityFilters = {}): Promise
   for (const c of (commentCounts.data ?? []) as { activity_id: string }[]) {
     commentMap.set(c.activity_id, (commentMap.get(c.activity_id) ?? 0) + 1);
   }
-  for (const n of (narratives.data ?? []) as { activity_id: string; status: string }[]) {
-    narrativeMap.set(n.activity_id, n.status);
+  for (const n of (narratives.data ?? []) as { id: string; activity_id: string; status: string }[]) {
+    narrativeMap.set(n.activity_id, { id: n.id, status: n.status });
   }
 
   const activities = rows.map((r: Activity) => ({
     ...r,
-    photo_count:      photoMap.get(r.id)     ?? 0,
-    comment_count:    commentMap.get(r.id)   ?? 0,
-    narrative_status: narrativeMap.get(r.id) ?? null,
+    photo_count:      photoMap.get(r.id)          ?? 0,
+    comment_count:    commentMap.get(r.id)        ?? 0,
+    narrative_status: narrativeMap.get(r.id)?.status ?? null,
+    narrative_id:     narrativeMap.get(r.id)?.id     ?? null,
     has_narrative:    narrativeMap.has(r.id),
   }));
 
@@ -264,19 +281,54 @@ export async function getAdminActivityById(
 // Revista — artículos con narrativa aprobada
 // ---------------------------------------------------------------------------
 
-/** Artículos de la Revista: actividades publicadas con narrativa aprobada. */
-export async function getMagazineArticles(limit = 20): Promise<MagazineArticle[]> {
-  const { data: narratives, error } = await supabaseAdmin
+/**
+ * Artículos de la Revista: actividades publicadas con narrativa aprobada.
+ * Acepta filtros opcionales (mes, tag, búsqueda de texto).
+ */
+export async function getMagazineArticles(
+  filters: RevistaFilters = {},
+  limit = 20,
+): Promise<MagazineArticle[]> {
+  // 1. Obtener todas las narrativas aprobadas
+  const { data: approvedNarratives, error: narrErr } = await supabaseAdmin
     .from('activity_narratives')
-    .select('*, activities(*)')
-    .eq('status', 'aprobado')
-    .order('approved_at', { ascending: false })
+    .select('*')
+    .eq('status', 'aprobado');
+
+  if (narrErr || !approvedNarratives || approvedNarratives.length === 0) return [];
+
+  const narrativeByActivityId = new Map<string, ActivityNarrative>(
+    (approvedNarratives as ActivityNarrative[]).map((n) => [n.activity_id, n])
+  );
+  const approvedIds = approvedNarratives.map((n: { activity_id: string }) => n.activity_id);
+
+  // 2. Consultar actividades con filtros opcionales
+  let actQuery = supabaseAdmin
+    .from('activities')
+    .select('*')
+    .eq('status', 'publicado')
+    .in('id', approvedIds)
+    .order('event_date', { ascending: false })
     .limit(limit);
 
-  if (error || !narratives) return [];
+  if (filters.month) {
+    const [year, month] = filters.month.split('-');
+    const nextMonth = Number(month) === 12
+      ? `${Number(year) + 1}-01-01`
+      : `${year}-${String(Number(month) + 1).padStart(2, '0')}-01`;
+    actQuery = actQuery
+      .gte('event_date', `${year}-${month}-01`)
+      .lt('event_date', nextMonth);
+  }
+  if (filters.tag)    actQuery = actQuery.contains('tags', [filters.tag]);
+  if (filters.search) actQuery = actQuery.ilike('title', `%${filters.search}%`);
 
-  const activityIds = narratives.map((n: { activity_id: string }) => n.activity_id);
+  const { data: activities, error: actErr } = await actQuery;
+  if (actErr || !activities || activities.length === 0) return [];
 
+  const activityIds = activities.map((a: Activity) => a.id);
+
+  // 3. Obtener fotos
   const { data: photos } = await supabaseAdmin
     .from('activity_photos')
     .select('*')
@@ -291,21 +343,44 @@ export async function getMagazineArticles(limit = 20): Promise<MagazineArticle[]
     photosByActivity.set(p.activity_id, list);
   }
 
-  return narratives
-    .filter((n: { activities: Activity | null }) => n.activities?.status === 'publicado')
-    .map((n: { activity_id: string; activities: Activity }) => {
-      const activityPhotos = photosByActivity.get(n.activity_id) ?? [];
+  return (activities as Activity[])
+    .filter((a) => narrativeByActivityId.has(a.id))
+    .map((a) => {
+      const activityPhotos = photosByActivity.get(a.id) ?? [];
       const cover  = activityPhotos.find((p) => p.featured) ?? activityPhotos[0] ?? null;
       return {
-        narrative: n as unknown as import('@/lib/types/bitacora').ActivityNarrative,
+        narrative: narrativeByActivityId.get(a.id)!,
         activity:  {
-          ...n.activities,
+          ...a,
           cover_photo:   cover,
           has_narrative: true,
           photos:        activityPhotos,
         },
       } as MagazineArticle;
     });
+}
+
+/** Tags únicos de actividades con narrativa aprobada (para filtros de la Revista). */
+export async function getRevisaTags(): Promise<string[]> {
+  const { data: narrs } = await supabaseAdmin
+    .from('activity_narratives')
+    .select('activity_id')
+    .eq('status', 'aprobado');
+
+  if (!narrs || narrs.length === 0) return [];
+
+  const ids = narrs.map((n: { activity_id: string }) => n.activity_id);
+  const { data: acts } = await supabaseAdmin
+    .from('activities')
+    .select('tags')
+    .in('id', ids)
+    .eq('status', 'publicado');
+
+  const tagSet = new Set<string>();
+  for (const row of (acts ?? []) as { tags: string[] }[]) {
+    for (const tag of row.tags ?? []) tagSet.add(tag);
+  }
+  return Array.from(tagSet).sort();
 }
 
 /** Listado de magazine_issues publicados. */

@@ -8,6 +8,8 @@ import { NarrativeReviewPanel }    from '@/components/bitacora/NarrativeReviewPa
 import { CommentModerationPanel }  from '@/components/bitacora/CommentModerationPanel';
 import { BitacoraPublishStepper }  from '@/components/bitacora/BitacoraPublishStepper';
 import { NextActionCallout }       from '@/components/bitacora/NextActionCallout';
+import { MagazineActionBar }       from '@/components/bitacora/MagazineActionBar';
+import { computePublishSteps }     from '@/lib/bitacora/stepper-logic';
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -20,11 +22,13 @@ export default async function EditarActividadPage({ params }: PageProps) {
   const activity = await getAdminActivityById(id);
   if (!activity) notFound();
 
-  // Derived state used by section headers and callout
+  // Derived state used by section headers, callout and action bar
   const isPublished     = activity.status === 'publicado';
   const hasCover        = activity.photos.some((p) => p.featured);
   const pendingComments = activity.comments.filter((c) => !c.approved).length;
   const narrativeStatus = activity.narrative?.status ?? null;
+  const narrativeId     = activity.narrative?.id     ?? null;
+  const doneCount       = computePublishSteps(activity, locale).filter((s) => s.state === 'done').length;
 
   // Narrative status badge config
   const narrativeBadge = narrativeStatus === 'aprobado'
@@ -36,7 +40,7 @@ export default async function EditarActividadPage({ params }: PageProps) {
     : null;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto flex flex-col gap-6">
+    <div className="p-6 max-w-5xl mx-auto flex flex-col gap-6 pb-24">
 
       {/* ── Top bar: breadcrumb + title + links ─────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
@@ -152,6 +156,19 @@ export default async function EditarActividadPage({ params }: PageProps) {
         </h2>
         <CommentModerationPanel comments={activity.comments} />
       </section>
+
+
+      {/* ── Barra de acción flotante ───────────────────────────────────────── */}
+      <MagazineActionBar
+        activityId={id}
+        narrativeId={narrativeId}
+        isPublished={isPublished}
+        hasPhotos={activity.photos.length > 0}
+        hasCover={hasCover}
+        isEligible={activity.editorial_eligible}
+        narrativeStatus={narrativeStatus}
+        doneCount={doneCount}
+      />
 
     </div>
   );

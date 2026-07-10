@@ -1,14 +1,17 @@
 import type { Metadata }         from 'next';
 import Link                      from 'next/link';
 import Image                     from 'next/image';
-import { getMagazineArticles }   from '@/lib/bitacora/queries';
+import { Suspense }              from 'react';
+import { getMagazineArticles, getRevisaTags } from '@/lib/bitacora/queries';
 import { MagazineCoverHero }     from '@/components/revista/MagazineCoverHero';
+import { RevistaFilters }        from '@/components/revista/RevistaFilters';
 import { getThumbnailUrl }       from '@/lib/storage-config';
 import { format }                from 'date-fns';
 import { es }                    from 'date-fns/locale';
 
 interface PageProps {
-  params: Promise<{ locale: string }>;
+  params:       Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -25,24 +28,46 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function RevistaPage({ params }: PageProps) {
-  const { locale }  = await params;
-  const articles    = await getMagazineArticles(20);
-  const appUrl      = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aodeporte.com';
+export default async function RevistaPage({ params, searchParams }: PageProps) {
+  const { locale } = await params;
+  const sp         = await searchParams;
 
-  const featured = articles[0] ?? null;
-  const rest      = articles.slice(1);
+  const month  = sp.month;
+  const tag    = sp.tag;
+  const search = sp.search;
+
+  const [articles, availableTags] = await Promise.all([
+    getMagazineArticles({ month, tag, search }, 50),
+    getRevisaTags(),
+  ]);
+
+  const hasFilters = !!(month || tag || search);
+  const featured   = !hasFilters ? (articles[0] ?? null) : null;
+  const rest       = !hasFilters ? articles.slice(1) : articles;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="text-center mb-10">
+      <div className="text-center mb-8">
         <p className="text-xs font-bold uppercase tracking-widest text-red-600 mb-2">AO Deporte</p>
         <h1 className="text-4xl font-bold text-gray-900 mb-2">Revista</h1>
         <p className="text-gray-500 max-w-md mx-auto">
           Narrativas editoriales de nuestros eventos y actividades, para atletas, staff y familias.
         </p>
         <div className="mt-4 border-t-2 border-red-600 w-16 mx-auto" />
+      </div>
+
+      {/* Filtros */}
+      <div className="mb-8 max-w-2xl mx-auto">
+        <Suspense fallback={null}>
+          <RevistaFilters
+            availableTags={availableTags}
+            selectedMonth={month}
+            selectedTag={tag}
+            selectedSearch={search}
+            totalArticles={articles.length}
+          />
+        </Suspense>
       </div>
 
       {articles.length === 0 ? (

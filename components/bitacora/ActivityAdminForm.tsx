@@ -9,25 +9,19 @@ import {
 } from '@/lib/bitacora/actions';
 
 // ── Listas predefinidas para dropdowns ─────────────────────────────────────
+// Disciplinas en el mismo orden que cat_disciplines (011_initial_diagnostic.sql)
 const DISCIPLINAS = [
-  'Taekwondo','Atletismo','Natación','Boxeo','Lucha','Judo',
-  'Karate','Gimnasia','Ciclismo','Fútbol','Basquetbol','Voleibol',
-  'Tenis','Halterofilia','Tiro','Esgrima','Pentatlón Moderno','Otro',
-];
-
-const ESPECIALIDADES: Record<string, string[]> = {
-  Taekwondo:  ['Combate','Poomsae','Kyorugi','Para-Taekwondo'],
-  Atletismo:  ['Velocidad','Fondo','Saltos','Lanzamientos','Marcha','Decatlón'],
-  Natación:   ['Libre','Espalda','Pecho','Mariposa','Combinado','Aguas Abiertas'],
-  Boxeo:      ['Olímpico','Profesional'],
-  Lucha:      ['Libre','Grecorromana','Femenil'],
-  default:    ['Técnica','Fuerza','Resistencia','Coordinación','Táctica','Otro'],
-};
-
-const ACTIVIDADES_TIPO = [
-  'Competencia','Torneo','Copa','Campeonato','Liga','Amistoso',
-  'Entrenamiento','Concentración','Preparación física','Evaluación',
-  'Capacitación','Exhibición','Semillero','Selección','Otro',
+  'Judo',
+  'Karate',
+  'Tae Kwon Do',
+  'Atletismo',
+  'Natación',
+  'Canotaje',
+  'Parabadminton',
+  'Tiro con Arco',
+  'Tiro Deportivo',
+  'Gimnasia Artística Femenil',
+  'Breaking',
 ];
 
 const SEDES = [
@@ -207,10 +201,6 @@ export function ActivityAdminForm({ activity, locale }: ActivityAdminFormProps) 
     router.push(`/${locale}/admin/bitacora`);
   }
 
-  const especialidadesOptions = disciplina
-    ? (ESPECIALIDADES[disciplina] ?? ESPECIALIDADES.default)
-    : ESPECIALIDADES.default;
-
   return (
     <div className="flex flex-col gap-6">
 
@@ -241,7 +231,7 @@ export function ActivityAdminForm({ activity, locale }: ActivityAdminFormProps) 
           </div>
         </Field>
 
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-2 gap-3">
           <Field>
             <Label>Disciplina</Label>
             <Select
@@ -253,23 +243,24 @@ export function ActivityAdminForm({ activity, locale }: ActivityAdminFormProps) 
           </Field>
           <Field>
             <Label>Especialidad</Label>
-            <Select
+            <TextInput
               value={especialidad}
               onChange={setEspecialidad}
-              options={especialidadesOptions}
-              placeholder="Seleccionar…"
-            />
-          </Field>
-          <Field>
-            <Label>Actividad</Label>
-            <Select
-              value={actividadTipo}
-              onChange={setActividadTipo}
-              options={ACTIVIDADES_TIPO}
-              placeholder="Seleccionar…"
+              placeholder="ej. Poomsae, Sprint, Kata…"
             />
           </Field>
         </div>
+        <Field>
+          <Label>Actividad</Label>
+          <TextArea
+            value={actividadTipo}
+            onChange={setActividadTipo}
+            placeholder="Describe la actividad…"
+            rows={4}
+            maxLength={500}
+          />
+          <span className="text-xs text-gray-400 text-right">{actividadTipo.length}/500</span>
+        </Field>
       </section>
 
       {/* ── Sección 2: Datos del evento ──────────────────────────────────── */}

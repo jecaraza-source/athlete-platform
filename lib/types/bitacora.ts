@@ -119,7 +119,18 @@ export interface ActivityCardData {
 
 /** Artículo de revista: actividad + narrativa aprobada + fotos. */
 export interface MagazineArticle {
-  activity:  ActivityCardData & { photos: ActivityPhoto[] };
+  activity:  ActivityCardData & {
+    photos:               ActivityPhoto[];
+    disciplina?:          string | null;
+    especialidad?:        string | null;
+    actividad_tipo?:      string | null;
+    sede?:                string | null;
+    horario?:             string | null;
+    objetivo?:            string | null;
+    numero_participantes?: number | null;
+    personal_requerido?:  string | null;
+    equipo_requerido?:    string | null;
+  };
   narrative: ActivityNarrative;
 }
 
@@ -128,13 +139,25 @@ export interface MagazineArticle {
 // ---------------------------------------------------------------------------
 
 export interface ActivityFilters {
-  type?:    ActivityType;
-  tag?:     string;
+  type?:         ActivityType;
+  tag?:          string;
   /** Año-mes, ej. "2026-07". */
-  month?:   string;
-  status?:  ActivityStatus;
-  page?:    number;
-  perPage?: number;
+  month?:        string;
+  status?:       ActivityStatus;
+  page?:         number;
+  perPage?:      number;
+  /** Búsqueda de texto en el título. */
+  search?:       string;
+  /** Solo actividades con narrativa aprobada (en Revista). */
+  hasNarrative?: boolean;
+}
+
+/** Filtros para la página pública de la Revista. */
+export interface RevistaFilters {
+  /** Año-mes, ej. "2026-07". */
+  month?:  string;
+  tag?:    string;
+  search?: string;
 }
 
 // ---------------------------------------------------------------------------

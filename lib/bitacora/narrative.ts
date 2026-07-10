@@ -18,18 +18,23 @@ const MODEL = 'claude-opus-4-7';
 
 // System prompt estable — se cachea entre llamadas consecutivas.
 const SYSTEM_PROMPT = `Eres el editor de contenido de AO Deporte, una organización deportiva de alto rendimiento.
-Tu tarea es redactar narrativas editoriales cálidas y humanas para la Revista AO Deporte, dirigida a atletas, staff y sus familias.
+Tu tarea es redactar narrativas editoriales extensas y ricas para la Revista AO Deporte, dirigida a atletas, staff y sus familias.
 
 Reglas de escritura:
 - Tono: cercano, motivador y humano. No clínico ni técnico.
-- Extensión: 150 a 300 palabras.
+- Extensión: 450 a 700 palabras. La narrativa debe ser sustanciosa y rica en detalle.
 - Idioma: español.
-- Estructura libre, no uses encabezados ni listas; escribe en prosa corrida.
-- Integra los datos del evento (nombre, fecha, lugar, descripción) con lo que describes visualmente en las fotos.
-- Resalta la emoción, el esfuerzo y el logro de los atletas.
-- Cierra con una frase inspiradora que invite a la comunidad a seguir el camino del deporte.
+- Estructura: escribe en prosa corrida, sin encabezados ni listas. Organiza en 5 a 8 párrafos bien desarrollados:
+    1. Párrafo de apertura: sitúa al lector en el momento y lugar del evento con vivacidad.
+    2. Párrafos de contexto: explica la disciplina, el objetivo del evento y lo que estaba en juego.
+    3. Párrafos de desarrollo: narra el transcurso del evento, los momentos clave, el ambiente, los esfuerzos visibles.
+    4. Párrafo de personas: menciona (sin inventar nombres) el papel de atletas, staff y familias.
+    5. Párrafo de cierre: reflexión inspiradora sobre el camino del deporte y la comunidad AO.
+- Integra los datos del evento (disciplina, especialidad, sede, participantes, objetivo) con lo que describes visualmente en las fotos.
+- Describe las imágenes con detalle sensorial: colores, gestos, ambiente, intensidad.
+- Resalta la emoción, el esfuerzo colectivo y el logro de los atletas.
 - No inventes datos que no estén en el contexto provisto.
-- No menciones información médica ni datos de salud; esas actividades no llegan a este flujo.`;
+- No menciones información médica ni datos de salud.`;
 
 export interface NarrativeGenerationInput {
   activity:     ActivityWithRelations;
@@ -113,15 +118,23 @@ Redacta la narrativa editorial según las instrucciones del system prompt.
 Tipo: ${activity.type === 'evento_deportivo' ? 'Evento Deportivo' : 'Consulta'}
 Título: ${activity.title}
 Fecha: ${activity.event_date ?? 'No especificada'}
-Lugar: ${activity.location ?? 'No especificado'}
+Horario: ${activity.horario ?? 'No especificado'}
+Lugar / Dirección: ${activity.location ?? 'No especificado'}
+Sede: ${activity.sede ?? 'No especificada'}
+Disciplina: ${activity.disciplina ?? 'No especificada'}
+Especialidad: ${activity.especialidad ?? 'No especificada'}
+Tipo de actividad: ${activity.actividad_tipo ?? 'No especificado'}
+Número de participantes: ${activity.numero_participantes ?? 'No especificado'}
+Personal requerido: ${activity.personal_requerido ?? 'No especificado'}
+Objetivo: ${activity.objetivo ?? 'Sin objetivo declarado'}
 Descripción: ${activity.description ?? 'Sin descripción adicional'}
 Tags: ${activity.tags.length > 0 ? activity.tags.join(', ') : 'Ninguno'}
 
 ${photoContextLines ? `=== CONTEXTO DE FOTOS ===\n${photoContextLines}\n` : ''}
 === FOTOS DEL EVENTO ===
-(Las imágenes están adjuntas arriba. Descríbelas e intégralas en la narrativa.)
+(Las imágenes están adjuntas arriba. Descríbelas con detalle sensorial e intégralas a lo largo de la narrativa.)
 
-Escribe ahora la narrativa editorial:`.trim();
+Escribe ahora la narrativa editorial extensa (450-700 palabras):`.trim();
 
   // Construir el mensaje multimodal (imágenes + texto)
   const userContent: Anthropic.MessageParam['content'] = [
@@ -132,7 +145,7 @@ Escribe ahora la narrativa editorial:`.trim();
   // Llamada a la API con streaming para evitar timeouts en respuestas largas
   const stream = await client.messages.stream({
     model:      MODEL,
-    max_tokens: 1024,
+    max_tokens: 2048,
     thinking:   { type: 'adaptive' },
     system: [
       {

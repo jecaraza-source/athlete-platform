@@ -2,6 +2,7 @@ import Link                        from 'next/link';
 import { requireAdminAccess }       from '@/lib/rbac/server';
 import { getAdminActivities }       from '@/lib/bitacora/queries';
 import { StorageUsageIndicator }    from '@/components/bitacora/StorageUsageIndicator';
+import { NarrativeQuickApprove }    from '@/components/bitacora/NarrativeQuickApprove';
 import { format }                   from 'date-fns';
 import { es }                       from 'date-fns/locale';
 import type { ActivityStatus }      from '@/lib/types/bitacora';
@@ -23,7 +24,7 @@ function getEtapa(
     return { label: '★ En Revista',        cls: 'bg-green-100 text-green-700',  actionLabel: 'Ver' };
   }
   if (narrativeStatus === 'borrador') {
-    return { label: '✓ Por aprobar',       cls: 'bg-yellow-100 text-yellow-700', actionLabel: 'Aprobar' };
+    return { label: '✓ Por aprobar',       cls: 'bg-yellow-100 text-yellow-700', actionLabel: 'Revisar' };
   }
   if (narrativeStatus === 'rechazado') {
     return { label: '↺ Narrativa rechazada', cls: 'bg-red-100 text-red-600',      actionLabel: 'Regenerar' };
@@ -35,6 +36,17 @@ function getEtapa(
     return { label: '● Publicado',          cls: 'bg-blue-50 text-blue-500',     actionLabel: 'Editar' };
   }
   return   { label: '○ Borrador',           cls: 'bg-gray-100 text-gray-500',    actionLabel: 'Editar' };
+}
+
+// Builds the edit page href with a section anchor where relevant
+function getEditHref(baseHref: string, etapa: EtapaConfig, narrativeStatus: string | null): string {
+  if (narrativeStatus === 'borrador' || narrativeStatus === 'rechazado') {
+    return `${baseHref}#section-narrativa`;
+  }
+  if (etapa.actionLabel === 'Generar') {
+    return `${baseHref}#section-narrativa`;
+  }
+  return baseHref;
 }
 
 export default async function AdminBitacoraPage({ params, searchParams }: PageProps) {
@@ -113,10 +125,11 @@ export default async function AdminBitacoraPage({ params, searchParams }: PagePr
                   activity.narrative_status,
                   activity.editorial_eligible,
                 );
-                const date = activity.event_date
+                const date     = activity.event_date
                   ? format(new Date(activity.event_date), 'd MMM yyyy', { locale: es })
                   : '—';
-                const editHref = `/${locale}/admin/bitacora/${activity.id}/editar`;
+                const baseHref = `/${locale}/admin/bitacora/${activity.id}/editar`;
+                const editHref = getEditHref(baseHref, etapa, activity.narrative_status);
 
                 return (
                   <tr key={activity.id} className="hover:bg-gray-50 transition-colors group">
@@ -151,11 +164,17 @@ export default async function AdminBitacoraPage({ params, searchParams }: PagePr
                       {activity.comment_count}
                     </td>
 
-                    {/* Etapa del flujo */}
+                    {/* Etapa del flujo + acciones inline */}
                     <td className="px-4 py-3 hidden md:table-cell">
-                      <span className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full ${etapa.cls}`}>
-                        {etapa.label}
-                      </span>
+                      <div className="flex flex-col gap-1.5">
+                        <span className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${etapa.cls}`}>
+                          {etapa.label}
+                        </span>
+                        {/* Approve/reject inline for borrador narratives */}
+                        {activity.narrative_status === 'borrador' && activity.narrative_id && (
+                          <NarrativeQuickApprove narrativeId={activity.narrative_id} />
+                        )}
+                      </div>
                     </td>
 
                     {/* Acción */}

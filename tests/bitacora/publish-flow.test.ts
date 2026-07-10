@@ -498,6 +498,12 @@ describe('getAdminActivities — narrative_status field', () => {
 
 function makeBaseActivity(overrides: object) {
   return {
+    // Extended nullable fields added to Activity type after tests were written
+    disciplina: null, especialidad: null, actividad_tipo: null, sede: null,
+    horario: null, requerimiento: null, numero_participantes: null,
+    personal_requerido: null, equipo_requerido: null, objetivo: null,
+    atencion_actividad: null, atencion_fecha: null,
+    // Core fields
     id: 'act-1', type: 'evento_deportivo' as const, title: 'Test',
     slug: 'test', description: null, event_date: null, location: null,
     tags: [], status: 'publicado' as const, editorial_eligible: true,

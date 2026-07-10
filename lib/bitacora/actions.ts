@@ -239,11 +239,11 @@ export async function deleteActivity(id: string): Promise<ActionResult> {
 export async function upsertPhotos(
   activityId: string,
   photos:     PhotoInput[]
-): Promise<ActionResult> {
+): Promise<ActionResult<{ id: string; storage_path: string }[]>> {
   const denied = await assertAdminAccess();
   if (denied) return { error: denied.error };
 
-  if (photos.length === 0) return { error: null };
+  if (photos.length === 0) return { error: null, data: [] };
 
   const rows = photos.map((p) => ({
     activity_id:   activityId,
@@ -254,14 +254,15 @@ export async function upsertPhotos(
     featured:      p.featured,
   }));
 
-  const { error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('activity_photos')
-    .upsert(rows, { onConflict: 'storage_path', ignoreDuplicates: false });
+    .upsert(rows, { onConflict: 'storage_path', ignoreDuplicates: false })
+    .select('id, storage_path');
 
   if (error) return { error: error.message };
 
   revalidatePath(`/admin/bitacora/${activityId}/editar`);
-  return { error: null };
+  return { error: null, data: data ?? [] };
 }
 
 export async function deletePhoto(

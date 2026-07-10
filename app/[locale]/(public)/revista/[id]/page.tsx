@@ -4,7 +4,9 @@ import Link                      from 'next/link';
 import { supabaseAdmin }         from '@/lib/supabase-admin';
 import { getAdminActivityById }  from '@/lib/bitacora/queries';
 import { MagazineArticle }       from '@/components/revista/MagazineArticle';
+import { DeleteArticleButton }   from '@/components/revista/DeleteArticleButton';
 import { getThumbnailUrl }       from '@/lib/storage-config';
+import { getCurrentUser }        from '@/lib/rbac/server';
 import type { MagazineArticle as MagazineArticleType, ActivityNarrative } from '@/lib/types/bitacora';
 
 interface PageProps {
@@ -69,11 +71,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function RevistaArticlePage({ params }: PageProps) {
   const { locale, id } = await params;
-  const article = await getNarrativeWithActivity(id);
+  const [article, user] = await Promise.all([
+    getNarrativeWithActivity(id),
+    getCurrentUser(),
+  ]);
 
   if (!article) notFound();
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aodeporte.com';
+  const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? 'https://aodeporte.com';
+  const isAdmin = user?.roles.some((r) =>
+    ['super_admin', 'admin', 'program_director'].includes(r.code)
+  ) ?? false;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -84,7 +92,15 @@ export default async function RevistaArticlePage({ params }: PageProps) {
         </Link>
       </nav>
 
-      <MagazineArticle article={article} appUrl={appUrl} />
+      <MagazineArticle
+        article={article}
+        appUrl={appUrl}
+        deleteButton={
+          isAdmin
+            ? <DeleteArticleButton key="delete" narrativeId={article.narrative.id} locale={locale} />
+            : undefined
+        }
+      />
     </div>
   );
 }
