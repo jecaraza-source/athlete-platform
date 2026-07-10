@@ -760,6 +760,10 @@
       "inactiveStatus": "Inactiva",
       "noActiveDisciplines": "No hay disciplinas activas.",
       "errorLoading": "Error al cargar disciplinas:"
+    },
+    "revista": {
+      "title": "AO Deporte Magazine",
+      "description": "Gestiona actividades, fotos, narrativas AI y publicaciones de la Revista."
     }
   },
   "finances": {
@@ -1314,6 +1318,53 @@
       "envPreview": "Preview",
       "envDevelopment": "Desarrollo"
     }
+  },
+  "bitacora": {
+    "title": "Bitácora",
+    "subtitle": "Actividades, eventos y momentos del equipo AO Deporte.",
+    "filterAll": "Todas",
+    "filterEvents": "Eventos deportivos",
+    "filterConsultas": "Consultas",
+    "filterByTag": "Filtrar por tag",
+    "filterByMonth": "Filtrar por mes",
+    "clearFilters": "Limpiar filtros",
+    "noActivities": "No hay actividades publicadas todavía.",
+    "readInMagazine": "Leer en la Revista →",
+    "shareWhatsApp": "Compartir por WhatsApp",
+    "shareX": "Compartir en X",
+    "copyLink": "Copiar enlace",
+    "linkCopied": "¡Enlace copiado!",
+    "photos": "Fotos",
+    "comments": "Comentarios",
+    "noComments": "Sé el primero en comentar.",
+    "commentForm": "Deja un comentario",
+    "commentName": "Tu nombre",
+    "commentEmail": "Tu correo (opcional, no se publica)",
+    "commentText": "Comentario",
+    "commentSubmit": "Enviar comentario",
+    "commentSubmitting": "Enviando…",
+    "commentSuccess": "¡Comentario enviado! Aparecerá después de ser revisado.",
+    "backToBitacora": "← Volver a Bitácora",
+    "eventType": "Evento Deportivo",
+    "consultaType": "Consulta",
+    "location": "Lugar",
+    "tags": "Tags"
+  },
+  "revista": {
+    "title": "Revista AO Deporte",
+    "subtitle": "Narrativas editoriales de nuestros eventos y actividades.",
+    "noArticles": "La Revista todavía no tiene artículos publicados. ¡Pronto habrá contenido!",
+    "readArticle": "Leer artículo",
+    "downloadPdf": "Descargar PDF",
+    "shareWhatsApp": "Compartir por WhatsApp",
+    "shareX": "Compartir en X",
+    "copyLink": "Copiar enlace",
+    "linkCopied": "¡Enlace copiado!",
+    "backToRevista": "← Volver a la Revista",
+    "photos": "Galería",
+    "publishedOn": "Publicado el",
+    "issueTitle": "Edición",
+    "noIssues": "No hay ediciones publicadas todavía."
   },
   "privacyConsent": {
     "title": "Aviso de Privacidad",

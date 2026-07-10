@@ -55,6 +55,8 @@ const PUBLIC_PATHS: string[] = [
   '/login/forgot-password',
   '/auth/confirm', // Supabase password-reset callback — user arrives unauthenticated with a ?code=
   '/privacy-policy', // Public: required by App Store Connect & GDPR
+  '/bitacora',  // Bitácora pública — no requiere auth
+  '/revista',   // Revista digital pública — no requiere auth
 ];
 
 /**
@@ -68,6 +70,8 @@ const PUBLIC_PREFIXES: string[] = [
   '/api/auth',
   '/api/cron/',
   '/api/avatar/',
+  '/bitacora/',  // Rutas dinámicas de Bitácora: /bitacora/[slug]
+  '/revista/',   // Rutas dinámicas de Revista: /revista/[id]
 ];
 
 function isPublicPath(strippedPathname: string): boolean {

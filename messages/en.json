@@ -760,6 +760,10 @@
       "inactiveStatus": "Inactive",
       "noActiveDisciplines": "No active disciplines.",
       "errorLoading": "Error loading disciplines:"
+    },
+    "revista": {
+      "title": "AO Deporte Magazine",
+      "description": "Manage activities, photos, AI narratives and Magazine publications."
     }
   },
   "finances": {
@@ -1314,6 +1318,53 @@
       "envPreview": "Preview",
       "envDevelopment": "Development"
     }
+  },
+  "bitacora": {
+    "title": "Activity Log",
+    "subtitle": "Activities, events, and moments from the AO Deporte team.",
+    "filterAll": "All",
+    "filterEvents": "Sports events",
+    "filterConsultas": "Consultations",
+    "filterByTag": "Filter by tag",
+    "filterByMonth": "Filter by month",
+    "clearFilters": "Clear filters",
+    "noActivities": "No published activities yet.",
+    "readInMagazine": "Read in the Magazine →",
+    "shareWhatsApp": "Share on WhatsApp",
+    "shareX": "Share on X",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied!",
+    "photos": "Photos",
+    "comments": "Comments",
+    "noComments": "Be the first to comment.",
+    "commentForm": "Leave a comment",
+    "commentName": "Your name",
+    "commentEmail": "Your email (optional, not published)",
+    "commentText": "Comment",
+    "commentSubmit": "Submit comment",
+    "commentSubmitting": "Submitting…",
+    "commentSuccess": "Comment submitted! It will appear after review.",
+    "backToBitacora": "← Back to Activity Log",
+    "eventType": "Sports Event",
+    "consultaType": "Consultation",
+    "location": "Location",
+    "tags": "Tags"
+  },
+  "revista": {
+    "title": "AO Deporte Magazine",
+    "subtitle": "Editorial narratives of our events and activities.",
+    "noArticles": "The Magazine has no published articles yet. Content coming soon!",
+    "readArticle": "Read article",
+    "downloadPdf": "Download PDF",
+    "shareWhatsApp": "Share on WhatsApp",
+    "shareX": "Share on X",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied!",
+    "backToRevista": "← Back to Magazine",
+    "photos": "Gallery",
+    "publishedOn": "Published on",
+    "issueTitle": "Issue",
+    "noIssues": "No published issues yet."
   },
   "privacyConsent": {
     "title": "Privacy Notice",
