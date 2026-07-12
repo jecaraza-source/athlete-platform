@@ -1,0 +1,66 @@
+import { useColorScheme } from 'react-native';
+import { Stack } from 'expo-router';
+import { Colors, PRIMARY } from '@/constants/theme';
+
+export default function AppLayout() {
+  const scheme = useColorScheme() ?? 'light';
+  const colors = Colors[scheme];
+
+  return (
+    <Stack
+      screenOptions={{
+        // Default: show header with back button for all screens
+        headerShown: true,
+        headerBackTitle: 'Atrás',
+        headerTintColor: PRIMARY,
+        headerShadowVisible: false,
+        headerStyle: { backgroundColor: colors.background },
+        headerTitleStyle: { color: colors.text, fontSize: 16, fontWeight: '600' },
+      }}
+    >
+      {/* Tab screens – no header (tab layout handles its own header) */}
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+
+      {/* Athletes stack – header managed by athletes/_layout.tsx */}
+      <Stack.Screen name="athletes" options={{ headerShown: false }} />
+
+      {/* Ticket detail */}
+      <Stack.Screen
+        name="tickets/[id]"
+        options={{ title: 'Detalle del ticket', headerBackTitle: 'Tickets' }}
+      />
+
+      {/* Create ticket */}
+      <Stack.Screen
+        name="tickets/create"
+        options={{ title: 'Nuevo ticket', headerBackTitle: 'Tickets' }}
+      />
+
+      {/* Protocols list */}
+      <Stack.Screen
+        name="protocols"
+        options={{ title: 'Protocolos', headerBackTitle: 'Inicio' }}
+      />
+
+      {/* Newsletter */}
+      <Stack.Screen
+        name="newsletter/index"
+        options={{ title: 'Newsletter de hoy', headerBackTitle: 'Inicio' }}
+      />
+      <Stack.Screen
+        name="newsletter/historial"
+        options={{ title: 'Historial de Newsletters', headerBackTitle: 'Newsletter' }}
+      />
+      <Stack.Screen
+        name="newsletter/[id]"
+        options={{ title: 'Newsletter', headerBackTitle: 'Historial' }}
+      />
+
+      {/* Create calendar event */}
+      <Stack.Screen
+        name="calendar/create"
+        options={{ title: 'Nuevo evento', headerBackTitle: 'Calendario' }}
+      />
+    </Stack>
+  );
+}
