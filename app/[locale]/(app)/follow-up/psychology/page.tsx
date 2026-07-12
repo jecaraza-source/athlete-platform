@@ -1,0 +1,177 @@
+import BackButton from '@/components/back-button';
+import { getTranslations } from 'next-intl/server';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requireRole, getProfilesByRoleCodes } from '@/lib/rbac/server';
+import NewCaseForm from './new-case-form';
+import NewSessionForm from './new-session-form';
+import EditSessionForm from './edit-session-form';
+import EditCaseForm from './edit-case-form';
+import CaseStatusSelect from './case-status-select';
+import AttachmentsLoader from '@/components/attachments/attachments-loader';
+import AthleteFilter from '../nutrition/athlete-filter';
+import LinkedPlansSection, { type LinkedPlan } from '@/components/follow-up/linked-plans-section';
+import SortableItems from '@/components/follow-up/sortable-items';
+
+export const dynamic = 'force-dynamic';
+
+type PsychologyCase = {
+  id: string;
+  athlete_id: string | null;
+  status: string;
+  opened_at: string;
+  summary: string | null;
+  athletes: { first_name: string; last_name: string } | null;
+  profiles: { first_name: string; last_name: string } | null;
+  psychology_sessions: {
+    id: string;
+    session_date: string;
+    mood_score: number | null;
+    stress_score: number | null;
+    topic_summary: string | null;
+    recommendations: string | null;
+    next_session_date: string | null;
+  }[];
+};
+
+const statusColors: Record<string, string> = {
+  open:        'bg-blue-100 text-blue-700',
+  in_progress: 'bg-yellow-100 text-yellow-700',
+  closed:      'bg-gray-100 text-gray-600',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  open:        'Abierto',
+  in_progress: 'En progreso',
+  closed:      'Cerrado',
+};
+
+export default async function PsychologyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ athlete?: string }>;
+}) {
+  await requireRole('medic', 'physio', 'nutritionist', 'psychologist', 'coach');
+
+  const { athlete: selectedAthleteId = '' } = await searchParams;
+
+  let casesQuery = supabaseAdmin
+    .from('psychology_cases')
+    .select('id, athlete_id, status, opened_at, summary, athletes(first_name, last_name), profiles(first_name, last_name), psychology_sessions(id, session_date, mood_score, stress_score, topic_summary, recommendations, next_session_date)')
+    .order('opened_at', { ascending: false });
+  if (selectedAthleteId) casesQuery = casesQuery.eq('athlete_id', selectedAthleteId);
+
+  let plansQuery = supabaseAdmin
+    .from('plans')
+    .select('id, title, created_at, is_published, athlete_plans(athlete_id, athletes(first_name, last_name))')
+    .eq('type', 'psychology')
+    .order('created_at', { ascending: false });
+  if (selectedAthleteId) {
+    plansQuery = plansQuery.eq('athlete_plans.athlete_id', selectedAthleteId);
+  }
+
+  const [{ data: casesData, error }, { data: athletesData }, psychologistsData, { data: plansData }] =
+    await Promise.all([
+      casesQuery,
+      supabaseAdmin.from('athletes').select('id, first_name, last_name').neq('status', 'inactive').order('last_name'),
+      // RBAC-aware: new system uses 'staff' for all specialists.
+      // Falls back to legacy profiles.role = 'psychologist'.
+      getProfilesByRoleCodes(['staff'], ['psychologist']),
+      plansQuery,
+    ]);
+
+  const cases = (casesData ?? []) as unknown as PsychologyCase[];
+  const athletes = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
+  const psychologists = psychologistsData;
+  const linkedPlans = ((plansData ?? []) as unknown as LinkedPlan[])
+    .filter((p) => !selectedAthleteId || p.athlete_plans.length > 0);
+
+  const caseOptions = cases.map((c) => ({
+    id: c.id,
+    label: c.athletes
+      ? `${c.athletes.first_name} ${c.athletes.last_name} — ${new Date(c.opened_at).toLocaleDateString()}`
+      : `Case — ${new Date(c.opened_at).toLocaleDateString()}`,
+  }));
+
+  const t = await getTranslations('followUp.psychology');
+  const tc = await getTranslations('common');
+
+  return (
+    <main className="p-8">
+      <BackButton href="/follow-up" label={tc('backToFollowUp')} />
+
+      <h1 className="text-3xl font-bold mt-4 mb-2 text-amber-700">{t('title')}</h1>
+      <p className="text-gray-600 mb-8">{t('description')}</p>
+
+      <AthleteFilter athletes={athletes} selectedId={selectedAthleteId} />
+
+      <LinkedPlansSection plans={linkedPlans} followUpPath="/follow-up/psychology" showConfirm />
+
+      <div className="flex flex-wrap items-start gap-3 mb-8">
+        <NewCaseForm athletes={athletes} psychologists={psychologists} />
+        {cases.length > 0 && <NewSessionForm cases={caseOptions} />}
+      </div>
+
+      {error && (
+        <div className="mb-4 rounded border border-red-300 bg-red-50 p-4 text-red-700">
+          {t('errorLoading')} {error.message}
+        </div>
+      )}
+
+      <SortableItems
+        emptyNode={
+          !error && cases.length === 0 ? (
+            <div className="rounded border border-gray-200 p-4 text-gray-600">{t('noCases')}</div>
+          ) : null
+        }
+        items={cases.map((c) => ({
+          id: c.id,
+          date: c.opened_at,
+          athleteName: c.athletes ? `${c.athletes.last_name} ${c.athletes.first_name}` : '',
+          status: c.status,
+          node: (
+            <div className="rounded-lg border border-gray-200 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <EditCaseForm
+                    caseId={c.id}
+                    summary={c.summary}
+                    athleteName={c.athletes ? `${c.athletes.first_name} ${c.athletes.last_name}` : 'Atleta desconocido'}
+                    profileName={c.profiles ? `${c.profiles.first_name} ${c.profiles.last_name}` : 'N/D'}
+                    openedAt={c.opened_at}
+                  />
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusColors[c.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {STATUS_LABELS[c.status] ?? c.status}
+                  </span>
+                  <CaseStatusSelect caseId={c.id} currentStatus={c.status} />
+                </div>
+              </div>
+              <div className="mt-4 border-t border-gray-100 pt-3">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                  {tc('sessionHistory')} ({c.psychology_sessions.length})
+                </p>
+                {c.psychology_sessions.length === 0 ? (
+                  <p className="text-sm text-gray-400">{tc('noSessionsYet')}</p>
+                ) : (
+                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    {c.psychology_sessions
+                      .slice()
+                      .sort((a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime())
+                      .map((s) => <EditSessionForm key={s.id} session={s} />)}
+                  </div>
+                )}
+              </div>
+              {c.athlete_id && (
+                <div className="mt-4">
+                  <AttachmentsLoader athleteId={c.athlete_id} module="psychology" relatedRecordId={c.id} title="Documentos del caso" defaultCollapsed />
+                </div>
+              )}
+            </div>
+          ),
+        }))}
+      />
+
+    </main>
+  );
+}

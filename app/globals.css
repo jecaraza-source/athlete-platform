@@ -1,0 +1,222 @@
+@import "tailwindcss";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+@media print {
+  /* ── Admin Console print styles ── */
+  /* Solo ocultar el resto cuando el admin inyectó #print-root en el DOM */
+  body:has(#print-root) > *:not(#print-root) { display: none !important; }
+  body:has(#print-root) #print-root { display: block !important; }
+
+  #print-root {
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    color: #000;
+    background: #fff;
+    padding: 20px;
+  }
+
+  #print-root .print-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 8px;
+  }
+
+  #print-root table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+  }
+
+  #print-root th {
+    background: #e5e7eb;
+    border: 1px solid #9ca3af;
+    padding: 5px 8px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  #print-root td {
+    border: 1px solid #d1d5db;
+    padding: 4px 8px;
+    vertical-align: top;
+  }
+
+  #print-root tr:nth-child(even) td { background: #f9fafb; }
+
+  #print-root .badge-show        { font-weight: 700; }
+  #print-root .badge-no_show     { font-weight: 700; text-decoration: underline; }
+  #print-root .badge-rescheduled { font-style: italic; }
+
+  #print-root .print-footer {
+    margin-top: 16px;
+    font-size: 9px;
+    color: #6b7280;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 6px;
+  }
+
+  /* ── End Admin Console print styles ── */
+
+  /* ── Revista article print styles ── */
+
+  /* Forzar impresión de colores de fondo */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Ocultar UI de la app: cabecera, nav lateral, botones de acción */
+  header, nav, aside, footer,
+  [data-noprint], .no-print, .print\:hidden { display: none !important; }
+
+  /* Artículo: ancho completo, sin márgenes extra */
+  article {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* ─ Contenedores de imagen de la Revista
+     Se usan clases print-img-{hero|inline|gallery} en MagazineArticle.tsx para evitar
+     depender del escaping de clases arbitrarias de Tailwind v4 en @media print.
+     Next.js Image con fill usa position:absolute; el padre necesita height explícita. ─ */
+
+  .print-img-hero {
+    position: relative !important;
+    height: 310px !important;
+    min-height: 310px !important;
+    max-height: 310px !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .print-img-inline {
+    position: relative !important;
+    height: 230px !important;
+    min-height: 230px !important;
+    max-height: 230px !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .print-img-gallery {
+    position: relative !important;
+    height: 95px !important;
+    min-height: 95px !important;
+    max-height: 95px !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Next.js fill images: mantener absolute para que llenen su contenedor */
+  img[data-nimg="fill"] {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    display: block !important;
+  }
+
+  /* Tipografía de impresión */
+  article h1 {
+    font-size: 20pt !important;
+    line-height: 1.3 !important;
+    color: #111827 !important;
+  }
+  article p {
+    font-size: 10.5pt !important;
+    line-height: 1.7 !important;
+    color: #1f2937 !important;
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Evitar cortes de página dentro de figuras */
+  figure { break-inside: avoid !important; }
+
+  /* Ficha del evento */
+  .bg-gradient-to-br {
+    background: #f3f4f6 !important;
+    border: 1px solid #d1d5db !important;
+  }
+
+  /* Colores de texto */
+  .text-white   { color: #111827 !important; }
+  .text-red-400, .text-red-600 { color: #dc2626 !important; }
+  .text-gray-400 { color: #6b7280 !important; }
+  .text-gray-700, .text-gray-800, .text-gray-900 { color: #1f2937 !important; }
+
+  /* Tags y badges */
+  .bg-gray-100 { background: #f3f4f6 !important; }
+  .bg-red-50   { background: #fef2f2 !important; }
+
+  /* Galería: grid 4 columnas en print */
+  .grid-cols-3 { grid-template-columns: repeat(4, 1fr) !important; }
+
+  @page {
+    margin: 1.5cm;
+    size: A4 portrait;
+  }
+  /* ── End Revista article print styles ── */
+
+  /* Hide navigation, filters and action buttons when printing */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Show print-only content */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Make form controls render as clean text output */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    border: none !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 1px 0 !important;
+    resize: none !important;
+    font-size: 10pt !important;
+    color: #111827 !important;
+  }
+
+  textarea {
+    height: auto !important;
+    overflow: visible !important;
+    min-height: 0 !important;
+  }
+
+  /* Grid layout adjustments for print */
+  .grid {
+    display: grid !important;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

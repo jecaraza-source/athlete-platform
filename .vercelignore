@@ -1,0 +1,16 @@
+# =============================================================================
+# .vercelignore
+#
+# The apps/mobile and apps/web repos share the same GitHub remote.  When
+# mobile commits land in the shared tree alongside Next.js files, Vercel's
+# builder picks them up as routes / TypeScript sources and fails.
+#
+# This file tells Vercel to skip those paths during the build.
+# =============================================================================
+
+# Expo nested route directory (conflicts with Next.js App Router)
+app/app/
+
+# React Native service modules that import expo/RN packages
+services/attachments.ts
+services/avatar.ts

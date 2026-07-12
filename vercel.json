@@ -1,0 +1,29 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "node scripts/register-deployment.mjs && next build",
+  "installCommand": "npm install",
+  "ignoreCommand": "! test -f package.json",
+  "outputDirectory": ".next",
+  "crons": [
+    {
+      "path": "/api/cron/process-email-jobs",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/process-push-jobs",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/process-ticket-automation",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/newsletter-generate",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/newsletter-send",
+      "schedule": "0 13 * * *"
+    }
+  ]
+}

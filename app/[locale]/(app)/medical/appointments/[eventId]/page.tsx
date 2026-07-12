@@ -1,0 +1,231 @@
+import { redirect } from 'next/navigation';
+import { getLocale } from 'next-intl/server';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getCurrentUser } from '@/lib/rbac/server';
+import Link from 'next/link';
+import AppointmentHeader from '@/components/medical/AppointmentHeader';
+import AthleteHistory from '@/components/medical/AthleteHistory';
+import AttendanceActions from '@/components/medical/AttendanceActions';
+import AppointmentReadOnly from '@/components/medical/AppointmentReadOnly';
+
+export const dynamic = 'force-dynamic';
+
+// Role codes that can access this view
+const MEDICAL_ROLE_CODES = [
+  'medic', 'psychologist', 'nutritionist', 'physio',
+  'admin', 'super_admin', 'program_director', 'event_coordinator',
+  'auditor', // read-only audit access
+];
+const ADMIN_ROLE_CODES = ['admin', 'super_admin', 'program_director', 'event_coordinator'];
+// Auditors can view any appointment in read-only mode but cannot modify status.
+const AUDITOR_ROLE_CODES = ['auditor'];
+
+// Statuses that make the view read-only
+const CLOSED_STATUSES = ['show', 'no_show', 'no_show_remote', 'rescheduled', 'cancelled'];
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type AthleteRow = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  profile_id: string | null;
+};
+
+type ParticipantRow = {
+  participant_id: string;
+  attendance_status: string;
+};
+
+type SpecialistRow = {
+  id: string;
+  first_name: string;
+  last_name: string;
+};
+
+type ConfirmedByRow = {
+  first_name: string;
+  last_name: string;
+};
+
+export type AppointmentEvent = {
+  id: string;
+  title: string;
+  event_type: string;
+  start_at: string;
+  end_at: string;
+  status: string;
+  description: string | null;
+  created_by_profile_id: string | null;
+  specialist: SpecialistRow | SpecialistRow[] | null;
+  event_participants: ParticipantRow[];
+};
+
+export type HistoryRow = {
+  id: string;
+  start_at: string;
+  status: string;
+  event_type: string;
+};
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
+export default async function AppointmentDetailPage({
+  params,
+}: {
+  params: Promise<{ eventId: string }>;
+}) {
+  const locale = await getLocale();
+  const { eventId } = await params;
+
+  // Auth guard
+  const user = await getCurrentUser();
+  if (!user?.profile) redirect(`/${locale}/login`);
+
+  const userRoleCodes = user.roles.map((r) => r.code);
+  const isMedicalStaff = userRoleCodes.some((c) => MEDICAL_ROLE_CODES.includes(c));
+  if (!isMedicalStaff) redirect(`/${locale}/dashboard`);
+
+  // Fetch the event with all related data
+  // Note: specialist is stored in created_by_profile_id (no separate specialist_id column yet)
+  const { data: rawEvent, error } = await supabaseAdmin
+    .from('events')
+    .select(`
+      id, title, event_type, start_at, end_at, status, description,
+      created_by_profile_id,
+      specialist:profiles!created_by_profile_id(id, first_name, last_name),
+      event_participants(participant_id, attendance_status)
+    `)
+    .eq('id', eventId)
+    .single();
+
+  if (error || !rawEvent) {
+    return (
+      <main className="p-8">
+        <Link
+          href="/medical/appointments"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors mb-6"
+        >
+          ← Volver a mis citas
+        </Link>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">
+          Cita no encontrada o sin acceso.
+        </div>
+      </main>
+    );
+  }
+
+  const event = rawEvent as unknown as AppointmentEvent;
+
+  // Ownership check: created_by_profile_id must match, user is admin, or user is auditor
+  const isAdmin   = userRoleCodes.some((c) => ADMIN_ROLE_CODES.includes(c));
+  const isAuditor = userRoleCodes.some((c) => AUDITOR_ROLE_CODES.includes(c));
+  const isOwner   = event.created_by_profile_id === user.profile.id;
+  if (!isOwner && !isAdmin && !isAuditor) redirect(`/${locale}/dashboard`);
+
+  // Extract athlete from event_participants — fetch separately (no FK in PostgREST cache)
+  const participant     = event.event_participants?.[0] ?? null;
+  const participantId   = participant?.participant_id ?? null;
+
+  let athlete: AthleteRow | null = null;
+  if (participantId) {
+    const { data: athleteData } = await supabaseAdmin
+      .from('athletes')
+      .select('id, first_name, last_name, email, profile_id')
+      .eq('id', participantId)
+      .maybeSingle();
+    athlete = (athleteData as AthleteRow | null) ?? null;
+  }
+
+  // Resolve specialist (stored in created_by_profile_id)
+  const specialistRaw = Array.isArray(event.specialist)
+    ? event.specialist[0]
+    : event.specialist;
+  const specialist = specialistRaw as SpecialistRow | null;
+
+  // Fetch athlete's appointment history
+  let history: HistoryRow[] = [];
+  if (athlete?.id) {
+    const { data: histData } = await supabaseAdmin
+      .from('event_participants')
+      .select(`
+        events(id, start_at, status, event_type)
+      `)
+      .eq('participant_id', athlete.id)
+      .order('participant_id', { ascending: false })
+      .limit(20);
+
+    history = ((histData ?? []) as Array<{ events: HistoryRow | HistoryRow[] | null }>)
+      .map((r) => (Array.isArray(r.events) ? r.events[0] : r.events))
+      .filter((e): e is HistoryRow => e != null && e.id !== eventId)
+      .sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime())
+      .slice(0, 10);
+  }
+
+  const isReadOnly = CLOSED_STATUSES.includes(event.status);
+  // Auditors never edit — they only observe for audit purposes.
+  const canEdit = (isOwner || isAdmin) && !isAuditor;
+
+  return (
+    <main className="p-6 max-w-3xl mx-auto">
+      {/* Back link */}
+      <Link
+        href="/medical/appointments"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+      >
+        ← Volver a mis citas
+      </Link>
+
+      {/* Specialist name */}
+      {specialist && (
+        <p className="mt-3 text-xs text-gray-400 font-medium uppercase tracking-wide">
+          {specialist.first_name} {specialist.last_name}
+        </p>
+      )}
+
+      {/* Appointment header card */}
+      <AppointmentHeader
+        eventId={event.id}
+        title={event.title}
+        athlete={athlete}
+        startAt={event.start_at}
+        endAt={event.end_at}
+        status={event.status}
+        eventType={event.event_type}
+      />
+
+      {/* Athlete history (collapsible) */}
+      {athlete && (
+        <AthleteHistory
+          athleteId={athlete.id}
+          history={history}
+          currentEventId={eventId}
+        />
+      )}
+
+      {/* Main section: read-only vs interactive */}
+      {(isReadOnly || isAuditor) ? (
+        <AppointmentReadOnly
+          event={event}
+          canEdit={canEdit}
+          currentUserId={user.profile.id}
+        />
+      ) : (
+        <AttendanceActions
+          eventId={eventId}
+          specialistId={event.created_by_profile_id ?? user.profile.id}
+          serviceType={event.title}
+          athleteId={athlete?.id ?? ''}
+          athleteProfileId={athlete?.profile_id ?? null}
+          startAt={event.start_at}
+          endAt={event.end_at}
+        />
+      )}
+    </main>
+  );
+}

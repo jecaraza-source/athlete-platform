@@ -1,0 +1,91 @@
+import Image from 'next/image';
+import { ReactNode } from 'react';
+import { getCurrentUser, hasRole, hasPermission } from '@/lib/rbac/server';
+import SignOutButton from './sign-out-button';
+import NavLinks from './nav-links';
+import LanguageSwitcher from './language-switcher';
+import PrivacyConsentModal from './PrivacyConsentModal';
+
+export default async function AppShell({ children }: { children: ReactNode }) {
+  // getCurrentUser() is memoized — hasRole/hasPermission() reuse the same resolved data.
+  const [currentUser, showAdmin, isAthlete, showFinances, showAppointments, showAthletes, showFollowUp] = await Promise.all([
+    getCurrentUser(),
+    hasRole('super_admin', 'admin', 'program_director'),
+    hasRole('athlete'),
+    hasPermission('view_finances'),
+    // Show 'Mis Citas' to medical staff, coordinators, admins, and auditors
+    hasRole('medic', 'physio', 'nutritionist', 'psychologist',
+            'super_admin', 'admin', 'program_director', 'event_coordinator', 'auditor'),
+    // Show athlete list to roles with view_athletes (including auditor)
+    hasPermission('view_athletes'),
+    // Show follow-up to clinical/coaching staff and admins (auditors are excluded)
+    hasRole('medic', 'physio', 'nutritionist', 'psychologist', 'coach',
+            'super_admin', 'admin', 'program_director'),
+  ]);
+
+  const profile  = currentUser?.profile ?? null;
+  const authUser = profile; // keeps remaining code compatible
+  const needsConsent = profile != null && !profile.privacy_consent_accepted_at;
+
+  return (
+    <div className="min-h-screen flex bg-gray-50 text-gray-900">
+      {needsConsent && <PrivacyConsentModal />}
+      {/* Sidebar — hidden when printing */}
+      <aside className="w-56 shrink-0 bg-gray-50 border-r border-gray-200 flex flex-col print:hidden sticky top-0 h-screen overflow-y-auto">
+        {/* Logo */}
+        <div className="px-5 py-5 border-b border-gray-200">
+        <Image
+          src="/logo.png"
+          alt="AO Deportes"
+          width={160}
+          height={40}
+          className="mb-6"
+          style={{ height: 'auto' }}
+          priority
+        />
+        </div>
+
+        {/* Navigation */}
+        <NavLinks showAdmin={showAdmin} showFinances={showFinances} isAthlete={isAthlete} showAppointments={showAppointments} showAthletes={showAthletes} showFollowUp={showFollowUp} />
+
+        {/* Footer */}
+        <div className="border-t border-gray-200">
+          <LanguageSwitcher />
+        </div>
+        {authUser && (
+          <div className="px-3 pb-3 border-t border-gray-200">
+            {/* Avatar + email row */}
+            <div className="flex items-center gap-2 px-1 mt-2 mb-1">
+              {/* Mini avatar */}
+              {profile?.avatar_url ? (
+                <Image
+                  src={profile.avatar_url}
+                  alt=""
+                  width={24}
+                  height={24}
+                  className="w-6 h-6 rounded-full object-cover shrink-0"
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
+                  <span className="text-white text-xs font-bold leading-none">
+                    {profile?.first_name?.[0]?.toUpperCase() ?? '?'}
+                  </span>
+                </div>
+              )}
+              <p
+                className="truncate text-xs text-gray-400 min-w-0"
+                title={profile?.email ?? ''}
+              >
+                {profile?.email}
+              </p>
+            </div>
+            <SignOutButton />
+          </div>
+        )}
+      </aside>
+
+      {/* Main content */}
+      <main className="flex-1 bg-white print:w-full">{children}</main>
+    </div>
+  );
+}
