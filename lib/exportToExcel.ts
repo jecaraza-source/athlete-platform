@@ -68,7 +68,7 @@ function buildSummarySheet(data: Appointment[]) {
 export async function exportAppointmentsToExcel(
   data: Appointment[],
   periodLabel: string,
-): Promise<Uint8Array> {
+): Promise<Uint8Array<ArrayBuffer>> {
   const workbook = new ExcelJS.Workbook();
 
   // ── Hoja 1: Detalle completo ──────────────────────────────────────────────
@@ -103,6 +103,9 @@ export async function exportAppointmentsToExcel(
   ];
   ws2.addRows(buildSummarySheet(data));
 
-  const buffer = await workbook.xlsx.writeBuffer();
-  return new Uint8Array(buffer);
+  const raw = await workbook.xlsx.writeBuffer();
+  // new Uint8Array(source) copies data into a fresh ArrayBuffer (never
+  // SharedArrayBuffer), giving us Uint8Array<ArrayBuffer> which is a
+  // valid BlobPart on the client.
+  return new Uint8Array(raw as ArrayBuffer) as Uint8Array<ArrayBuffer>;
 }
