@@ -36,10 +36,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // ── 2. Parse body (multipart/form-data) ──────────────────────────────
-    let formData: Awaited<ReturnType<typeof req.formData>>;
-    try {
-      formData = await req.formData();
-    } catch {
+    // Use .catch() to avoid a let declaration whose type becomes ambiguous
+    // when @types/node (pulled in by exceljs) redefines globalThis.FormData.
+    const formData = await req.formData().catch(() => null);
+    if (!formData) {
       return NextResponse.json({ error: 'Cuerpo de la solicitud inválido.' }, { status: 400 });
     }
 
