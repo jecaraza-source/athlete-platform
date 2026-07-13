@@ -36,7 +36,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // ── 2. Parse body (multipart/form-data) ──────────────────────────────
-    let formData: FormData;
+    let formData: Awaited<ReturnType<typeof req.formData>>;
     try {
       formData = await req.formData();
     } catch {
