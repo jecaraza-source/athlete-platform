@@ -27,7 +27,7 @@ export default function NewsletterCard() {
     latestNewsletter,
     pendingCount,
     isLoading,
-    fetchLatest,
+    fetchLatestIfStale,
     fetchPendingCount,
   } = useNewsletterStore();
 
@@ -36,7 +36,9 @@ export default function NewsletterCard() {
   const audiencia   = isAthlete() ? 'atleta' : 'coach';
 
   useEffect(() => {
-    fetchLatest(audiencia);
+    // useNewsletterRefresh (in _layout.tsx) handles the primary fetch;
+    // this fallback ensures the card still works if rendered before the hook fires.
+    fetchLatestIfStale(audiencia);
     if (isAdminRole) fetchPendingCount();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audiencia, isAdminRole]);

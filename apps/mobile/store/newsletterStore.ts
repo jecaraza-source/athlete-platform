@@ -36,12 +36,21 @@ type NewsletterState = {
   historyLoaded:      boolean;
   hasMore:            boolean;
   currentPage:        number;
+  /** ISO timestamp of the last successful fetchLatest call. */
+  lastFetchedAt:      string | null;
 
   // Actions
-  fetchLatest:        (audiencia: 'atleta' | 'coach' | 'all') => Promise<void>;
-  fetchHistory:       (audiencia: 'atleta' | 'coach' | 'all', page?: number) => Promise<void>;
-  fetchPendingCount:  () => Promise<void>;
-  reset:              () => void;
+  fetchLatest:           (audiencia: 'atleta' | 'coach' | 'all') => Promise<void>;
+  /**
+   * Fetches only when data is stale:
+   *   - no data yet, OR
+   *   - last fetch was on a different calendar day, OR
+   *   - last fetch was more than 60 minutes ago (catches same-day newsletter updates).
+   */
+  fetchLatestIfStale:    (audiencia: 'atleta' | 'coach' | 'all') => Promise<void>;
+  fetchHistory:          (audiencia: 'atleta' | 'coach' | 'all', page?: number) => Promise<void>;
+  fetchPendingCount:     () => Promise<void>;
+  reset:                 () => void;
 };
 
 const PAGE_SIZE = 20;
@@ -58,6 +67,7 @@ export const useNewsletterStore = create<NewsletterState>((set, get) => ({
   historyLoaded:     false,
   hasMore:           false,
   currentPage:       1,
+  lastFetchedAt:     null,
 
   fetchLatest: async (audiencia) => {
     set({ isLoading: true });
@@ -73,11 +83,33 @@ export const useNewsletterStore = create<NewsletterState>((set, get) => ({
         .limit(1)
         .maybeSingle();
 
-      set({ latestNewsletter: (data as NewsletterItem) ?? null });
+      set({
+        latestNewsletter: (data as NewsletterItem) ?? null,
+        lastFetchedAt: new Date().toISOString(),
+      });
     } catch {
       // Best-effort
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  fetchLatestIfStale: async (audiencia) => {
+    const { lastFetchedAt, fetchLatest } = get();
+
+    if (!lastFetchedAt) {
+      await fetchLatest(audiencia);
+      return;
+    }
+
+    const now       = new Date();
+    const lastFetch = new Date(lastFetchedAt);
+    const sameDay   = lastFetch.toDateString() === now.toDateString();
+    const minsOld   = (now.getTime() - lastFetch.getTime()) / 60_000;
+
+    // Stale if: different calendar day, or same day but >60 min old
+    if (!sameDay || minsOld > 60) {
+      await fetchLatest(audiencia);
     }
   },
 
@@ -133,5 +165,6 @@ export const useNewsletterStore = create<NewsletterState>((set, get) => ({
       historyLoaded:     false,
       hasMore:           false,
       currentPage:       1,
+      lastFetchedAt:     null,
     }),
 }));

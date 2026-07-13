@@ -14,12 +14,13 @@ export default function NewsletterScreen() {
   const router = useRouter();
 
   const { isAthlete } = useAuthStore();
-  const { latestNewsletter, isLoading, fetchLatest } = useNewsletterStore();
+  const { latestNewsletter, isLoading, fetchLatestIfStale } = useNewsletterStore();
 
   const audiencia = isAthlete() ? 'atleta' : 'coach';
 
   useEffect(() => {
-    if (!latestNewsletter) fetchLatest(audiencia);
+    // Always check staleness when the newsletter screen is opened.
+    fetchLatestIfStale(audiencia);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

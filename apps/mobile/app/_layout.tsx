@@ -4,6 +4,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
+import { useNewsletterRefresh } from '@/hooks/use-newsletter-refresh';
 import { PRIMARY } from '@/constants/theme';
 
 export default function RootLayout() {
@@ -16,6 +17,7 @@ export default function RootLayout() {
   const isInitialized = useAuthStore((s) => s.isInitialized);
   const { setSession, loadUserData, reset } = useAuthStore();
   usePushNotifications();
+  useNewsletterRefresh();
 
   useEffect(() => {
     // Safety net: force initialization after 6 s so the app never freezes
