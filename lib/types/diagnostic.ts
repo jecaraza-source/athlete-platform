@@ -282,12 +282,17 @@ export const STATUS_DOT: Record<DiagnosticStatus, string> = {
 
 export const DISCIPLINES = [
   { value: 'taekwondo',          label: 'Tae Kwon Do',                  block: 'Combate' },
+  { value: 'karate',             label: 'Karate',                       block: 'Combate' },
+  { value: 'judo',               label: 'Judo',                         block: 'Combate' },
   { value: 'boxeo',              label: 'Boxeo',                        block: 'Combate' },
   { value: 'atletismo',          label: 'Atletismo',                    block: 'Resistencia' },
   { value: 'natacion',           label: 'Natación',                     block: 'Resistencia' },
   { value: 'canotaje',           label: 'Canotaje',                     block: 'Resistencia' },
   { value: 'gimnasia_artistica', label: 'Gimnasia Artística Femenil',   block: 'Acrobático' },
   { value: 'breaking',           label: 'Breaking',                     block: 'Acrobático' },
+  { value: 'para_badminton',     label: 'Para Bádminton',               block: 'Adaptado' },
+  { value: 'tiro_con_arco',      label: 'Tiro con Arco',               block: 'Precisión' },
+  { value: 'tiro_deportivo',     label: 'Tiro Deportivo',               block: 'Precisión' },
 ] as const;
 
 export type DisciplineValue = typeof DISCIPLINES[number]['value'];

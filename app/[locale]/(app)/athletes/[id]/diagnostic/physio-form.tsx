@@ -98,9 +98,11 @@ export default function PhysioForm({
         <div className="rounded-md bg-blue-50 border border-blue-200 p-3 mb-3">
           <p className="text-xs text-blue-700 font-medium">Bloques de intervención por disciplina:</p>
           <ul className="text-xs text-blue-600 mt-1 space-y-0.5">
-            <li>• Combate: Tae Kwon Do, Boxeo</li>
+            <li>• Combate: Tae Kwon Do, Karate, Judo, Boxeo</li>
             <li>• Resistencia: Atletismo, Natación, Canotaje</li>
             <li>• Acrobático: Gimnasia Artística Femenil, Breaking</li>
+            <li>• Adaptado: Para Bádminton</li>
+            <li>• Precisión: Tiro con Arco, Tiro Deportivo</li>
           </ul>
         </div>
         <Textarea label="Plan de intervención fisioterapéutica específica para la disciplina" name="discipline_intervention"

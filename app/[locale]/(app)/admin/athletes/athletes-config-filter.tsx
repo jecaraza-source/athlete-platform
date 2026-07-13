@@ -8,8 +8,13 @@ const DISCIPLINES = [
   'Breaking',
   'Canotaje',
   'Gimnasia Artística Femenil',
+  'Judo',
+  'Karate',
   'Natación',
+  'Para Bádminton',
   'Taekwondo',
+  'Tiro con Arco',
+  'Tiro Deportivo',
 ];
 
 export default function AthletesConfigFilter({
