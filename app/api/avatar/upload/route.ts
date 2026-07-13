@@ -36,12 +36,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // ── 2. Parse body (multipart/form-data) ──────────────────────────────
-    // Use .catch() to avoid a let declaration whose type becomes ambiguous
-    // when @types/node (pulled in by exceljs) redefines globalThis.FormData.
-    const formData = await req.formData().catch(() => null);
-    if (!formData) {
+    // Cast through a minimal interface to avoid the @types/node FormData
+    // type (pulled in transitively by exceljs) shadowing the Web API
+    // FormData and removing .get() from TypeScript's view of the type.
+    type WebFormData = { get(name: string): unknown };
+    const rawForm = await req.formData().catch(() => null);
+    if (!rawForm) {
       return NextResponse.json({ error: 'Cuerpo de la solicitud inválido.' }, { status: 400 });
     }
+    const formData  = rawForm as unknown as WebFormData;
 
     const file      = formData.get('file') as File | null;
     const profileId = formData.get('profileId') as string | null;
