@@ -107,8 +107,22 @@ export function AppointmentsDrawer({ open, onClose, from, to, periodLabel, curre
   const handleExportExcel = async () => {
     setExporting(true);
     try {
-      const all = await fetchAllAppointmentsForExport(from, to, filters);
-      exportAppointmentsToExcel(all, periodLabel);
+      const all    = await fetchAllAppointmentsForExport(from, to, filters);
+      const buffer = await exportAppointmentsToExcel(all, periodLabel);
+
+      // Trigger browser download from the server-generated buffer
+      const blob      = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url       = URL.createObjectURL(blob);
+      const stamp     = new Date().toISOString().slice(0, 16).replace(/[-T:]/g, '').replace('T', '-');
+      const safePeriod = periodLabel.replace(/\s/g, '-').toLowerCase();
+      const anchor    = document.createElement('a');
+      anchor.href     = url;
+      anchor.download = `citas-ao-deporte-${safePeriod}-${stamp}.xlsx`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+
       toast({ title: '✅ Excel generado', description: `${all.length} registros exportados` });
     } catch {
       toast({ title: 'Error al exportar', variant: 'destructive' });

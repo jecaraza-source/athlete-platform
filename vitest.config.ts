@@ -19,5 +19,7 @@ export default defineConfig({
     globals: true,
     // Isolate each test file in its own module scope so vi.mock state never leaks
     isolate: true,
+    // Exclude mobile app — it has its own vitest.config.ts and tsconfig
+    exclude: ['apps/mobile/**', 'node_modules/**'],
   },
 });

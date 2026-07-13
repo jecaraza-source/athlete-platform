@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx';
+'use server';
+import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Appointment, ServiceType } from '@/lib/types/admin';
@@ -59,26 +60,49 @@ function buildSummarySheet(data: Appointment[]) {
   });
 }
 
-export function exportAppointmentsToExcel(data: Appointment[], periodLabel: string) {
-  const wb = XLSX.utils.book_new();
+/**
+ * Generates an Excel workbook from appointment data and returns the raw bytes.
+ * Runs as a Server Action — ExcelJS (Node.js) never ships to the client bundle.
+ * The caller is responsible for triggering the browser download from the buffer.
+ */
+export async function exportAppointmentsToExcel(
+  data: Appointment[],
+  periodLabel: string,
+): Promise<Uint8Array> {
+  const workbook = new ExcelJS.Workbook();
 
-  // Hoja 1: Detalle completo
-  const ws1 = XLSX.utils.json_to_sheet(buildDetailSheet(data));
-  ws1['!cols'] = [
-    { wch: 4 }, { wch: 28 }, { wch: 32 }, { wch: 28 }, { wch: 22 },
-    { wch: 12 }, { wch: 8 }, { wch: 14 }, { wch: 40 }, { wch: 20 },
-    { wch: 24 }, { wch: 14 }, { wch: 18 },
+  // ── Hoja 1: Detalle completo ──────────────────────────────────────────────
+  const ws1 = workbook.addWorksheet('Citas');
+  ws1.columns = [
+    { header: '#',                     key: '#',                     width: 4  },
+    { header: 'Atleta',                key: 'Atleta',                width: 28 },
+    { header: 'Email Atleta',          key: 'Email Atleta',          width: 32 },
+    { header: 'Especialista',          key: 'Especialista',          width: 28 },
+    { header: 'Especialidad',          key: 'Especialidad',          width: 22 },
+    { header: 'Fecha',                 key: 'Fecha',                 width: 12 },
+    { header: 'Hora',                  key: 'Hora',                  width: 8  },
+    { header: 'Estado',                key: 'Estado',                width: 14 },
+    { header: 'Notas',                 key: 'Notas',                 width: 40 },
+    { header: 'Motivo No Show',        key: 'Motivo No Show',        width: 20 },
+    { header: 'Motivo Reagendamiento', key: 'Motivo Reagendamiento', width: 24 },
+    { header: 'Fecha Original',        key: 'Fecha Original',        width: 14 },
+    { header: 'Confirmado en',         key: 'Confirmado en',         width: 18 },
   ];
-  XLSX.utils.book_append_sheet(wb, ws1, 'Citas');
+  ws1.addRows(buildDetailSheet(data));
 
-  // Hoja 2: Resumen por especialidad
-  const ws2 = XLSX.utils.json_to_sheet(buildSummarySheet(data));
-  ws2['!cols'] = [
-    { wch: 26 }, { wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 },
+  // ── Hoja 2: Resumen por especialidad ─────────────────────────────────────
+  const ws2 = workbook.addWorksheet('Resumen');
+  ws2.columns = [
+    { header: 'Especialidad',    key: 'Especialidad',    width: 26 },
+    { header: 'Total Citas',     key: 'Total Citas',     width: 12 },
+    { header: 'Atendió (Show)',  key: 'Atendió (Show)',  width: 16 },
+    { header: 'No Atendió',      key: 'No Atendió',      width: 12 },
+    { header: 'Reagendadas',     key: 'Reagendadas',     width: 12 },
+    { header: 'Pendientes',      key: 'Pendientes',      width: 12 },
+    { header: '% Asistencia',    key: '% Asistencia',    width: 14 },
   ];
-  XLSX.utils.book_append_sheet(wb, ws2, 'Resumen');
+  ws2.addRows(buildSummarySheet(data));
 
-  const stamp      = format(new Date(), 'yyyyMMdd-HHmm');
-  const safePeriod = periodLabel.replace(/\s/g, '-').toLowerCase();
-  XLSX.writeFile(wb, `citas-ao-deporte-${safePeriod}-${stamp}.xlsx`);
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Uint8Array(buffer);
 }

@@ -206,8 +206,8 @@ export async function notifyUsersNewsletterPublished(params: {
 
     const body = {
       app_id: creds.appId,
-      include_external_user_ids: batch,
-      // No channel_for_external_user_ids override → defaults to push.
+      include_external_user_ids:      batch,
+      channel_for_external_user_ids:  'push',   // explicit: skip email channel
       headings: { en: '📬 Nuevo newsletter disponible', es: '📬 Nuevo newsletter disponible' },
       contents: { en: params.asunto, es: params.asunto },
       data: {
