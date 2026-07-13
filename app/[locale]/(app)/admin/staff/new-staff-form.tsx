@@ -41,6 +41,7 @@ export default function NewStaffForm({
         setError(null);
         setOpen(false);
         formRef.current?.reset();
+        router.refresh();
       }
     });
   }

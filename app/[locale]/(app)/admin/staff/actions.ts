@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requirePermission } from '@/lib/rbac/server';
+import { assertPermission } from '@/lib/rbac/server';
 import { SECTION_KEYS } from '@/lib/types/diagnostic';
 
 /** Crea o recupera la fila de athletes y devuelve su ID.
@@ -140,7 +140,8 @@ function validateEmailDomain(email: string, role: string | null): string | null 
 }
 
 export async function createProfile(formData: FormData) {
-  await requirePermission('manage_users');
+  const denied = await assertPermission('manage_users');
+  if (denied) return denied;
 
   const email = (formData.get('email') as string)?.trim();
   if (!email) return { error: 'Email is required to create a new profile.' };
@@ -302,7 +303,8 @@ export async function createProfile(formData: FormData) {
 }
 
 export async function updateProfile(id: string, formData: FormData) {
-  await requirePermission('manage_users');
+  const denied = await assertPermission('manage_users');
+  if (denied) return denied;
 
   const base = {
     first_name: formData.get('first_name') as string,
@@ -346,7 +348,8 @@ export async function updateProfile(id: string, formData: FormData) {
 }
 
 export async function deleteProfile(id: string) {
-  await requirePermission('manage_users');
+  const denied = await assertPermission('manage_users');
+  if (denied) return denied;
 
   // Fetch auth_user_id before deleting the profile row so we can remove the Auth account
   const { data: profileRow } = await supabaseAdmin
