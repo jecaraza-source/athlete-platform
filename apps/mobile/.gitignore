@@ -56,6 +56,7 @@ app bundle/
 # Firebase credentials
 *.json
 !package.json
+!package-lock.json
 !tsconfig*.json
 !app.json
 !eas.json
