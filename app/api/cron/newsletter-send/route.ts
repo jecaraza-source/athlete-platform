@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCronAuth }             from '@/lib/cron/auth';
 import { supabaseAdmin }               from '@/lib/supabase-admin';
-import { sendNewsletterViaOneSignal }   from '@/lib/newsletter/onesignal';
+import { sendNewsletterViaOneSignal, notifyUsersNewsletterPublished } from '@/lib/newsletter/onesignal';
 import { getProfileIdsForRoleCodes }   from '@/lib/newsletter/audience-roles';
 import type { NewsletterAudiencia }    from '@/lib/newsletter/types';
 
@@ -104,6 +104,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           recipient_count: result.recipientCount,
         })
         .eq('id', draft.id);
+
+      // 3.5 Push notification to mobile users — best-effort, same audience
+      // resolved above for the email send.
+      await notifyUsersNewsletterPublished({
+        draftId:     draft.id,
+        asunto:      draft.asunto,
+        externalIds,
+      });
 
       // 4. Audit log
       await supabaseAdmin.from('newsletter_logs').insert({

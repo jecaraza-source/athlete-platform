@@ -174,3 +174,60 @@ export async function notifyAdminsNewsletterReady(
     // Best-effort — cron continues even if push fails
   }
 }
+
+// ---------------------------------------------------------------------------
+// User push notification (newsletter published)
+// ---------------------------------------------------------------------------
+
+/**
+ * Alerts mobile users via push as soon as a newsletter is sent, instead of
+ * relying on them to reopen the app and discover it.
+ *
+ * Targets the same profile IDs already resolved for the email send (via
+ * OneSignal external_id, set by OneSignal.login(profile.id) in
+ * apps/mobile/hooks/use-push-notifications.ts), so push and email audiences
+ * always match exactly — no separate segment/tag logic to keep in sync.
+ */
+export async function notifyUsersNewsletterPublished(params: {
+  draftId:     string;
+  asunto:      string;
+  externalIds: string[];
+}): Promise<void> {
+  const creds = getCredentials();
+  if (!creds) return;
+  if (params.externalIds.length === 0) return;
+
+  const deepLink = `/app/newsletter/${params.draftId}`;
+
+  // OneSignal limits include_external_user_ids to 2,000 per request.
+  const BATCH = 2000;
+  for (let i = 0; i < params.externalIds.length; i += BATCH) {
+    const batch = params.externalIds.slice(i, i + BATCH);
+
+    const body = {
+      app_id: creds.appId,
+      include_external_user_ids: batch,
+      // No channel_for_external_user_ids override → defaults to push.
+      headings: { en: '📬 Nuevo newsletter disponible', es: '📬 Nuevo newsletter disponible' },
+      contents: { en: params.asunto, es: params.asunto },
+      data: {
+        type:      'newsletter_published',
+        deep_link: deepLink,
+      },
+      url: deepLink,
+    };
+
+    try {
+      await fetch(ONESIGNAL_API_URL, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Basic ${creds.apiKey}`,
+        },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      // Best-effort — the newsletter is already sent; push failure shouldn't roll that back
+    }
+  }
+}

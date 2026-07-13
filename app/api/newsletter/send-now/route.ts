@@ -17,6 +17,7 @@ import { getCurrentUser }             from '@/lib/rbac/server';
 import { supabaseAdmin }              from '@/lib/supabase-admin';
 import { sendNewsletterViaResend }    from '@/lib/newsletter/resend-sender';
 import { getProfileIdsForRoleCodes }  from '@/lib/newsletter/audience-roles';
+import { notifyUsersNewsletterPublished } from '@/lib/newsletter/onesignal';
 
 export const runtime     = 'nodejs';
 export const maxDuration = 300; // Resend batching may take longer for large lists
@@ -188,6 +189,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       recipient_count: result.sentCount,
     })
     .eq('id', draftId);
+
+  // 6.5 Push notification to mobile users — best-effort, targets the same
+  // profileIds already resolved above so push and email audiences match.
+  await notifyUsersNewsletterPublished({
+    draftId,
+    asunto:      draft.asunto,
+    externalIds: profileIds,
+  });
 
   // 7. Audit log
   await supabaseAdmin.from('newsletter_logs').insert({
