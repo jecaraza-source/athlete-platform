@@ -119,12 +119,45 @@ export interface ReportCoachRow {
   totalNotes: number;
 }
 
+export interface ReportStaffMemberRow {
+  staffId: string;
+  staffName: string;
+  /** Rol legible: Médico, Nutricionista, Fisioterapeuta, Psicólogo/a */
+  roleLabel: string;
+  /** Total de eventos creados en el período (todos los estatus) */
+  scheduled: number;
+  /** Eventos con status='show' */
+  attendedPresential: number;
+  /** Eventos con status='show_remote' */
+  attendedRemote: number;
+  /** Eventos con status='rescheduled' */
+  rescheduled: number;
+  /** Eventos con status IN ('no_show','no_show_remote') */
+  noShow: number;
+}
+
+export interface ReportDisciplineRow {
+  disciplineCode: string;
+  disciplineName: string;
+  disciplineBlock: string;
+  /** Atletas activos registrados en esta disciplina */
+  totalAthletes: number;
+  /** Atletas que tuvieron al menos 1 cita show/show_remote en el período */
+  athletesAttended: number;
+  /** Atletas que tuvieron al menos 1 no_show/no_show_remote en el período */
+  athletesNoShow: number;
+  /** Atletas con al menos 1 plan asignado (acumulado) */
+  athletesWithPlans: number;
+}
+
 export interface ReportData {
   activeAthletes: number;
   from: string;
   to: string;
   services: ReportServiceRow[];
   coaches: ReportCoachRow[];
+  staffMembers: ReportStaffMemberRow[];
+  disciplines: ReportDisciplineRow[];
 }
 
 export interface PeriodRange {

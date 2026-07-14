@@ -16,6 +16,7 @@ import { getReportPeriodRange }       from '@/lib/periods';
 import { fetchReportData }            from '@/lib/adminReportQueries';
 import type {
   ReportData, ReportPeriodKey, ReportServiceRow, ReportCoachRow,
+  ReportStaffMemberRow, ReportDisciplineRow,
 } from '@/lib/types/admin';
 import type { ReportPeriodMeta }      from '@/lib/periods';
 
@@ -131,6 +132,35 @@ function buildPrintDocument(data: ReportData, meta: ReportPeriodMeta, logoUrl: s
     </tr>`).join('')
     : '<tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:12px">Sin datos de entrenadores para este período</td></tr>';
 
+  const staffRows = data.staffMembers.length > 0
+    ? data.staffMembers.map((s: ReportStaffMemberRow) => `
+    <tr>
+      <td>
+        <div style="font-weight:700">${s.staffName}</div>
+        <div style="font-size:9px;color:#6b7280">${s.roleLabel}</div>
+      </td>
+      <td style="text-align:center">${s.scheduled}</td>
+      <td style="text-align:center">${s.attendedPresential}</td>
+      <td style="text-align:center">${s.attendedRemote}</td>
+      <td style="text-align:center">${s.rescheduled}</td>
+      <td style="text-align:center">${s.noShow}</td>
+    </tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:12px">Sin actividad de staff médico para este período</td></tr>';
+
+  const disciplineRows = data.disciplines.length > 0
+    ? data.disciplines.map((d: ReportDisciplineRow) => `
+    <tr>
+      <td>
+        <div style="font-weight:700">${d.disciplineName}</div>
+        <div style="font-size:9px;color:#6b7280">${d.disciplineBlock}</div>
+      </td>
+      <td style="text-align:center">${d.totalAthletes}</td>
+      <td style="text-align:center">${d.athletesAttended}</td>
+      <td style="text-align:center">${d.athletesNoShow}</td>
+      <td style="text-align:center">${d.athletesWithPlans}</td>
+    </tr>`).join('')
+    : '<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:12px">Sin atletas registrados por disciplina</td></tr>';
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -178,6 +208,35 @@ function buildPrintDocument(data: ReportData, meta: ReportPeriodMeta, logoUrl: s
       </tr>
     </thead>
     <tbody>${coachRows}</tbody>
+  </table>
+
+  <div class="section-title" style="margin-top:20px">Staff Médico (por miembro)</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:22%">NOMBRE / ROL</th>
+        <th style="width:15.6%;text-align:center">CITAS AGENDADAS</th>
+        <th style="width:15.6%;text-align:center">ATENDIDAS PRESENCIAL</th>
+        <th style="width:15.6%;text-align:center">ATENDIDAS REMOTO</th>
+        <th style="width:15.6%;text-align:center">REPROGRAMADAS</th>
+        <th style="width:15.6%;text-align:center">NO ATENDIDAS</th>
+      </tr>
+    </thead>
+    <tbody>${staffRows}</tbody>
+  </table>
+
+  <div class="section-title" style="margin-top:20px">Por Disciplina</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:25%">DISCIPLINA</th>
+        <th style="width:18.75%;text-align:center">TOTAL ATLETAS</th>
+        <th style="width:18.75%;text-align:center">ATLETAS QUE ASISTIERON<br><span style="font-size:9px;font-weight:400">(en el período)</span></th>
+        <th style="width:18.75%;text-align:center">ATLETAS NO ASISTIERON<br><span style="font-size:9px;font-weight:400">(en el período)</span></th>
+        <th style="width:18.75%;text-align:center">CON PLAN ASIGNADO<br><span style="font-size:9px;font-weight:400">(acumulado)</span></th>
+      </tr>
+    </thead>
+    <tbody>${disciplineRows}</tbody>
   </table>
 
   <div class="print-footer">
@@ -285,6 +344,149 @@ function ServiceTable({ rows, loading }: { rows: ReportServiceRow[]; loading: bo
                 ) : (
                   <span className="text-[#94A3B8]">0</span>
                 )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function StaffMemberTable({ rows, loading }: { rows: ReportStaffMemberRow[]; loading: boolean }) {
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-[#2A2D3A] h-36 animate-pulse bg-[#1A1D27]" />
+    );
+  }
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-[#2A2D3A] py-10 text-center">
+        <p className="text-[#94A3B8] text-sm">Sin actividad de staff médico en el período seleccionado</p>
+      </div>
+    );
+  }
+  return (
+    <div className="overflow-x-auto rounded-xl border border-[#2A2D3A]">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-[#2A2D3A] bg-[#1A1D27]">
+            <th className="px-4 py-3 text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Nombre / Rol</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Citas Agendadas</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Atendidas Presencial</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Atendidas Remoto</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Reprogramadas</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">No Atendidas</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((s, i) => (
+            <tr
+              key={s.staffId}
+              className={`border-b border-[#2A2D3A]/50 last:border-0 ${
+                i % 2 === 0 ? 'bg-[#0F1117]' : 'bg-[#1A1D27]/40'
+              }`}
+            >
+              <td className="px-4 py-3">
+                <div className="font-semibold text-[#F1F5F9]">{s.staffName}</div>
+                <div className="text-xs text-[#94A3B8] mt-0.5">{s.roleLabel}</div>
+              </td>
+              <td className="px-4 py-3 text-center">
+                <span className="rounded bg-[#2A2D3A] px-2 py-0.5 text-[#F1F5F9] font-medium">{s.scheduled}</span>
+              </td>
+              <td className="px-4 py-3 text-center">
+                <span className="rounded bg-emerald-900/30 px-2 py-0.5 text-emerald-300 font-medium">{s.attendedPresential}</span>
+              </td>
+              <td className="px-4 py-3 text-center">
+                {s.attendedRemote > 0 ? (
+                  <span className="rounded bg-blue-900/30 px-2 py-0.5 text-blue-300 font-medium">{s.attendedRemote}</span>
+                ) : (
+                  <span className="text-[#94A3B8]">0</span>
+                )}
+              </td>
+              <td className="px-4 py-3 text-center">
+                {s.rescheduled > 0 ? (
+                  <span className="rounded bg-amber-900/30 px-2 py-0.5 text-amber-300 font-medium">{s.rescheduled}</span>
+                ) : (
+                  <span className="text-[#94A3B8]">0</span>
+                )}
+              </td>
+              <td className="px-4 py-3 text-center">
+                {s.noShow > 0 ? (
+                  <span className="rounded bg-red-900/30 px-2 py-0.5 text-red-400 font-medium">{s.noShow}</span>
+                ) : (
+                  <span className="text-[#94A3B8]">0</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DisciplineTable({ rows, loading }: { rows: ReportDisciplineRow[]; loading: boolean }) {
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-[#2A2D3A] h-36 animate-pulse bg-[#1A1D27]" />
+    );
+  }
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-[#2A2D3A] py-10 text-center">
+        <p className="text-[#94A3B8] text-sm">Sin atletas con disciplina registrada</p>
+      </div>
+    );
+  }
+  return (
+    <div className="overflow-x-auto rounded-xl border border-[#2A2D3A]">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-[#2A2D3A] bg-[#1A1D27]">
+            <th className="px-4 py-3 text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Disciplina</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Total Atletas</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+              <div>Atletas que Asistieron</div>
+              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">en el período</div>
+            </th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+              <div>Atletas No Asistieron</div>
+              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">en el período</div>
+            </th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+              <div>Con Plan Asignado</div>
+              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">acumulado</div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((d, i) => (
+            <tr
+              key={d.disciplineCode}
+              className={`border-b border-[#2A2D3A]/50 last:border-0 ${
+                i % 2 === 0 ? 'bg-[#0F1117]' : 'bg-[#1A1D27]/40'
+              }`}
+            >
+              <td className="px-4 py-3">
+                <div className="font-semibold text-[#F1F5F9]">{d.disciplineName}</div>
+                <div className="text-xs text-[#94A3B8] mt-0.5">{d.disciplineBlock}</div>
+              </td>
+              <td className="px-4 py-3 text-center">
+                <span className="rounded bg-[#2A2D3A] px-2 py-0.5 text-[#F1F5F9] font-medium">{d.totalAthletes}</span>
+              </td>
+              <td className="px-4 py-3 text-center">
+                <span className="rounded bg-teal-900/30 px-2 py-0.5 text-teal-300 font-medium">{d.athletesAttended}</span>
+              </td>
+              <td className="px-4 py-3 text-center">
+                {d.athletesNoShow > 0 ? (
+                  <span className="rounded bg-red-900/30 px-2 py-0.5 text-red-400 font-medium">{d.athletesNoShow}</span>
+                ) : (
+                  <span className="text-[#94A3B8]">0</span>
+                )}
+              </td>
+              <td className="px-4 py-3 text-center">
+                <span className="rounded bg-indigo-900/30 px-2 py-0.5 text-indigo-300 font-medium">{d.athletesWithPlans}</span>
               </td>
             </tr>
           ))}
@@ -584,6 +786,34 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
             </span>
           </div>
           <CoachTable rows={data.coaches} loading={loading} />
+        </section>
+
+        {/* ── Section 3: Staff Médico (por miembro) ── */}
+        <section>
+          <div className="flex items-center gap-3 mb-3">
+            <h2 className="text-sm font-semibold text-[#F1F5F9] uppercase tracking-wide">
+              Staff Médico
+            </h2>
+            <div className="flex-1 h-px bg-[#2A2D3A]" />
+            <span className="text-xs text-[#94A3B8] shrink-0">
+              Por miembro del equipo · {meta.label}
+            </span>
+          </div>
+          <StaffMemberTable rows={data.staffMembers} loading={loading} />
+        </section>
+
+        {/* ── Section 4: Por Disciplina ── */}
+        <section>
+          <div className="flex items-center gap-3 mb-3">
+            <h2 className="text-sm font-semibold text-[#F1F5F9] uppercase tracking-wide">
+              Por Disciplina
+            </h2>
+            <div className="flex-1 h-px bg-[#2A2D3A]" />
+            <span className="text-xs text-[#94A3B8] shrink-0">
+              Citas: {meta.label} · Planes: acumulado
+            </span>
+          </div>
+          <DisciplineTable rows={data.disciplines} loading={loading} />
         </section>
 
       </main>
