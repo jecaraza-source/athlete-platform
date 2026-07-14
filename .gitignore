@@ -58,3 +58,4 @@ scripts/*.xlsx
 
 # Supabase CLI temp files
 supabase/.temp/
+.env*
