@@ -2,7 +2,7 @@
   "expo": {
     "name": "AO Deportes",
     "slug": "ao-deportes",
-    "version": "2.1.2",
+    "version": "1.2.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "aodeporte",
@@ -11,13 +11,13 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.aodeporte.mobile",
-      "buildNumber": "17",
+      "buildNumber": "18",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "AO Deportes usa tu ubicación para mostrarte servicios deportivos, entrenamientos y eventos cercanos relevantes para tu actividad.",
         "NSCameraUsageDescription": "AO Deportes usa la cámara para actualizar tu foto de perfil.",
         "NSPhotoLibraryUsageDescription": "AO Deportes accede a tu galería para seleccionar tu foto de perfil.",
         "NSPhotoLibraryAddUsageDescription": "AO Deportes puede guardar fotos en tu galería.",
-        "CFBundleShortVersionString": "1.2.2",
+        "CFBundleShortVersionString": "1.2.3",
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
           "remote-notification",
