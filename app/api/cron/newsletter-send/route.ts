@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCronAuth }             from '@/lib/cron/auth';
 import { supabaseAdmin }               from '@/lib/supabase-admin';
-import { sendNewsletterViaOneSignal, notifyUsersNewsletterPublished, sendNewsletterPush } from '@/lib/newsletter/onesignal';
+import { sendNewsletterViaOneSignal, notifyUsersNewsletterPublished } from '@/lib/newsletter/onesignal';
 import { getProfileIdsForRoleCodes }   from '@/lib/newsletter/audience-roles';
 import type { NewsletterAudiencia }    from '@/lib/newsletter/types';
 
@@ -94,22 +94,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         throw new Error(result.error ?? 'OneSignal send failed');
       }
 
-      // 3. Best-effort push notification (refuerzo al email; nunca tumba el request)
-      try {
-        const pushResult = await sendNewsletterPush({
-          asunto:      draft.asunto,
-          preview:     draft.preview_text ?? '',
-          externalIds,
-          draftId:     draft.id,
-        });
-        if (!pushResult.success) {
-          console.warn('[newsletter-send] push best-effort failed:', pushResult.error);
-        }
-      } catch (pushErr) {
-        console.warn('[newsletter-send] push best-effort exception:', pushErr);
-      }
-
-      // 4. Mark as sent
+      // 3. Mark as sent
       await supabaseAdmin
         .from('newsletter_drafts')
         .update({
@@ -120,15 +105,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         })
         .eq('id', draft.id);
 
-      // 3.5 Push notification to mobile users — best-effort, same audience
-      // resolved above for the email send.
+      // 4. Push notification to mobile users — best-effort, never blocks the response.
       await notifyUsersNewsletterPublished({
         draftId:     draft.id,
         asunto:      draft.asunto,
         externalIds,
       });
 
-      // 4. Audit log
+      // 5. Audit log
       await supabaseAdmin.from('newsletter_logs').insert({
         draft_id:   draft.id,
         action:     'sent',

@@ -11,6 +11,10 @@
 // ---------------------------------------------------------------------------
 
 import { useState, useEffect }       from 'react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell,
+} from 'recharts';
 import Link                           from 'next/link';
 import { getReportPeriodRange }       from '@/lib/periods';
 import { fetchReportData }            from '@/lib/adminReportQueries';
@@ -560,6 +564,176 @@ function CoachTable({ rows, loading }: { rows: ReportCoachRow[]; loading: boolea
   );
 }
 
+// ─── Chart palette & shared config ────────────────────────────────────────────
+
+const CHT = {
+  scheduled:  '#6366f1',
+  presential: '#34d399',
+  remote:     '#60a5fa',
+  noShow:     '#f87171',
+  plans:      '#a78bfa',
+  notes:      '#94a3b8',
+  athletes:   '#2dd4bf',
+};
+
+const TOOLTIP_STYLE = {
+  background:   '#1A1D27',
+  border:       '1px solid #2A2D3A',
+  borderRadius: 8,
+  color:        '#F1F5F9',
+  fontSize:     12,
+};
+
+const A_TICK  = { fill: '#94A3B8', fontSize: 11 };
+const LEG_STY = { fontSize: 11, color: '#94A3B8', paddingTop: 6 };
+
+// ─── Chart: attendance donut ──────────────────────────────────────────────────
+
+function AttendancePieChart({
+  presential, remote, noShow,
+}: { presential: number; remote: number; noShow: number }) {
+  const slices = [
+    { name: 'Presencial',   value: presential, color: CHT.presential },
+    { name: 'Remoto',       value: remote,     color: CHT.remote     },
+    { name: 'No Atendidas', value: noShow,     color: CHT.noShow     },
+  ].filter(s => s.value > 0);
+
+  if (slices.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4 flex flex-col">
+      <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide mb-1">
+        Distribución de Citas
+      </p>
+      <ResponsiveContainer width="100%" height={190}>
+        <PieChart>
+          <Pie
+            data={slices}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="50%"
+            innerRadius={52}
+            outerRadius={78}
+            paddingAngle={3}
+          >
+            {slices.map(s => (
+              <Cell key={s.name} fill={s.color} stroke="transparent" />
+            ))}
+          </Pie>
+          <Tooltip contentStyle={TOOLTIP_STYLE} />
+          <Legend iconType="circle" wrapperStyle={LEG_STY} />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── Chart: citas por servicio (grouped bar) ──────────────────────────────────
+
+function ServicesBarChart({ rows }: { rows: ReportServiceRow[] }) {
+  if (rows.length === 0) return null;
+  const chartData = rows.map(r => ({
+    name:           r.service,
+    Programadas:    r.scheduled,
+    Presencial:     r.attendedPresential,
+    Remoto:         r.attendedRemote ?? 0,
+    'No Atendidas': r.noShow,
+  }));
+  return (
+    <div className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4">
+      <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide mb-3">
+        Citas por Servicio
+      </p>
+      <ResponsiveContainer width="100%" height={190}>
+        <BarChart data={chartData} barCategoryGap="30%" barGap={3}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#2A2D3A" vertical={false} />
+          <XAxis dataKey="name" tick={A_TICK} axisLine={false} tickLine={false} />
+          <YAxis tick={A_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} />
+          <Legend iconType="square" wrapperStyle={LEG_STY} />
+          <Bar dataKey="Programadas"   fill={CHT.scheduled}  radius={[3,3,0,0]} />
+          <Bar dataKey="Presencial"    fill={CHT.presential} radius={[3,3,0,0]} />
+          <Bar dataKey="Remoto"        fill={CHT.remote}     radius={[3,3,0,0]} />
+          <Bar dataKey="No Atendidas"  fill={CHT.noShow}     radius={[3,3,0,0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── Chart: entrenadores (grouped bar) ───────────────────────────────────────
+
+function CoachesBarChart({ rows }: { rows: ReportCoachRow[] }) {
+  if (rows.length === 0) return null;
+  const chartData = rows.map(c => ({
+    name:             c.discipline,
+    'Atletas c/Plan': c.totalAthletes,
+    Planes:           c.totalPlans,
+    Seguimientos:     c.totalNotes,
+  }));
+  return (
+    <div className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4 mb-4">
+      <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide mb-3">
+        Resumen por Entrenador
+      </p>
+      <ResponsiveContainer width="100%" height={190}>
+        <BarChart data={chartData} barCategoryGap="30%" barGap={3}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#2A2D3A" vertical={false} />
+          <XAxis dataKey="name" tick={A_TICK} axisLine={false} tickLine={false} />
+          <YAxis tick={A_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} />
+          <Legend iconType="square" wrapperStyle={LEG_STY} />
+          <Bar dataKey="Atletas c/Plan" fill={CHT.athletes}  radius={[3,3,0,0]} />
+          <Bar dataKey="Planes"         fill={CHT.plans}     radius={[3,3,0,0]} />
+          <Bar dataKey="Seguimientos"   fill={CHT.notes}     radius={[3,3,0,0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── Chart: atletas por disciplina (horizontal bar) ───────────────────────────
+
+function DisciplinesBarChart({ rows }: { rows: ReportDisciplineRow[] }) {
+  if (rows.length === 0) return null;
+  const chartData = rows.map(d => ({
+    name:            d.disciplineName,
+    Total:           d.totalAthletes,
+    Asistieron:      d.athletesAttended,
+    'No Asistieron': d.athletesNoShow,
+    'Con Plan':      d.athletesWithPlans,
+  }));
+  const height = Math.max(200, chartData.length * 40 + 60);
+  return (
+    <div className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4 mb-4">
+      <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide mb-3">
+        Atletas por Disciplina
+      </p>
+      <ResponsiveContainer width="100%" height={height}>
+        <BarChart data={chartData} layout="vertical" barCategoryGap="25%" barGap={2}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#2A2D3A" horizontal={false} />
+          <XAxis type="number" tick={A_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
+          <YAxis
+            type="category"
+            dataKey="name"
+            tick={A_TICK}
+            axisLine={false}
+            tickLine={false}
+            width={110}
+          />
+          <Tooltip contentStyle={TOOLTIP_STYLE} />
+          <Legend iconType="square" wrapperStyle={LEG_STY} />
+          <Bar dataKey="Total"          fill={CHT.scheduled}  radius={[0,3,3,0]} />
+          <Bar dataKey="Asistieron"     fill={CHT.presential} radius={[0,3,3,0]} />
+          <Bar dataKey="No Asistieron"  fill={CHT.noShow}     radius={[0,3,3,0]} />
+          <Bar dataKey="Con Plan"       fill={CHT.plans}      radius={[0,3,3,0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 // ─── Main component ─────────────────────────────────────────────────────────────
 
 export default function ReportesClient({ defaultPeriod, initialMeta, initialData }: Props) {
@@ -609,6 +783,7 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
   const totalAttended   = data.services.reduce((s, r) => s + r.attendedPresential,  0);
   const totalNoShow     = data.services.reduce((s, r) => s + r.noShow,              0);
   const totalNotes      = data.services.reduce((s, r) => s + r.followUpNotes,       0);
+  const totalRemote     = data.services.reduce((s, r) => s + (r.attendedRemote ?? 0), 0);
 
   return (
     <div className="min-h-screen bg-[#0F1117] text-[#F1F5F9]">
@@ -771,6 +946,18 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
             </div>
           )}
 
+          {/* Charts: donut + grouped bar */}
+          {!loading && data.services.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-3 mb-4">
+              <AttendancePieChart
+                presential={totalAttended}
+                remote={totalRemote}
+                noShow={totalNoShow}
+              />
+              <ServicesBarChart rows={data.services} />
+            </div>
+          )}
+
           <ServiceTable rows={data.services} loading={loading} />
         </section>
 
@@ -785,6 +972,7 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
               Atletas y planes: acumulado total &nbsp;·&nbsp; Seguimientos: {meta.label}
             </span>
           </div>
+          {!loading && <CoachesBarChart rows={data.coaches} />}
           <CoachTable rows={data.coaches} loading={loading} />
         </section>
 
@@ -813,6 +1001,7 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
               Citas: {meta.label} · Planes: acumulado
             </span>
           </div>
+          {!loading && <DisciplinesBarChart rows={data.disciplines} />}
           <DisciplineTable rows={data.disciplines} loading={loading} />
         </section>
 

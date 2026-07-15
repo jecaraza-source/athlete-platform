@@ -128,60 +128,6 @@ export async function sendNewsletterViaOneSignal(
 }
 
 // ---------------------------------------------------------------------------
-// Push notification: newsletter published (subscriber delivery)
-// ---------------------------------------------------------------------------
-
-export type SendNewsletterPushParams = {
-  asunto:      string;
-  preview:     string;
-  externalIds: string[];
-  draftId:     string;
-};
-
-/**
- * Sends a native push notification to subscriber devices announcing a new
- * newsletter edition. Uses OneSignal's push channel with external_id targeting
- * (same IDs registered via OneSignal.login(profile.id) on mobile).
- *
- * Best-effort: callers should wrap in try/catch and not fail on push errors.
- */
-export async function sendNewsletterPush(
-  params: SendNewsletterPushParams
-): Promise<{ success: boolean; error: string | null }> {
-  const creds = getCredentials();
-  if (!creds) return { success: false, error: 'Missing OneSignal credentials' };
-  if (params.externalIds.length === 0) return { success: true, error: null };
-
-  const body = {
-    app_id:                        creds.appId,
-    include_external_user_ids:     params.externalIds,
-    channel_for_external_user_ids: 'push',
-    headings: { en: params.asunto,  es: params.asunto },
-    contents: { en: params.preview, es: params.preview },
-    data: {
-      type:     'newsletter_ready',
-      draft_id: params.draftId,
-    },
-  };
-
-  const res = await fetch(ONESIGNAL_API_URL, {
-    method:  'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': `Basic ${creds.apiKey}`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const json = (await res.json()) as Record<string, unknown>;
-  if (!res.ok) {
-    const msg = (json.errors as string[] | undefined)?.[0] ?? `HTTP ${res.status}`;
-    return { success: false, error: msg };
-  }
-  return { success: true, error: null };
-}
-
-// ---------------------------------------------------------------------------
 // Admin push notification (newsletter ready for approval)
 // ---------------------------------------------------------------------------
 
