@@ -169,13 +169,17 @@ export async function fetchImportablePhotos(
     .limit(400);
 
   if (photoErr) {
-    console.error('[fetchImportablePhotos]', photoErr.message);
+    console.error('[fetchImportablePhotos] query error:', photoErr.message);
     return [];
   }
+
+  console.log(`[fetchImportablePhotos] total in activity_photos: ${photoRows?.length ?? 0}, excludeId: ${excludeActivityId}`);
 
   const rows = (photoRows ?? []).filter(
     (p: { activity_id: string }) => p.activity_id !== excludeActivityId,
   );
+
+  console.log(`[fetchImportablePhotos] after filter: ${rows.length} rows`);
 
   if (rows.length === 0) return [];
 

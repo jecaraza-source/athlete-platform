@@ -152,6 +152,16 @@ export function GalleryPhotoImporter({ activityId, currentPhotoCount, initialPho
       >
         <span>📸</span>
         Importar desde Historia Gráfica
+        {photos.length > 0 && (
+          <span className="bg-amber-200 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+            {photos.length}
+          </span>
+        )}
+        {photos.length === 0 && (
+          <span className="bg-gray-200 text-gray-500 text-[10px] px-1.5 py-0.5 rounded-full">
+            0
+          </span>
+        )}
       </button>
 
       {/* Modal */}
