@@ -9,6 +9,7 @@ import { CommentModerationPanel }  from '@/components/bitacora/CommentModeration
 import { BitacoraPublishStepper }  from '@/components/bitacora/BitacoraPublishStepper';
 import { NextActionCallout }       from '@/components/bitacora/NextActionCallout';
 import { MagazineActionBar }       from '@/components/bitacora/MagazineActionBar';
+import { GalleryPhotoImporter }    from '@/components/bitacora/GalleryPhotoImporter';
 import { computePublishSteps }     from '@/lib/bitacora/stepper-logic';
 
 interface PageProps {
@@ -110,18 +111,25 @@ export default async function EditarActividadPage({ params }: PageProps) {
 
       {/* ── Sección 2: Fotos ────────────────────────────────────────────── */}
       <section id="section-fotos" className="scroll-mt-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4 pb-2 border-b border-gray-100 flex items-center justify-between">
-          <span>Fotos ({activity.photos.length})</span>
-          {hasCover ? (
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full normal-case tracking-normal bg-green-100 text-green-700">
-              ★ Portada lista
-            </span>
-          ) : activity.photos.length > 0 ? (
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full normal-case tracking-normal bg-amber-100 text-amber-700">
-              Sin portada marcada
-            </span>
-          ) : null}
-        </h2>
+        <div className="flex items-center justify-between gap-4 mb-4 pb-2 border-b border-gray-100">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-3">
+            <span>Fotos ({activity.photos.length})</span>
+            {hasCover ? (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full normal-case tracking-normal bg-green-100 text-green-700">
+                ★ Portada lista
+              </span>
+            ) : activity.photos.length > 0 ? (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full normal-case tracking-normal bg-amber-100 text-amber-700">
+                Sin portada marcada
+              </span>
+            ) : null}
+          </h2>
+          {/* Import from Historia Gráfica */}
+          <GalleryPhotoImporter
+            activityId={id}
+            currentPhotoCount={activity.photos.length}
+          />
+        </div>
         <PhotoUploader activityId={id} initialPhotos={activity.photos} />
       </section>
 
