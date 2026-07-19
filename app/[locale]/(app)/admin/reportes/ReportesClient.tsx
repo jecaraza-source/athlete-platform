@@ -11,7 +11,6 @@
 // ---------------------------------------------------------------------------
 
 import { useState, useEffect }       from 'react';
-import html2canvas                    from 'html2canvas';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -359,6 +358,10 @@ function buildPrintDocument(
  * exactly as the user sees it, avoiding SVG serialisation clip-path issues.
  */
 async function captureCharts(): Promise<Record<string, string>> {
+  // Dynamic import keeps html2canvas out of the initial bundle
+  // and avoids any SSR issues (it uses browser APIs).
+  const { default: html2canvas } = await import('html2canvas');
+
   const ids = [
     'chart-attendance-pie',
     'chart-services-bar',
@@ -372,8 +375,8 @@ async function captureCharts(): Promise<Record<string, string>> {
       if (!el) return;
       try {
         const canvas = await html2canvas(el, {
-          backgroundColor: '#0F1117', // match the dark chart background
-          scale:           1.5,       // 1.5× for print-quality sharpness
+          backgroundColor: '#0F1117',
+          scale:           1.5,
           logging:         false,
           useCORS:         true,
         });
