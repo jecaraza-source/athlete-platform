@@ -16,24 +16,26 @@ import Image                  from 'next/image';
 import { useRouter }          from 'next/navigation';
 import { importPhotosToActivity } from '@/lib/bitacora/gallery-import-actions';
 import { getThumbnailUrl }    from '@/lib/storage-config';
-import type { ImportablePhoto } from '@/lib/bitacora/gallery-import-actions';
+import type { ImportablePhoto } from '@/lib/historiaGraficaQueries';
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+// ─── Props ───────────────────────────────────────────────────────────────────
 
 interface Props {
   activityId:        string;
   currentPhotoCount: number;
+  /** Pre-fetched by the server component — no client fetch needed. */
+  initialPhotos:     ImportablePhoto[];
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function GalleryPhotoImporter({ activityId, currentPhotoCount }: Props) {
+export function GalleryPhotoImporter({ activityId, currentPhotoCount, initialPhotos }: Props) {
   const router = useRouter();
 
-  // ── Modal / loading state ─────────────────────────────────────────────────
+  // ── Modal / loading state ───────────────────────────────────────────────────
   const [open,      setOpen]      = useState(false);
-  const [loading,   setLoading]   = useState(false);
-  const [photos,    setPhotos]    = useState<ImportablePhoto[]>([]);
+  // photos is pre-loaded from server — no loading spinner needed
+  const [photos]                  = useState<ImportablePhoto[]>(initialPhotos);
   const [importing, setImporting] = useState(false);
   const [error,     setError]     = useState<string | null>(null);
   const [imported,  setImported]  = useState<number | null>(null);
@@ -48,26 +50,14 @@ export function GalleryPhotoImporter({ activityId, currentPhotoCount }: Props) {
 
   // ─────────────────────────────────────────────────────────────────────────
 
-  async function openModal() {
+  function openModal() {
     setOpen(true);
-    setLoading(true);
     setSelected(new Set());
     setError(null);
     setImported(null);
     setSearch('');
     setSelDisc('');
     setSelAlbum('');
-    try {
-      const res = await fetch(`/api/admin/importable-photos?excludeId=${encodeURIComponent(activityId)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: ImportablePhoto[] = await res.json();
-      setPhotos(data);
-    } catch (err) {
-      console.error('[GalleryPhotoImporter]', err);
-      setError('No se pudieron cargar las fotos. Intenta de nuevo.');
-    } finally {
-      setLoading(false);
-    }
   }
 
   function toggleSelect(id: string) {
@@ -178,9 +168,7 @@ export function GalleryPhotoImporter({ activityId, currentPhotoCount }: Props) {
                   Importar desde Historia Gráfica
                 </h2>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {loading
-                    ? 'Cargando fotos…'
-                    : selected.size > 0
+                  {selected.size > 0
                     ? `${selected.size} foto${selected.size !== 1 ? 's' : ''} seleccionada${selected.size !== 1 ? 's' : ''}`
                     : `${filtered.length} foto${filtered.length !== 1 ? 's' : ''} disponible${filtered.length !== 1 ? 's' : ''}`}
                 </p>
@@ -194,7 +182,7 @@ export function GalleryPhotoImporter({ activityId, currentPhotoCount }: Props) {
             </div>
 
             {/* Filter bar */}
-            {!loading && photos.length > 0 && (
+            {photos.length > 0 && (
               <div className="px-6 py-3 border-b border-gray-100 flex flex-wrap gap-2 shrink-0">
                 <div className="relative flex-1 min-w-32">
                   <svg
@@ -262,12 +250,7 @@ export function GalleryPhotoImporter({ activityId, currentPhotoCount }: Props) {
 
             {/* Photo grid */}
             <div className="flex-1 overflow-y-auto p-6">
-              {loading ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-3">
-                  <div className="animate-spin w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full" />
-                  <p className="text-sm text-gray-400">Cargando fotos de Historia Gráfica…</p>
-                </div>
-              ) : imported !== null ? (
+              {imported !== null ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
                   <div className="text-5xl">✅</div>
                   <p className="text-base font-semibold text-green-700">

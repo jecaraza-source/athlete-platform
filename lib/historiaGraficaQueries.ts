@@ -137,3 +137,78 @@ export async function fetchGalleryData(): Promise<GalleryData> {
 
   return { albums, photos, disciplines };
 }
+
+// ─── Importable photos (for Bitácora editor) ──────────────────────────────────
+
+/** Lightweight type for the photo-importer modal. */
+export interface ImportablePhoto {
+  id:           string;
+  activity_id:  string;
+  storage_path: string;
+  caption:      string | null;
+  alt_text:     string;
+  album_title:  string;
+  album_date:   string | null;
+  disciplina:   string | null;
+  sede:         string | null;
+}
+
+/**
+ * Returns photos from all activities EXCEPT `excludeActivityId`.
+ * Called server-side in the Bitácora editor page and passed as props
+ * to avoid any client-side fetch/auth issues.
+ */
+export async function fetchImportablePhotos(
+  excludeActivityId: string,
+): Promise<ImportablePhoto[]> {
+  // 1. All photos not belonging to the article being edited
+  const { data: photoRows, error: photoErr } = await supabaseAdmin
+    .from('activity_photos')
+    .select('id, activity_id, storage_path, caption, alt_text')
+    .order('created_at', { ascending: false })
+    .limit(400);
+
+  if (photoErr) {
+    console.error('[fetchImportablePhotos]', photoErr.message);
+    return [];
+  }
+
+  const rows = (photoRows ?? []).filter(
+    (p: { activity_id: string }) => p.activity_id !== excludeActivityId,
+  );
+
+  if (rows.length === 0) return [];
+
+  // 2. Album metadata for those photos
+  const albumIds = [...new Set(
+    rows.map((p: { activity_id: string }) => p.activity_id),
+  )];
+
+  const { data: actRows } = await supabaseAdmin
+    .from('activities')
+    .select('id, title, event_date, disciplina, sede')
+    .in('id', albumIds);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const actMap = new Map<string, any>(
+    (actRows ?? []).map((a: { id: string }) => [a.id, a]),
+  );
+
+  return (rows as {
+    id: string; activity_id: string; storage_path: string;
+    caption: string | null; alt_text: string;
+  }[]).map((p) => {
+    const act = actMap.get(p.activity_id);
+    return {
+      id:           p.id,
+      activity_id:  p.activity_id,
+      storage_path: p.storage_path,
+      caption:      p.caption,
+      alt_text:     p.alt_text,
+      album_title:  act?.title      ?? '',
+      album_date:   act?.event_date ?? null,
+      disciplina:   act?.disciplina ?? null,
+      sede:         act?.sede       ?? null,
+    } satisfies ImportablePhoto;
+  });
+}

@@ -10,6 +10,7 @@ import { BitacoraPublishStepper }  from '@/components/bitacora/BitacoraPublishSt
 import { NextActionCallout }       from '@/components/bitacora/NextActionCallout';
 import { MagazineActionBar }       from '@/components/bitacora/MagazineActionBar';
 import { GalleryPhotoImporter }    from '@/components/bitacora/GalleryPhotoImporter';
+import { fetchImportablePhotos }   from '@/lib/historiaGraficaQueries';
 import { computePublishSteps }     from '@/lib/bitacora/stepper-logic';
 
 interface PageProps {
@@ -22,6 +23,9 @@ export default async function EditarActividadPage({ params }: PageProps) {
 
   const activity = await getAdminActivityById(id);
   if (!activity) notFound();
+
+  // Pre-fetch Historia Gráfica photos server-side to avoid client auth issues
+  const importablePhotos = await fetchImportablePhotos(id);
 
   // Derived state used by section headers, callout and action bar
   const isPublished     = activity.status === 'publicado';
@@ -128,6 +132,7 @@ export default async function EditarActividadPage({ params }: PageProps) {
           <GalleryPhotoImporter
             activityId={id}
             currentPhotoCount={activity.photos.length}
+            initialPhotos={importablePhotos}
           />
         </div>
         <PhotoUploader activityId={id} initialPhotos={activity.photos} />
