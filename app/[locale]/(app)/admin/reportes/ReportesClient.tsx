@@ -136,8 +136,21 @@ const IFRAME_STYLES = `
   .chart-wrap {
     margin: 6px 0 10px;
     page-break-inside: avoid;
+    overflow: hidden;
   }
-  .chart-wrap img { max-width: 100%; height: auto; display: block; }
+  .chart-wrap svg { max-width: 100%; display: block; }
+  .notes-section {
+    margin: 4px 0 0;
+    padding: 10px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    min-height: 60px;
+    font-size: 10.5px;
+    line-height: 1.65;
+    color: #1f2937;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
 `;
 
 function buildPrintDocument(
@@ -146,6 +159,7 @@ function buildPrintDocument(
   logoUrl: string,
   narrative?: string,
   charts?: Record<string, string>,
+  notes?: string,
 ): string {
   const today = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });
 
@@ -198,11 +212,11 @@ function buildPrintDocument(
     </tr>`).join('')
     : '<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:12px">Sin atletas registrados por disciplina</td></tr>';
 
-  // Helper: inline a captured chart SVG as <img>
+  // Helper: embed captured SVG markup inline
   function chartBlock(id: string): string {
-    const src = charts?.[id];
-    return src
-      ? `<div class="chart-wrap"><img src="${src}" alt="gráfica" /></div>`
+    const svgHtml = charts?.[id];
+    return svgHtml
+      ? `<div class="chart-wrap">${svgHtml}</div>`
       : '';
   }
 
@@ -301,53 +315,21 @@ function buildPrintDocument(
     <tbody>${disciplineRows}</tbody>
   </table>
 
+  ${notes?.trim() ? `
+  <div class="section-title" style="margin-top:20px">Notas Adicionales</div>
+  <div class="notes-section">${notes.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : ''}
+
   <div class="print-footer">
-    Sistema AO Deportes · aodeporte.com · Impreso: ${today}
+    Sistema AO Deportes &middot; aodeporte.com &middot; Impreso: ${today}
   </div>
 </body>
 </html>`;
 }
 
-/** Renders a Recharts SVG element to a PNG data URL via an offscreen canvas.
- * Returns null if the element has no dimensions or drawing fails.
+/** Serializes each Recharts SVG to its outerHTML for direct inline embedding.
+ * Inline SVG is the most reliable approach — no canvas, no blob URLs, no data:URLs.
  */
-async function svgToPng(svg: SVGElement): Promise<string | null> {
-  const rect = svg.getBoundingClientRect();
-  const w = Math.round(rect.width);
-  const h = Math.round(rect.height);
-  if (w === 0 || h === 0) return null;
-
-  // Clone and make the SVG self-contained
-  const cloned = svg.cloneNode(true) as SVGElement;
-  cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  cloned.setAttribute('width', String(w));
-  cloned.setAttribute('height', String(h));
-
-  const svgString = new XMLSerializer().serializeToString(cloned);
-  const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-  const blobUrl = URL.createObjectURL(blob);
-
-  return new Promise((resolve) => {
-    const img = new Image();
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-
-    img.onload = () => {
-      URL.revokeObjectURL(blobUrl);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { resolve(null); return; }
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, w, h);
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(null); };
-    img.src = blobUrl;
-  });
-}
-
-async function captureCharts(): Promise<Record<string, string>> {
+function captureCharts(): Record<string, string> {
   const ids = [
     'chart-attendance-pie',
     'chart-services-bar',
@@ -355,22 +337,31 @@ async function captureCharts(): Promise<Record<string, string>> {
     'chart-disciplines-bar',
   ];
   const result: Record<string, string> = {};
-  await Promise.all(
-    ids.map(async (id) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const svg = el.querySelector('svg');
-      if (!svg) return;
-      const png = await svgToPng(svg);
-      if (png) result[id] = png;
-    }),
-  );
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const svg = el.querySelector('svg');
+    if (!svg) continue;
+    const cloned = svg.cloneNode(true) as SVGElement;
+    const rect = svg.getBoundingClientRect();
+    if (rect.width > 0) {
+      cloned.setAttribute('width',  String(Math.round(rect.width)));
+      cloned.setAttribute('height', String(Math.round(rect.height)));
+    }
+    // Ensure the SVG namespace is explicit so it renders correctly as inline SVG
+    cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    result[id] = cloned.outerHTML;
+  }
   return result;
 }
 
-async function triggerPrint(data: ReportData, meta: ReportPeriodMeta, narrative?: string) {
-  // Convert chart SVGs to PNG data URLs before writing the iframe
-  const charts = await captureCharts();
+function triggerPrint(
+  data: ReportData,
+  meta: ReportPeriodMeta,
+  narrative?: string,
+  notes?: string,
+) {
+  const charts = captureCharts();
 
   // Reuse or create a hidden iframe attached to document.body
   const IFRAME_ID = 'report-print-frame';
@@ -389,7 +380,7 @@ async function triggerPrint(data: ReportData, meta: ReportPeriodMeta, narrative?
   const logoUrl = `${window.location.origin}/Logo%20AO%20Deporte.png`;
 
   doc.open();
-  doc.write(buildPrintDocument(data, meta, logoUrl, narrative, charts));
+  doc.write(buildPrintDocument(data, meta, logoUrl, narrative, charts, notes));
   doc.close();
 
   // Guard against double-print: onload + setTimeout both racing to call print()
@@ -878,6 +869,9 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
   const [narrativeStatus, setNarrativeStatus] = useState<NarrativeStatus>('idle');
   const [narrativeError,  setNarrativeError]  = useState<string | null>(null);
 
+  // Editable notes state (persists across period changes)
+  const [notes, setNotes] = useState<string>('');
+
   /** Reset narrative whenever the data period changes. */
   function resetNarrative() {
     setNarrativeText(null);
@@ -1033,7 +1027,7 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
 
         {/* Print button */}
         <button
-          onClick={() => triggerPrint(data, meta)}
+          onClick={() => triggerPrint(data, meta, undefined, notes)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1A1D27] border border-[#2A2D3A]
                      text-xs font-medium text-[#94A3B8] hover:text-[#F1F5F9] hover:border-indigo-500/40
                      hover:bg-indigo-600/10 transition-all"
@@ -1193,7 +1187,7 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
                 {narrativeStatus === 'approved' && (
                   <div className="flex items-center gap-3 pt-3 border-t border-[#2A2D3A]">
                     <button
-                      onClick={() => triggerPrint(data, meta, narrativeText)}
+                      onClick={() => triggerPrint(data, meta, narrativeText ?? undefined, notes)}
                       className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white
                                  text-xs font-medium hover:bg-indigo-500 transition-colors"
                     >
@@ -1319,6 +1313,26 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
           </div>
           {!loading && <DisciplinesBarChart rows={data.disciplines} id="chart-disciplines-bar" />}
           <DisciplineTable rows={data.disciplines} loading={loading} />
+        </section>
+
+        {/* ── Notes Section ── */}
+        <section>
+          <div className="flex items-center gap-3 mb-3">
+            <h2 className="text-sm font-semibold text-[#F1F5F9] uppercase tracking-wide">
+              Notas Adicionales
+            </h2>
+            <div className="flex-1 h-px bg-[#2A2D3A]" />
+            <span className="text-xs text-[#94A3B8] shrink-0">Se incluyen en la impresión</span>
+          </div>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Agrega observaciones o comentarios que se imprimirán junto con el reporte…"
+            rows={4}
+            className="w-full bg-[#1A1D27] border border-[#2A2D3A] text-[#E2E8F0] text-sm
+                       rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500/50
+                       resize-none placeholder:text-[#4A5568] transition-colors"
+          />
         </section>
 
       </main>
