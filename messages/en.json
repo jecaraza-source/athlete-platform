@@ -764,6 +764,10 @@
     "revista": {
       "title": "AO Deporte Magazine",
       "description": "Manage activities, photos, AI narratives and Magazine publications."
+    },
+    "historiaGrafica": {
+      "title": "Graphic History",
+      "description": "Photo gallery organized by event, discipline, athlete and date."
     }
   },
   "finances": {

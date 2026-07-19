@@ -114,6 +114,17 @@ export default async function AdminPage() {
           </div>
         </Link>
 
+        <Link
+          href="/admin/historia-grafica"
+          className="rounded-lg border border-amber-200 bg-amber-50 p-6 hover:bg-amber-100 transition-colors flex items-start gap-4"
+        >
+          <span className="text-3xl mt-0.5">📸</span>
+          <div>
+            <h2 className="text-lg font-semibold text-amber-800">{t('historiaGrafica.title')}</h2>
+            <p className="text-sm text-amber-600 mt-1">{t('historiaGrafica.description')}</p>
+          </div>
+        </Link>
+
         {isAdmin && (
           <Link
             href="/admin/bitacora"

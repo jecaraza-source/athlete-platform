@@ -764,6 +764,10 @@
     "revista": {
       "title": "AO Deporte Magazine",
       "description": "Gestiona actividades, fotos, narrativas AI y publicaciones de la Revista."
+    },
+    "historiaGrafica": {
+      "title": "Historia Gráfica",
+      "description": "Galería de fotos organizada por evento, disciplina, atleta y fecha."
     }
   },
   "finances": {
