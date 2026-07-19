@@ -134,11 +134,11 @@ const IFRAME_STYLES = `
   }
   .narrative-section p:last-child { margin-bottom: 0; }
   .chart-wrap {
+    width: 100%;
     margin: 6px 0 10px;
     page-break-inside: avoid;
-    overflow: hidden;
   }
-  .chart-wrap svg { max-width: 100%; display: block; }
+  .chart-wrap svg { display: block; width: 100%; height: auto; }
   .notes-section {
     margin: 4px 0 0;
     padding: 10px 14px;
@@ -326,8 +326,12 @@ function buildPrintDocument(
 </html>`;
 }
 
-/** Serializes each Recharts SVG to its outerHTML for direct inline embedding.
- * Inline SVG is the most reliable approach — no canvas, no blob URLs, no data:URLs.
+/** Serializes each Recharts SVG for inline embedding in the print document.
+ *
+ * Recharts does not set a viewBox on its SVGs — it uses fixed pixel width/height.
+ * Without a viewBox, percentage-based widths don't scale the content correctly.
+ * We capture the real rendered dimensions, add viewBox, then set width="100%"
+ * so the SVG fills its container and scales properly regardless of iframe size.
  */
 function captureCharts(): Record<string, string> {
   const ids = [
@@ -342,14 +346,19 @@ function captureCharts(): Record<string, string> {
     if (!el) continue;
     const svg = el.querySelector('svg');
     if (!svg) continue;
-    const cloned = svg.cloneNode(true) as SVGElement;
     const rect = svg.getBoundingClientRect();
-    if (rect.width > 0) {
-      cloned.setAttribute('width',  String(Math.round(rect.width)));
-      cloned.setAttribute('height', String(Math.round(rect.height)));
-    }
-    // Ensure the SVG namespace is explicit so it renders correctly as inline SVG
+    const w = Math.round(rect.width);
+    const h = Math.round(rect.height);
+    if (w === 0 || h === 0) continue;   // chart not yet rendered
+
+    const cloned = svg.cloneNode(true) as SVGElement;
     cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    // viewBox locks the internal coordinate space to the original pixel dimensions
+    cloned.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    // width="100%" + height="auto" (via CSS) lets the SVG fill its container
+    // while preserving the aspect ratio defined by viewBox
+    cloned.setAttribute('width', '100%');
+    cloned.removeAttribute('height');
     result[id] = cloned.outerHTML;
   }
   return result;
