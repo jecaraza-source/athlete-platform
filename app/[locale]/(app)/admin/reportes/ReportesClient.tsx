@@ -111,9 +111,42 @@ const IFRAME_STYLES = `
     padding-top: 6px;
   }
   @page { margin: 1.5cm; size: landscape; }
+  .narrative-section {
+    margin: 12px 0 20px;
+    padding: 12px 16px;
+    border-left: 3px solid #6366f1;
+    background: #f8f9fa;
+    page-break-inside: avoid;
+  }
+  .narrative-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6366f1;
+    margin: 0 0 6px;
+  }
+  .narrative-section p {
+    margin: 0 0 6px;
+    font-size: 10.5px;
+    line-height: 1.65;
+    color: #1f2937;
+  }
+  .narrative-section p:last-child { margin-bottom: 0; }
+  .chart-wrap {
+    margin: 6px 0 10px;
+    page-break-inside: avoid;
+  }
+  .chart-wrap img { max-width: 100%; height: auto; display: block; }
 `;
 
-function buildPrintDocument(data: ReportData, meta: ReportPeriodMeta, logoUrl: string): string {
+function buildPrintDocument(
+  data: ReportData,
+  meta: ReportPeriodMeta,
+  logoUrl: string,
+  narrative?: string,
+  charts?: Record<string, string>,
+): string {
   const today = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });
 
   const serviceRows = data.services.map((r: ReportServiceRow) => `
@@ -165,6 +198,25 @@ function buildPrintDocument(data: ReportData, meta: ReportPeriodMeta, logoUrl: s
     </tr>`).join('')
     : '<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:12px">Sin atletas registrados por disciplina</td></tr>';
 
+  // Helper: inline a captured chart SVG as <img>
+  function chartBlock(id: string): string {
+    const src = charts?.[id];
+    return src
+      ? `<div class="chart-wrap"><img src="${src}" alt="gráfica" /></div>`
+      : '';
+  }
+
+  // Helper: render narrative paragraphs
+  const narrativeHtml = narrative
+    ? `<div class="narrative-section">
+        <div class="narrative-label">Narrativa Ejecutiva &middot; Generada con IA</div>
+        ${narrative
+          .split(/\n{2,}/)
+          .map((p) => `<p>${p.trim()}</p>`)
+          .join('')}
+      </div>`
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -186,7 +238,11 @@ function buildPrintDocument(data: ReportData, meta: ReportPeriodMeta, logoUrl: s
     </div>
   </div>
 
+  ${narrativeHtml}
+
   <div class="section-title">Servicios de Salud</div>
+  ${chartBlock('chart-attendance-pie')}
+  ${chartBlock('chart-services-bar')}
   <table>
     <thead>
       <tr>
@@ -202,6 +258,7 @@ function buildPrintDocument(data: ReportData, meta: ReportPeriodMeta, logoUrl: s
   </table>
 
   <div class="section-title" style="margin-top:20px">Entrenadores</div>
+  ${chartBlock('chart-coaches-bar')}
   <table>
     <thead>
       <tr>
@@ -230,6 +287,7 @@ function buildPrintDocument(data: ReportData, meta: ReportPeriodMeta, logoUrl: s
   </table>
 
   <div class="section-title" style="margin-top:20px">Por Disciplina</div>
+  ${chartBlock('chart-disciplines-bar')}
   <table>
     <thead>
       <tr>
@@ -250,7 +308,34 @@ function buildPrintDocument(data: ReportData, meta: ReportPeriodMeta, logoUrl: s
 </html>`;
 }
 
-function triggerPrint(data: ReportData, meta: ReportPeriodMeta) {
+function captureCharts(): Record<string, string> {
+  const ids = [
+    'chart-attendance-pie',
+    'chart-services-bar',
+    'chart-coaches-bar',
+    'chart-disciplines-bar',
+  ];
+  const result: Record<string, string> = {};
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const svg = el.querySelector('svg');
+    if (!svg) continue;
+    const cloned = svg.cloneNode(true) as SVGElement;
+    const rect = svg.getBoundingClientRect();
+    if (rect.width > 0) {
+      cloned.setAttribute('width', String(Math.round(rect.width)));
+      cloned.setAttribute('height', String(Math.round(rect.height)));
+    }
+    const serialized = new XMLSerializer().serializeToString(cloned);
+    result[id] = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(serialized)}`;
+  }
+  return result;
+}
+
+function triggerPrint(data: ReportData, meta: ReportPeriodMeta, narrative?: string) {
+  const charts = captureCharts();
+
   // Reuse or create a hidden iframe attached to document.body
   const IFRAME_ID = 'report-print-frame';
   let iframe = document.getElementById(IFRAME_ID) as HTMLIFrameElement | null;
@@ -268,7 +353,7 @@ function triggerPrint(data: ReportData, meta: ReportPeriodMeta) {
   const logoUrl = `${window.location.origin}/Logo%20AO%20Deporte.png`;
 
   doc.open();
-  doc.write(buildPrintDocument(data, meta, logoUrl));
+  doc.write(buildPrintDocument(data, meta, logoUrl, narrative, charts));
   doc.close();
 
   // Small delay so the iframe finishes rendering before the print dialog opens
@@ -590,8 +675,8 @@ const LEG_STY = { fontSize: 11, color: '#94A3B8', paddingTop: 6 };
 // ─── Chart: attendance donut ──────────────────────────────────────────────────
 
 function AttendancePieChart({
-  presential, remote, noShow,
-}: { presential: number; remote: number; noShow: number }) {
+  presential, remote, noShow, id,
+}: { presential: number; remote: number; noShow: number; id?: string }) {
   const slices = [
     { name: 'Presencial',   value: presential, color: CHT.presential },
     { name: 'Remoto',       value: remote,     color: CHT.remote     },
@@ -601,7 +686,7 @@ function AttendancePieChart({
   if (slices.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4 flex flex-col">
+    <div id={id} className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4 flex flex-col">
       <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide mb-1">
         Distribución de Citas
       </p>
@@ -631,7 +716,7 @@ function AttendancePieChart({
 
 // ─── Chart: citas por servicio (grouped bar) ──────────────────────────────────
 
-function ServicesBarChart({ rows }: { rows: ReportServiceRow[] }) {
+function ServicesBarChart({ rows, id }: { rows: ReportServiceRow[]; id?: string }) {
   if (rows.length === 0) return null;
   const chartData = rows.map(r => ({
     name:           r.service,
@@ -641,7 +726,7 @@ function ServicesBarChart({ rows }: { rows: ReportServiceRow[] }) {
     'No Atendidas': r.noShow,
   }));
   return (
-    <div className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4">
+    <div id={id} className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4">
       <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide mb-3">
         Citas por Servicio
       </p>
@@ -664,7 +749,7 @@ function ServicesBarChart({ rows }: { rows: ReportServiceRow[] }) {
 
 // ─── Chart: entrenadores (grouped bar) ───────────────────────────────────────
 
-function CoachesBarChart({ rows }: { rows: ReportCoachRow[] }) {
+function CoachesBarChart({ rows, id }: { rows: ReportCoachRow[]; id?: string }) {
   if (rows.length === 0) return null;
   const chartData = rows.map(c => ({
     name:             c.discipline,
@@ -673,7 +758,7 @@ function CoachesBarChart({ rows }: { rows: ReportCoachRow[] }) {
     Seguimientos:     c.totalNotes,
   }));
   return (
-    <div className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4 mb-4">
+    <div id={id} className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4 mb-4">
       <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide mb-3">
         Resumen por Entrenador
       </p>
@@ -695,7 +780,7 @@ function CoachesBarChart({ rows }: { rows: ReportCoachRow[] }) {
 
 // ─── Chart: atletas por disciplina (horizontal bar) ───────────────────────────
 
-function DisciplinesBarChart({ rows }: { rows: ReportDisciplineRow[] }) {
+function DisciplinesBarChart({ rows, id }: { rows: ReportDisciplineRow[]; id?: string }) {
   if (rows.length === 0) return null;
   const chartData = rows.map(d => ({
     name:            d.disciplineName,
@@ -706,7 +791,7 @@ function DisciplinesBarChart({ rows }: { rows: ReportDisciplineRow[] }) {
   }));
   const height = Math.max(200, chartData.length * 40 + 60);
   return (
-    <div className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4 mb-4">
+    <div id={id} className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4 mb-4">
       <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide mb-3">
         Atletas por Disciplina
       </p>
@@ -736,6 +821,8 @@ function DisciplinesBarChart({ rows }: { rows: ReportDisciplineRow[] }) {
 
 // ─── Main component ─────────────────────────────────────────────────────────────
 
+type NarrativeStatus = 'idle' | 'generating' | 'review' | 'approved' | 'error';
+
 export default function ReportesClient({ defaultPeriod, initialMeta, initialData }: Props) {
   const [activeTab, setActiveTab] = useState<ActiveTab>(defaultPeriod);
   const [meta,      setMeta]      = useState<ReportPeriodMeta>(initialMeta);
@@ -747,6 +834,42 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
   const [customFrom, setCustomFrom] = useState<string>(today);
   const [customTo,   setCustomTo]   = useState<string>(today);
 
+  // Narrative state
+  const [narrativeText,   setNarrativeText]   = useState<string | null>(null);
+  const [narrativeStatus, setNarrativeStatus] = useState<NarrativeStatus>('idle');
+  const [narrativeError,  setNarrativeError]  = useState<string | null>(null);
+
+  /** Reset narrative whenever the data period changes. */
+  function resetNarrative() {
+    setNarrativeText(null);
+    setNarrativeStatus('idle');
+    setNarrativeError(null);
+  }
+
+  /** Call the API route and update narrative state. */
+  async function generateNarrative() {
+    setNarrativeStatus('generating');
+    setNarrativeError(null);
+    try {
+      const res = await fetch('/api/admin/generate-report-narrative', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data, meta }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: 'Error desconocido' }));
+        throw new Error(error ?? 'Error del servidor');
+      }
+      const { narrative } = await res.json();
+      setNarrativeText(narrative);
+      setNarrativeStatus('review');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'No se pudo generar la narrativa.';
+      setNarrativeError(msg);
+      setNarrativeStatus('error');
+    }
+  }
+
   // Refetch when preset period changes (skip on first mount)
   useEffect(() => {
     if (activeTab === 'custom' || activeTab === defaultPeriod) return;
@@ -754,6 +877,7 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
     const m = getReportPeriodRange(p);
     setMeta(m);
     setLoading(true);
+    resetNarrative();
     fetchReportData(m.from, m.to).then((d) => {
       setData(d);
       setLoading(false);
@@ -772,6 +896,7 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
     };
     setMeta(customMeta);
     setLoading(true);
+    resetNarrative();
     fetchReportData(customFrom, customTo).then((d) => {
       setData(d);
       setLoading(false);
@@ -836,6 +961,36 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
             Personalizado
           </button>
         </nav>
+
+        {/* Generar Narrativa IA button */}
+        <button
+          onClick={generateNarrative}
+          disabled={loading || narrativeStatus === 'generating'}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-xs font-medium transition-all
+                     disabled:opacity-40 disabled:cursor-not-allowed ${
+            narrativeStatus === 'approved'
+              ? 'bg-indigo-600/15 border-indigo-500/50 text-indigo-300'
+              : 'bg-[#1A1D27] border-[#2A2D3A] text-[#94A3B8] hover:text-[#F1F5F9] hover:border-indigo-500/40 hover:bg-indigo-600/10'
+          }`}
+        >
+          {narrativeStatus === 'generating' ? (
+            <>
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Generando…
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              {narrativeStatus === 'approved' ? 'Narrativa aprobada' : 'Generar Narrativa IA'}
+            </>
+          )}
+        </button>
 
         {/* Print button */}
         <button
@@ -927,6 +1082,127 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
           </div>
         </div>
 
+        {/* ── AI Narrative Section ── */}
+        {narrativeStatus !== 'idle' && (
+          <section className="rounded-xl border border-[#2A2D3A] bg-[#1A1D27] p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wide">
+                Narrativa Ejecutiva · IA
+              </span>
+              {narrativeStatus === 'approved' && (
+                <span className="flex items-center gap-1 text-xs text-emerald-400">
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Aprobada
+                </span>
+              )}
+            </div>
+
+            {narrativeStatus === 'generating' && (
+              <div className="space-y-2 animate-pulse">
+                <div className="h-3.5 bg-[#2A2D3A] rounded w-3/4" />
+                <div className="h-3.5 bg-[#2A2D3A] rounded w-full" />
+                <div className="h-3.5 bg-[#2A2D3A] rounded w-5/6" />
+                <div className="h-3.5 bg-[#2A2D3A] rounded w-4/5 mt-3" />
+                <div className="h-3.5 bg-[#2A2D3A] rounded w-full" />
+                <div className="h-3.5 bg-[#2A2D3A] rounded w-2/3 mt-3" />
+                <div className="h-3.5 bg-[#2A2D3A] rounded w-5/6" />
+                <p className="text-xs text-[#64748B] mt-3 text-center">Analizando indicadores con Claude…</p>
+              </div>
+            )}
+
+            {(narrativeStatus === 'review' || narrativeStatus === 'approved') && narrativeText && (
+              <div className="space-y-4">
+                <div className="text-sm text-[#E2E8F0] leading-relaxed whitespace-pre-wrap">
+                  {narrativeText}
+                </div>
+
+                {narrativeStatus === 'review' && (
+                  <div className="flex items-center gap-3 pt-3 border-t border-[#2A2D3A]">
+                    <button
+                      onClick={() => setNarrativeStatus('approved')}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 text-white
+                                 text-xs font-medium hover:bg-emerald-500 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      Aprobar
+                    </button>
+                    <button
+                      onClick={generateNarrative}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#2A2D3A]
+                                 text-[#94A3B8] text-xs font-medium hover:text-[#F1F5F9]
+                                 hover:bg-[#3A3D4A] transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Regenerar
+                    </button>
+                    <button
+                      onClick={resetNarrative}
+                      className="text-xs text-[#64748B] hover:text-[#94A3B8] transition-colors ml-auto"
+                    >
+                      Descartar
+                    </button>
+                  </div>
+                )}
+
+                {narrativeStatus === 'approved' && (
+                  <div className="flex items-center gap-3 pt-3 border-t border-[#2A2D3A]">
+                    <button
+                      onClick={() => triggerPrint(data, meta, narrativeText)}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white
+                                 text-xs font-medium hover:bg-indigo-500 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                      </svg>
+                      Imprimir con Narrativa
+                    </button>
+                    <button
+                      onClick={() => setNarrativeStatus('review')}
+                      className="text-xs text-[#64748B] hover:text-[#94A3B8] transition-colors"
+                    >
+                      Editar narrativa
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {narrativeStatus === 'error' && (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm text-red-400">{narrativeError}</p>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={generateNarrative}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#2A2D3A]
+                               text-[#94A3B8] text-xs font-medium hover:text-[#F1F5F9]
+                               hover:bg-[#3A3D4A] transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Reintentar
+                  </button>
+                  <button
+                    onClick={resetNarrative}
+                    className="text-xs text-[#64748B] hover:text-[#94A3B8] transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* ── Section 1: Health Services ── */}
         <section>
           <div className="flex items-center gap-3 mb-3">
@@ -953,8 +1229,9 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
                 presential={totalAttended}
                 remote={totalRemote}
                 noShow={totalNoShow}
+                id="chart-attendance-pie"
               />
-              <ServicesBarChart rows={data.services} />
+              <ServicesBarChart rows={data.services} id="chart-services-bar" />
             </div>
           )}
 
@@ -972,7 +1249,7 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
               Atletas y planes: acumulado total &nbsp;·&nbsp; Seguimientos: {meta.label}
             </span>
           </div>
-          {!loading && <CoachesBarChart rows={data.coaches} />}
+          {!loading && <CoachesBarChart rows={data.coaches} id="chart-coaches-bar" />}
           <CoachTable rows={data.coaches} loading={loading} />
         </section>
 
@@ -1001,7 +1278,7 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
               Citas: {meta.label} · Planes: acumulado
             </span>
           </div>
-          {!loading && <DisciplinesBarChart rows={data.disciplines} />}
+          {!loading && <DisciplinesBarChart rows={data.disciplines} id="chart-disciplines-bar" />}
           <DisciplineTable rows={data.disciplines} loading={loading} />
         </section>
 
