@@ -308,7 +308,46 @@ function buildPrintDocument(
 </html>`;
 }
 
-function captureCharts(): Record<string, string> {
+/** Renders a Recharts SVG element to a PNG data URL via an offscreen canvas.
+ * Returns null if the element has no dimensions or drawing fails.
+ */
+async function svgToPng(svg: SVGElement): Promise<string | null> {
+  const rect = svg.getBoundingClientRect();
+  const w = Math.round(rect.width);
+  const h = Math.round(rect.height);
+  if (w === 0 || h === 0) return null;
+
+  // Clone and make the SVG self-contained
+  const cloned = svg.cloneNode(true) as SVGElement;
+  cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  cloned.setAttribute('width', String(w));
+  cloned.setAttribute('height', String(h));
+
+  const svgString = new XMLSerializer().serializeToString(cloned);
+  const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(null); return; }
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(null); };
+    img.src = blobUrl;
+  });
+}
+
+async function captureCharts(): Promise<Record<string, string>> {
   const ids = [
     'chart-attendance-pie',
     'chart-services-bar',
@@ -316,25 +355,22 @@ function captureCharts(): Record<string, string> {
     'chart-disciplines-bar',
   ];
   const result: Record<string, string> = {};
-  for (const id of ids) {
-    const el = document.getElementById(id);
-    if (!el) continue;
-    const svg = el.querySelector('svg');
-    if (!svg) continue;
-    const cloned = svg.cloneNode(true) as SVGElement;
-    const rect = svg.getBoundingClientRect();
-    if (rect.width > 0) {
-      cloned.setAttribute('width', String(Math.round(rect.width)));
-      cloned.setAttribute('height', String(Math.round(rect.height)));
-    }
-    const serialized = new XMLSerializer().serializeToString(cloned);
-    result[id] = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(serialized)}`;
-  }
+  await Promise.all(
+    ids.map(async (id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const svg = el.querySelector('svg');
+      if (!svg) return;
+      const png = await svgToPng(svg);
+      if (png) result[id] = png;
+    }),
+  );
   return result;
 }
 
-function triggerPrint(data: ReportData, meta: ReportPeriodMeta, narrative?: string) {
-  const charts = captureCharts();
+async function triggerPrint(data: ReportData, meta: ReportPeriodMeta, narrative?: string) {
+  // Convert chart SVGs to PNG data URLs before writing the iframe
+  const charts = await captureCharts();
 
   // Reuse or create a hidden iframe attached to document.body
   const IFRAME_ID = 'report-print-frame';
@@ -356,7 +392,7 @@ function triggerPrint(data: ReportData, meta: ReportPeriodMeta, narrative?: stri
   doc.write(buildPrintDocument(data, meta, logoUrl, narrative, charts));
   doc.close();
 
-  // Small delay so the iframe finishes rendering before the print dialog opens
+  // Wait for images (PNG charts) to load inside the iframe before printing
   iframe.onload = () => {
     iframe!.contentWindow?.focus();
     iframe!.contentWindow?.print();
@@ -365,7 +401,7 @@ function triggerPrint(data: ReportData, meta: ReportPeriodMeta, narrative?: stri
   setTimeout(() => {
     iframe!.contentWindow?.focus();
     iframe!.contentWindow?.print();
-  }, 250);
+  }, 500);
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
