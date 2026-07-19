@@ -392,16 +392,19 @@ async function triggerPrint(data: ReportData, meta: ReportPeriodMeta, narrative?
   doc.write(buildPrintDocument(data, meta, logoUrl, narrative, charts));
   doc.close();
 
-  // Wait for images (PNG charts) to load inside the iframe before printing
-  iframe.onload = () => {
+  // Guard against double-print: onload + setTimeout both racing to call print()
+  let printed = false;
+  const doPrint = () => {
+    if (printed) return;
+    printed = true;
+    iframe!.onload = null;
     iframe!.contentWindow?.focus();
     iframe!.contentWindow?.print();
   };
-  // Fallback: some browsers fire onload before doc.write finishes
-  setTimeout(() => {
-    iframe!.contentWindow?.focus();
-    iframe!.contentWindow?.print();
-  }, 500);
+
+  iframe.onload = doPrint;
+  // Fallback for browsers that fire onload before doc.write completes
+  setTimeout(doPrint, 500);
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
