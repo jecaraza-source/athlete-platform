@@ -44,28 +44,54 @@ export async function fetchImportablePhotos(
   const denied = await assertAdminAccess();
   if (denied) return [];
 
-  const { data } = await supabaseAdmin
+  // Two-query approach (avoids PostgREST join naming ambiguity).
+  // Step 1: photos from all activities except the one being edited.
+  const { data: photoRows, error: photoErr } = await supabaseAdmin
     .from('activity_photos')
-    .select(
-      'id, activity_id, storage_path, caption, alt_text, ' +
-      'activities(id, title, event_date, disciplina, sede)',
-    )
+    .select('id, activity_id, storage_path, caption, alt_text')
     .neq('activity_id', excludeActivityId)
     .order('created_at', { ascending: false })
     .limit(300);
 
+  if (photoErr) {
+    console.error('[fetchImportablePhotos] photos query error:', photoErr.message);
+    return [];
+  }
+  if (!photoRows || photoRows.length === 0) return [];
+
+  // Step 2: fetch activity metadata for those albums.
+  const albumIds = [...new Set(photoRows.map((p: { activity_id: string }) => p.activity_id))];
+  const { data: activityRows, error: actErr } = await supabaseAdmin
+    .from('activities')
+    .select('id, title, event_date, disciplina, sede')
+    .in('id', albumIds);
+
+  if (actErr) {
+    console.error('[fetchImportablePhotos] activities query error:', actErr.message);
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data ?? []) as any[]).map((p) => ({
-    id:           p.id,
-    activity_id:  p.activity_id,
-    storage_path: p.storage_path,
-    caption:      p.caption,
-    alt_text:     p.alt_text,
-    album_title:  p.activities?.title      ?? '',
-    album_date:   p.activities?.event_date ?? null,
-    disciplina:   p.activities?.disciplina ?? null,
-    sede:         p.activities?.sede       ?? null,
-  })) as ImportablePhoto[];
+  const actMap = new Map<string, any>(
+    (activityRows ?? []).map((a: { id: string }) => [a.id, a]),
+  );
+
+  return (photoRows as {
+    id: string; activity_id: string; storage_path: string;
+    caption: string | null; alt_text: string;
+  }[]).map((p) => {
+    const act = actMap.get(p.activity_id);
+    return {
+      id:           p.id,
+      activity_id:  p.activity_id,
+      storage_path: p.storage_path,
+      caption:      p.caption,
+      alt_text:     p.alt_text,
+      album_title:  act?.title      ?? '',
+      album_date:   act?.event_date ?? null,
+      disciplina:   act?.disciplina ?? null,
+      sede:         act?.sede       ?? null,
+    } satisfies ImportablePhoto;
+  });
 }
 
 // ─── Import ───────────────────────────────────────────────────────────────────
