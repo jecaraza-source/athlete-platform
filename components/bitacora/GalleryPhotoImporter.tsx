@@ -14,10 +14,7 @@
 import { useState, useMemo }  from 'react';
 import Image                  from 'next/image';
 import { useRouter }          from 'next/navigation';
-import {
-  fetchImportablePhotos,
-  importPhotosToActivity,
-} from '@/lib/bitacora/gallery-import-actions';
+import { importPhotosToActivity } from '@/lib/bitacora/gallery-import-actions';
 import { getThumbnailUrl }    from '@/lib/storage-config';
 import type { ImportablePhoto } from '@/lib/bitacora/gallery-import-actions';
 
@@ -60,9 +57,17 @@ export function GalleryPhotoImporter({ activityId, currentPhotoCount }: Props) {
     setSearch('');
     setSelDisc('');
     setSelAlbum('');
-    const result = await fetchImportablePhotos(activityId);
-    setPhotos(result);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/admin/importable-photos?excludeId=${encodeURIComponent(activityId)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: ImportablePhoto[] = await res.json();
+      setPhotos(data);
+    } catch (err) {
+      console.error('[GalleryPhotoImporter]', err);
+      setError('No se pudieron cargar las fotos. Intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function toggleSelect(id: string) {
