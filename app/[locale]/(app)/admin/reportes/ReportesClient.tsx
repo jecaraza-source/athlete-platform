@@ -133,12 +133,26 @@ const IFRAME_STYLES = `
     color: #1f2937;
   }
   .narrative-section p:last-child { margin-bottom: 0; }
+  .charts-row {
+    display: flex;
+    gap: 10px;
+    margin: 6px 0 10px;
+    page-break-inside: avoid;
+  }
+  .charts-row > div { min-width: 0; }
   .chart-wrap {
+    max-width: 65%;
+    margin: 6px 0 10px;
+    page-break-inside: avoid;
+  }
+  .chart-wrap-full {
     width: 100%;
     margin: 6px 0 10px;
     page-break-inside: avoid;
   }
-  .chart-wrap svg { display: block; width: 100%; height: auto; }
+  .charts-row svg,
+  .chart-wrap svg,
+  .chart-wrap-full svg { display: block; width: 100%; height: auto; }
   .notes-section {
     margin: 4px 0 0;
     padding: 10px 14px;
@@ -212,13 +226,26 @@ function buildPrintDocument(
     </tr>`).join('')
     : '<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:12px">Sin atletas registrados por disciplina</td></tr>';
 
-  // Helper: embed captured SVG markup inline
-  function chartBlock(id: string): string {
+  // Helper: embed a chart inside a constrained wrapper
+  function chartBlock(id: string, fullWidth = false): string {
     const svgHtml = charts?.[id];
-    return svgHtml
-      ? `<div class="chart-wrap">${svgHtml}</div>`
-      : '';
+    if (!svgHtml) return '';
+    return `<div class="${fullWidth ? 'chart-wrap-full' : 'chart-wrap'}">${svgHtml}</div>`;
   }
+
+  // Service charts: pie + bar side-by-side (mirrors on-screen 1fr/2fr grid)
+  const serviceChartsHtml = (() => {
+    const pie = charts?.['chart-attendance-pie'];
+    const bar = charts?.['chart-services-bar'];
+    if (!pie && !bar) return '';
+    if (pie && bar) {
+      return `<div class="charts-row">
+        <div style="flex:1.2">${pie}</div>
+        <div style="flex:2">${bar}</div>
+      </div>`;
+    }
+    return `<div class="chart-wrap">${pie ?? bar}</div>`;
+  })();
 
   // Helper: render narrative paragraphs
   const narrativeHtml = narrative
@@ -255,8 +282,7 @@ function buildPrintDocument(
   ${narrativeHtml}
 
   <div class="section-title">Servicios de Salud</div>
-  ${chartBlock('chart-attendance-pie')}
-  ${chartBlock('chart-services-bar')}
+  ${serviceChartsHtml}
   <table>
     <thead>
       <tr>
@@ -301,7 +327,7 @@ function buildPrintDocument(
   </table>
 
   <div class="section-title" style="margin-top:20px">Por Disciplina</div>
-  ${chartBlock('chart-disciplines-bar')}
+  ${chartBlock('chart-disciplines-bar', true)}
   <table>
     <thead>
       <tr>
