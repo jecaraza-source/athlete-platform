@@ -150,9 +150,9 @@ const IFRAME_STYLES = `
     margin: 6px 0 10px;
     page-break-inside: avoid;
   }
-  .charts-row svg,
-  .chart-wrap svg,
-  .chart-wrap-full svg { display: block; width: 100%; height: auto; }
+  .charts-row img, .charts-row svg,
+  .chart-wrap img, .chart-wrap svg,
+  .chart-wrap-full img, .chart-wrap-full svg { display: block; width: 100%; height: auto; }
   .notes-section {
     margin: 4px 0 0;
     padding: 10px 14px;
@@ -226,11 +226,11 @@ function buildPrintDocument(
     </tr>`).join('')
     : '<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:12px">Sin atletas registrados por disciplina</td></tr>';
 
-  // Helper: embed a chart inside a constrained wrapper
+  // Helper: embed a chart PNG inside a constrained wrapper
   function chartBlock(id: string, fullWidth = false): string {
-    const svgHtml = charts?.[id];
-    if (!svgHtml) return '';
-    return `<div class="${fullWidth ? 'chart-wrap-full' : 'chart-wrap'}">${svgHtml}</div>`;
+    const png = charts?.[id];
+    if (!png) return '';
+    return `<div class="${fullWidth ? 'chart-wrap-full' : 'chart-wrap'}"><img src="${png}" alt="gráfica" /></div>`;
   }
 
   // Service charts: pie + bar side-by-side (mirrors on-screen 1fr/2fr grid)
@@ -240,11 +240,11 @@ function buildPrintDocument(
     if (!pie && !bar) return '';
     if (pie && bar) {
       return `<div class="charts-row">
-        <div style="flex:1.2">${pie}</div>
-        <div style="flex:2">${bar}</div>
+        <div style="flex:1.2"><img src="${pie}" alt="Distribución" /></div>
+        <div style="flex:2"><img src="${bar}" alt="Citas por servicio" /></div>
       </div>`;
     }
-    return `<div class="chart-wrap">${pie ?? bar}</div>`;
+    return `<div class="chart-wrap"><img src="${pie ?? bar}" alt="gráfica" /></div>`;
   })();
 
   // Helper: render narrative paragraphs
@@ -352,14 +352,46 @@ function buildPrintDocument(
 </html>`;
 }
 
-/** Serializes each Recharts SVG for inline embedding in the print document.
- *
- * Recharts does not set a viewBox on its SVGs — it uses fixed pixel width/height.
- * Without a viewBox, percentage-based widths don't scale the content correctly.
- * We capture the real rendered dimensions, add viewBox, then set width="100%"
- * so the SVG fills its container and scales properly regardless of iframe size.
+/**
+ * Converts a Recharts SVG to a PNG data URL via offscreen canvas.
+ * PNG is the most reliable format for embedding in a printed iframe —
+ * inline SVG renders as solid color blocks due to clip-path scoping issues.
  */
-function captureCharts(): Record<string, string> {
+async function svgToPng(svg: SVGElement): Promise<string | null> {
+  const rect = svg.getBoundingClientRect();
+  const w = Math.round(rect.width);
+  const h = Math.round(rect.height);
+  if (w === 0 || h === 0) return null;
+
+  const cloned = svg.cloneNode(true) as SVGElement;
+  cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  cloned.setAttribute('width',  String(w));
+  cloned.setAttribute('height', String(h));
+
+  const svgString = new XMLSerializer().serializeToString(cloned);
+  const blob    = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
+
+  return new Promise((resolve) => {
+    const img    = new Image();
+    const canvas = document.createElement('canvas');
+    canvas.width  = w;
+    canvas.height = h;
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(null); return; }
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(null); };
+    img.src = blobUrl;
+  });
+}
+
+async function captureCharts(): Promise<Record<string, string>> {
   const ids = [
     'chart-attendance-pie',
     'chart-services-bar',
@@ -367,36 +399,26 @@ function captureCharts(): Record<string, string> {
     'chart-disciplines-bar',
   ];
   const result: Record<string, string> = {};
-  for (const id of ids) {
-    const el = document.getElementById(id);
-    if (!el) continue;
-    const svg = el.querySelector('svg');
-    if (!svg) continue;
-    const rect = svg.getBoundingClientRect();
-    const w = Math.round(rect.width);
-    const h = Math.round(rect.height);
-    if (w === 0 || h === 0) continue;   // chart not yet rendered
-
-    const cloned = svg.cloneNode(true) as SVGElement;
-    cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-    // viewBox locks the internal coordinate space to the original pixel dimensions
-    cloned.setAttribute('viewBox', `0 0 ${w} ${h}`);
-    // width="100%" + height="auto" (via CSS) lets the SVG fill its container
-    // while preserving the aspect ratio defined by viewBox
-    cloned.setAttribute('width', '100%');
-    cloned.removeAttribute('height');
-    result[id] = cloned.outerHTML;
-  }
+  await Promise.all(
+    ids.map(async (id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const svg = el.querySelector('svg');
+      if (!svg) return;
+      const png = await svgToPng(svg);
+      if (png) result[id] = png;
+    }),
+  );
   return result;
 }
 
-function triggerPrint(
+async function triggerPrint(
   data: ReportData,
   meta: ReportPeriodMeta,
   narrative?: string,
   notes?: string,
 ) {
-  const charts = captureCharts();
+  const charts = await captureCharts();
 
   // Reuse or create a hidden iframe attached to document.body
   const IFRAME_ID = 'report-print-frame';
