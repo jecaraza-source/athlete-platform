@@ -11,6 +11,7 @@
 // ---------------------------------------------------------------------------
 
 import { useState, useEffect }       from 'react';
+import html2canvas                    from 'html2canvas';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -353,44 +354,10 @@ function buildPrintDocument(
 }
 
 /**
- * Converts a Recharts SVG to a PNG data URL via offscreen canvas.
- * PNG is the most reliable format for embedding in a printed iframe —
- * inline SVG renders as solid color blocks due to clip-path scoping issues.
+ * Captures a chart container element as a PNG using html2canvas.
+ * This renders the actual DOM (including all CSS, clip-paths, Tailwind styles)
+ * exactly as the user sees it, avoiding SVG serialisation clip-path issues.
  */
-async function svgToPng(svg: SVGElement): Promise<string | null> {
-  const rect = svg.getBoundingClientRect();
-  const w = Math.round(rect.width);
-  const h = Math.round(rect.height);
-  if (w === 0 || h === 0) return null;
-
-  const cloned = svg.cloneNode(true) as SVGElement;
-  cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  cloned.setAttribute('width',  String(w));
-  cloned.setAttribute('height', String(h));
-
-  const svgString = new XMLSerializer().serializeToString(cloned);
-  const blob    = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-  const blobUrl = URL.createObjectURL(blob);
-
-  return new Promise((resolve) => {
-    const img    = new Image();
-    const canvas = document.createElement('canvas');
-    canvas.width  = w;
-    canvas.height = h;
-    img.onload = () => {
-      URL.revokeObjectURL(blobUrl);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { resolve(null); return; }
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, w, h);
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(null); };
-    img.src = blobUrl;
-  });
-}
-
 async function captureCharts(): Promise<Record<string, string>> {
   const ids = [
     'chart-attendance-pie',
@@ -403,10 +370,17 @@ async function captureCharts(): Promise<Record<string, string>> {
     ids.map(async (id) => {
       const el = document.getElementById(id);
       if (!el) return;
-      const svg = el.querySelector('svg');
-      if (!svg) return;
-      const png = await svgToPng(svg);
-      if (png) result[id] = png;
+      try {
+        const canvas = await html2canvas(el, {
+          backgroundColor: '#0F1117', // match the dark chart background
+          scale:           1.5,       // 1.5× for print-quality sharpness
+          logging:         false,
+          useCORS:         true,
+        });
+        result[id] = canvas.toDataURL('image/png');
+      } catch {
+        // chart capture failed — skip silently
+      }
     }),
   );
   return result;
