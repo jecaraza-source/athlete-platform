@@ -5,7 +5,13 @@ import { requireAdminAccess } from '@/lib/rbac/server';
 
 export default async function AdminPage() {
   const user = await requireAdminAccess();
-  const isAdmin = user.roles.some((r) => ['super_admin', 'admin'].includes(r.code));
+
+  // super_admin / admin / program_director ven la tarjeta de Magazine.
+  // También la ven usuarios con el permiso edit_magazine (ej. event_coordinator).
+  const showMagazine =
+    user.roles.some((r) => ['super_admin', 'admin', 'program_director'].includes(r.code)) ||
+    user.permissions.has('edit_magazine');
+
   const t = await getTranslations('admin');
   const tc = await getTranslations('common');
 
@@ -125,7 +131,7 @@ export default async function AdminPage() {
           </div>
         </Link>
 
-        {isAdmin && (
+        {showMagazine && (
           <Link
             href="/admin/bitacora"
             className="rounded-lg border border-rose-300 bg-rose-50 p-6 hover:bg-rose-100 transition-colors flex items-start gap-4"
