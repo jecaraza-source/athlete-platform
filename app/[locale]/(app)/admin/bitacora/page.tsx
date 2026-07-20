@@ -1,5 +1,5 @@
 import Link                        from 'next/link';
-import { requireAdminAccess }       from '@/lib/rbac/server';
+import { requireMagazineAccess }    from '@/lib/rbac/server';
 import { getAdminActivities }       from '@/lib/bitacora/queries';
 import { StorageUsageIndicator }    from '@/components/bitacora/StorageUsageIndicator';
 import { NarrativeQuickApprove }    from '@/components/bitacora/NarrativeQuickApprove';
@@ -50,7 +50,7 @@ function getEditHref(baseHref: string, etapa: EtapaConfig, narrativeStatus: stri
 }
 
 export default async function AdminBitacoraPage({ params, searchParams }: PageProps) {
-  await requireAdminAccess();
+  await requireMagazineAccess();
 
   const { locale } = await params;
   const sp         = await searchParams;

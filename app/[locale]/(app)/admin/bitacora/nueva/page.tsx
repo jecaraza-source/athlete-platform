@@ -1,5 +1,5 @@
 import Link                    from 'next/link';
-import { requireAdminAccess }  from '@/lib/rbac/server';
+import { requireMagazineAccess } from '@/lib/rbac/server';
 import { ActivityAdminForm }   from '@/components/bitacora/ActivityAdminForm';
 
 interface PageProps {
@@ -7,7 +7,7 @@ interface PageProps {
 }
 
 export default async function NuevaActividadPage({ params }: PageProps) {
-  await requireAdminAccess();
+  await requireMagazineAccess();
   const { locale } = await params;
 
   return (

@@ -255,6 +255,36 @@ export async function assertAdminAccess(): Promise<{ error: string } | null> {
   return null;
 }
 
+/**
+ * Page-level guard for the Bitácora / Magazine module.
+ * Grants access to admins (super_admin, admin, program_director)
+ * AND to users with the `edit_magazine` permission (e.g. event_coordinator).
+ * Redirects to /login or /dashboard on failure.
+ */
+export async function requireMagazineAccess(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect(await loginPath());
+  const isAdmin = user.roles.some((r) =>
+    ['super_admin', 'admin', 'program_director'].includes(r.code)
+  );
+  if (isAdmin || user.permissions.has('edit_magazine')) return user;
+  redirect(await dashboardPath());
+}
+
+/**
+ * Server Action guard for the Bitácora / Magazine module.
+ * Returns null when the caller is an admin OR has the `edit_magazine` permission.
+ */
+export async function assertMagazineAccess(): Promise<{ error: string } | null> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'You must be signed in to perform this action.' };
+  const isAdmin = user.roles.some((r) =>
+    ['super_admin', 'admin', 'program_director'].includes(r.code)
+  );
+  if (isAdmin || user.permissions.has('edit_magazine')) return null;
+  return { error: 'Se requiere acceso al módulo de Revista.' };
+}
+
 // ---------------------------------------------------------------------------
 // API Route Handler guards  (return a Response or null)
 // ---------------------------------------------------------------------------

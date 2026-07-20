@@ -7,7 +7,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin }   from '@/lib/supabase-admin';
-import { assertAdminAccess, getAuthUser } from '@/lib/rbac/server';
+import { assertMagazineAccess, getAuthUser } from '@/lib/rbac/server';
 import { generateUniqueSlug, slugify }   from './slug-utils';
 import { notifyActivityPublished, notifyMagazineIssuePublished } from './notifications';
 import { ACTIVITY_PHOTOS_BUCKET } from '@/lib/storage-config';
@@ -26,7 +26,7 @@ import type {
 export async function createActivity(
   input: ActivityInput
 ): Promise<ActionResult<{ id: string; slug: string }>> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const authUser = await getAuthUser();
@@ -102,7 +102,7 @@ export async function updateActivity(
   id:    string,
   input: Partial<ActivityInput>
 ): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const updates: Record<string, unknown> = {};
@@ -174,7 +174,7 @@ export async function setActivityAthletes(
   activityId: string,
   athleteIds: string[]
 ): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   // Eliminar todos los vínculos anteriores
@@ -202,7 +202,7 @@ export async function publishActivity(
   id:          string,
   sendPush:    boolean = true
 ): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const { data: activity, error: fetchErr } = await supabaseAdmin
@@ -233,7 +233,7 @@ export async function publishActivity(
 }
 
 export async function unpublishActivity(id: string): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const { error } = await supabaseAdmin
@@ -249,7 +249,7 @@ export async function unpublishActivity(id: string): Promise<ActionResult> {
 }
 
 export async function deleteActivity(id: string): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   // Eliminar fotos del storage
@@ -283,7 +283,7 @@ export async function upsertPhotos(
   activityId: string,
   photos:     PhotoInput[]
 ): Promise<ActionResult<{ id: string; storage_path: string }[]>> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   if (photos.length === 0) return { error: null, data: [] };
@@ -312,7 +312,7 @@ export async function deletePhoto(
   photoId:     string,
   storagePath: string
 ): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   // Eliminar del storage primero
@@ -331,7 +331,7 @@ export async function reorderPhotos(
   activityId: string,
   orderedIds: string[]
 ): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const updates = orderedIds.map((photoId, index) =>
@@ -350,7 +350,7 @@ export async function setFeaturedPhoto(
   activityId: string,
   photoId:    string
 ): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   // Quitar featured de todas las fotos de la actividad
@@ -399,7 +399,7 @@ export async function moderateComment(
   commentId: string,
   approved:  boolean
 ): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const { error } = await supabaseAdmin
@@ -413,7 +413,7 @@ export async function moderateComment(
 }
 
 export async function deleteComment(commentId: string): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const { error } = await supabaseAdmin
@@ -430,7 +430,7 @@ export async function deleteComment(commentId: string): Promise<ActionResult> {
 // ---------------------------------------------------------------------------
 
 export async function approveNarrative(narrativeId: string): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const authUser = await getAuthUser();
@@ -452,7 +452,7 @@ export async function approveNarrative(narrativeId: string): Promise<ActionResul
 }
 
 export async function rejectNarrative(narrativeId: string): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const { error } = await supabaseAdmin
@@ -465,7 +465,7 @@ export async function rejectNarrative(narrativeId: string): Promise<ActionResult
 }
 
 export async function deleteNarrative(narrativeId: string): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const { error } = await supabaseAdmin
@@ -487,7 +487,7 @@ export async function createMagazineIssue(data: {
   period_end?:   string;
   activity_ids?: string[];
 }): Promise<ActionResult<{ id: string }>> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const authUser = await getAuthUser();
@@ -514,7 +514,7 @@ export async function updateMagazineIssue(
   id:   string,
   data: { title?: string; period_start?: string; period_end?: string; activity_ids?: string[] }
 ): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const updates: Record<string, unknown> = {};
@@ -539,7 +539,7 @@ export async function publishMagazineIssue(
   id:       string,
   sendPush: boolean = true
 ): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const { data: issue, error: fetchErr } = await supabaseAdmin
@@ -568,7 +568,7 @@ export async function publishMagazineIssue(
 }
 
 export async function deleteMagazineIssue(id: string): Promise<ActionResult> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   const { error } = await supabaseAdmin

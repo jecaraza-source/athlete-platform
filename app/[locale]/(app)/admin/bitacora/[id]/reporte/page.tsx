@@ -1,5 +1,5 @@
 import { notFound }            from 'next/navigation';
-import { requireAdminAccess }   from '@/lib/rbac/server';
+import { requireMagazineAccess }  from '@/lib/rbac/server';
 import { getActivityForReport } from '@/lib/bitacora/queries';
 import { PrintControls }        from '@/components/bitacora/PrintControls';
 import type { ReportAthlete }   from '@/lib/types/bitacora';
@@ -383,7 +383,7 @@ const PAGE_STYLE: React.CSSProperties = {
 };
 
 export default async function ReportePage({ params }: PageProps) {
-  await requireAdminAccess();
+  await requireMagazineAccess();
   const { locale, id } = await params;
 
   const { activity, athletes } = await getActivityForReport(id);

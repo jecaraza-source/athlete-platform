@@ -11,7 +11,7 @@
 
 import { revalidatePath }   from 'next/cache';
 import { supabaseAdmin }    from '@/lib/supabase-admin';
-import { assertAdminAccess } from '@/lib/rbac/server';
+import { assertMagazineAccess } from '@/lib/rbac/server';
 import { upsertPhotos }     from '@/lib/bitacora/actions';
 import type { ActionResult, PhotoInput } from '@/lib/types/bitacora';
 
@@ -41,7 +41,7 @@ export interface ImportablePhoto {
 export async function fetchImportablePhotos(
   excludeActivityId: string,
 ): Promise<ImportablePhoto[]> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return [];
 
   // Two-query approach (avoids PostgREST join naming ambiguity).
@@ -108,7 +108,7 @@ export async function importPhotosToActivity(
   photos: { storage_path: string; caption: string | null; alt_text: string }[],
   startOrder: number,
 ): Promise<ActionResult<{ count: number }>> {
-  const denied = await assertAdminAccess();
+  const denied = await assertMagazineAccess();
   if (denied) return { error: denied.error };
 
   if (photos.length === 0) return { error: 'No hay fotos seleccionadas.' };

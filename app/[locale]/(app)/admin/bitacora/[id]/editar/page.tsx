@@ -1,6 +1,6 @@
 import Link                        from 'next/link';
 import { notFound }                from 'next/navigation';
-import { requireAdminAccess }      from '@/lib/rbac/server';
+import { requireMagazineAccess }   from '@/lib/rbac/server';
 import { getAdminActivityById }    from '@/lib/bitacora/queries';
 import { ActivityAdminForm }       from '@/components/bitacora/ActivityAdminForm';
 import type { AthleteOption }      from '@/components/bitacora/ActivityAdminForm';
@@ -21,7 +21,7 @@ interface PageProps {
 }
 
 export default async function EditarActividadPage({ params }: PageProps) {
-  await requireAdminAccess();
+  await requireMagazineAccess();
   const { locale, id } = await params;
 
   const [activity, athletesRes] = await Promise.all([
