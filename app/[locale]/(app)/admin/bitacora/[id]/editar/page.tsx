@@ -3,6 +3,8 @@ import { notFound }                from 'next/navigation';
 import { requireAdminAccess }      from '@/lib/rbac/server';
 import { getAdminActivityById }    from '@/lib/bitacora/queries';
 import { ActivityAdminForm }       from '@/components/bitacora/ActivityAdminForm';
+import type { AthleteOption }      from '@/components/bitacora/ActivityAdminForm';
+import { supabaseAdmin }           from '@/lib/supabase-admin';
 import { PhotoUploader }           from '@/components/bitacora/PhotoUploader';
 import { NarrativeReviewPanel }    from '@/components/bitacora/NarrativeReviewPanel';
 import { CommentModerationPanel }  from '@/components/bitacora/CommentModerationPanel';
@@ -21,8 +23,30 @@ export default async function EditarActividadPage({ params }: PageProps) {
   await requireAdminAccess();
   const { locale, id } = await params;
 
-  const activity = await getAdminActivityById(id);
+  const [activity, athletesRes] = await Promise.all([
+    getAdminActivityById(id),
+    supabaseAdmin
+      .from('athletes')
+      .select('id, athlete_code, first_name, last_name, discipline')
+      .eq('status', 'active')
+      .order('athlete_code', { ascending: true }),
+  ]);
+
   if (!activity) notFound();
+
+  const allAthletes: AthleteOption[] = (athletesRes.data ?? []).map((a: {
+    id: string;
+    athlete_code: string | null;
+    first_name: string;
+    last_name: string;
+    discipline: string | null;
+  }) => ({
+    id:           a.id,
+    athlete_code: a.athlete_code,
+    first_name:   a.first_name,
+    last_name:    a.last_name,
+    discipline:   a.discipline,
+  }));
 
   // Pre-fetch Historia Gráfica photos server-side to avoid client auth issues
   const importablePhotos = await fetchImportablePhotos(id);
@@ -110,7 +134,12 @@ export default async function EditarActividadPage({ params }: PageProps) {
             </span>
           )}
         </h2>
-        <ActivityAdminForm activity={activity} locale={locale} />
+        <ActivityAdminForm
+          activity={activity}
+          locale={locale}
+          allAthletes={allAthletes}
+          linkedAthletes={activity.athletes}
+        />
       </section>
 
       {/* ── Sección 2: Fotos ────────────────────────────────────────────── */}

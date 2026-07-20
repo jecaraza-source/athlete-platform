@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Activity, ActivityType } from '@/lib/types/bitacora';
+import type { Activity, ActivityAthlete, ActivityType } from '@/lib/types/bitacora';
 import {
   createActivity, updateActivity, publishActivity,
-  unpublishActivity, deleteActivity,
+  unpublishActivity, deleteActivity, setActivityAthletes,
 } from '@/lib/bitacora/actions';
 
 // ── Listas predefinidas para dropdowns ─────────────────────────────────────
@@ -87,13 +87,26 @@ function TextArea({ value, onChange, placeholder, rows = 3, maxLength }: {
   );
 }
 
-// ── Componente principal ─────────────────────────────────────────────────────
-interface ActivityAdminFormProps {
-  activity?: Activity;
-  locale:    string;
+// ── Tipos para el selector de atletas ───────────────────────────────────────
+export interface AthleteOption {
+  id:           string;
+  athlete_code: string | null;
+  first_name:   string;
+  last_name:    string;
+  discipline:   string | null;
 }
 
-export function ActivityAdminForm({ activity, locale }: ActivityAdminFormProps) {
+// ── Componente principal ─────────────────────────────────────────────────────
+interface ActivityAdminFormProps {
+  activity?:        Activity;
+  locale:           string;
+  /** Lista completa de atletas disponibles para seleccionar como beneficiarios */
+  allAthletes?:     AthleteOption[];
+  /** Atletas ya vinculados a esta actividad (para edición) */
+  linkedAthletes?:  ActivityAthlete[];
+}
+
+export function ActivityAdminForm({ activity, locale, allAthletes = [], linkedAthletes = [] }: ActivityAdminFormProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -124,8 +137,16 @@ export function ActivityAdminForm({ activity, locale }: ActivityAdminFormProps) 
   const [sendPush,    setSendPush]    = useState(true);
 
   // Atención Operativa
-  const [atencionActividad, setAtencionActividad] = useState(activity?.atencion_actividad ?? '');
-  const [atencionFecha,     setAtencionFecha]     = useState(activity?.atencion_fecha     ?? '');
+  const [atencionActividad,   setAtencionActividad]   = useState(activity?.atencion_actividad    ?? '');
+  const [atencionFecha,       setAtencionFecha]       = useState(activity?.atencion_fecha        ?? '');
+  const [atencionEntregadoA,  setAtencionEntregadoA]  = useState(activity?.atencion_entregado_a  ?? '');
+  const [atencionEntregadoRol,setAtencionEntregadoRol]= useState(activity?.atencion_entregado_rol ?? '');
+
+  // Beneficiarios (activity_athletes)
+  const [selectedAthleteIds, setSelectedAthleteIds] = useState<string[]>(
+    linkedAthletes.map((a) => a.athlete_id)
+  );
+  const [athleteSearch, setAthleteSearch] = useState('');
 
   // UI state
   const [error,  setError]  = useState<string | null>(null);
@@ -138,27 +159,45 @@ export function ActivityAdminForm({ activity, locale }: ActivityAdminFormProps) 
     return raw.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
   }
 
+  // Atletas filtrados por búsqueda
+  const filteredAthletes = useMemo(() => {
+    const q = athleteSearch.toLowerCase().trim();
+    if (!q) return allAthletes;
+    return allAthletes.filter((a) =>
+      `${a.first_name} ${a.last_name} ${a.athlete_code ?? ''} ${a.discipline ?? ''}`
+        .toLowerCase().includes(q)
+    );
+  }, [allAthletes, athleteSearch]);
+
+  function toggleAthlete(id: string) {
+    setSelectedAthleteIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
   function buildInput() {
     return {
       type,
-      title:                title.trim(),
-      description:          description.trim() || undefined,
-      event_date:           eventDate || undefined,
-      location:             location.trim() || undefined,
-      tags:                 parseTags(tagInput),
-      editorial_eligible:   editorialEl,
-      disciplina:           disciplina  || undefined,
-      especialidad:         especialidad  || undefined,
-      actividad_tipo:       actividadTipo || undefined,
-      sede:                 sede || undefined,
-      horario:              horario || undefined,
-      requerimiento:        requerimiento.trim() || undefined,
-      numero_participantes: numParticipantes ? Number(numParticipantes) : undefined,
-      personal_requerido:   personalRequerido.trim() || undefined,
-      equipo_requerido:     equipoRequerido.trim() || undefined,
-      objetivo:             objetivo.trim() || undefined,
-      atencion_actividad:   atencionActividad.trim() || undefined,
-      atencion_fecha:       atencionFecha || undefined,
+      title:                  title.trim(),
+      description:            description.trim() || undefined,
+      event_date:             eventDate || undefined,
+      location:               location.trim() || undefined,
+      tags:                   parseTags(tagInput),
+      editorial_eligible:     editorialEl,
+      disciplina:             disciplina    || undefined,
+      especialidad:           especialidad  || undefined,
+      actividad_tipo:         actividadTipo || undefined,
+      sede:                   sede          || undefined,
+      horario:                horario       || undefined,
+      requerimiento:          requerimiento.trim()      || undefined,
+      numero_participantes:   numParticipantes ? Number(numParticipantes) : undefined,
+      personal_requerido:     personalRequerido.trim()  || undefined,
+      equipo_requerido:       equipoRequerido.trim()    || undefined,
+      objetivo:               objetivo.trim()           || undefined,
+      atencion_actividad:     atencionActividad.trim()  || undefined,
+      atencion_fecha:         atencionFecha             || undefined,
+      atencion_entregado_a:   atencionEntregadoA.trim() || undefined,
+      atencion_entregado_rol: atencionEntregadoRol.trim() || undefined,
     };
   }
 
@@ -166,12 +205,22 @@ export function ActivityAdminForm({ activity, locale }: ActivityAdminFormProps) 
     if (!title.trim()) { setError('El título es requerido.'); return; }
     setSaving(true);
     setError(null);
-    const result = isNew
-      ? await createActivity(buildInput())
-      : await updateActivity(activity.id, buildInput());
-    setSaving(false);
-    if (result.error) { setError(result.error); return; }
-    if (isNew && result.data) router.push(`/${locale}/admin/bitacora/${result.data.id}/editar`);
+
+    if (isNew) {
+      const result = await createActivity({ ...buildInput(), athlete_ids: selectedAthleteIds });
+      setSaving(false);
+      if (result.error) { setError(result.error); return; }
+      if (result.data) router.push(`/${locale}/admin/bitacora/${result.data.id}/editar`);
+    } else {
+      const [actResult, athleteResult] = await Promise.all([
+        updateActivity(activity.id, buildInput()),
+        setActivityAthletes(activity.id, selectedAthleteIds),
+      ]);
+      setSaving(false);
+      if (actResult.error)    { setError(actResult.error);    return; }
+      if (athleteResult.error){ setError(athleteResult.error); return; }
+      router.refresh();
+    }
   }
 
   async function handlePublish() {
@@ -404,7 +453,7 @@ export function ActivityAdminForm({ activity, locale }: ActivityAdminFormProps) 
         </div>
       </section>
 
-      {/* ── Sección 5: Atención Operativa ────────────────────────────────── */}
+      {/* ── Sección 5: Atención Operativa ──────────────────────────────────── */}
       <section className="bg-blue-50 border border-blue-200 rounded-xl p-5 flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <span className="text-blue-600 text-lg">📋</span>
@@ -417,16 +466,17 @@ export function ActivityAdminForm({ activity, locale }: ActivityAdminFormProps) 
           Esta sección es solo para uso interno del staff. No se muestra públicamente.
         </p>
 
+        {/* Qué se entregó y fecha */}
         <div className="grid sm:grid-cols-2 gap-3">
           <Field>
-            <Label>Actividad</Label>
+            <Label>Descripción de la atención</Label>
             <TextInput
               value={atencionActividad} onChange={setAtencionActividad}
-              placeholder="Describe la atención operativa requerida…"
+              placeholder="ej. 6 botes de Gatorade en polvo 2.38 kg…"
             />
           </Field>
           <Field>
-            <Label>Fecha</Label>
+            <Label>Fecha de entrega</Label>
             <input
               type="date" value={atencionFecha}
               onChange={(e) => setAtencionFecha(e.target.value)}
@@ -434,7 +484,112 @@ export function ActivityAdminForm({ activity, locale }: ActivityAdminFormProps) 
             />
           </Field>
         </div>
+
+        {/* A quién se entregó */}
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field>
+            <Label>Entregado a</Label>
+            <TextInput
+              value={atencionEntregadoA} onChange={setAtencionEntregadoA}
+              placeholder="Nombre completo de quien recibió el apoyo"
+            />
+          </Field>
+          <Field>
+            <Label>Cargo / Rol</Label>
+            <TextInput
+              value={atencionEntregadoRol} onChange={setAtencionEntregadoRol}
+              placeholder="ej. Entrenador de atletismo, Médico del equipo"
+            />
+          </Field>
+        </div>
       </section>
+
+      {/* ── Sección 6: Beneficiarios (activity_athletes) ──────────────── */}
+      {allAthletes.length > 0 && (
+        <section className="bg-white border border-gray-200 rounded-xl p-5 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 text-lg">🏅</span>
+              <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+                Atletas Beneficiarios
+              </h3>
+            </div>
+            <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+              {selectedAthleteIds.length} seleccionado{selectedAthleteIds.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          {/* Chips de seleccionados */}
+          {selectedAthleteIds.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedAthleteIds.map((aid) => {
+                const a = allAthletes.find((x) => x.id === aid);
+                if (!a) return null;
+                return (
+                  <span
+                    key={aid}
+                    className="inline-flex items-center gap-1 bg-red-50 border border-red-200 text-red-700 text-xs font-medium px-2 py-1 rounded-full"
+                  >
+                    <span>{a.athlete_code ? `${a.athlete_code} — ` : ''}{a.first_name} {a.last_name}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleAthlete(aid)}
+                      className="ml-0.5 hover:text-red-900 transition-colors"
+                      aria-label="Quitar"
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Buscador */}
+          <input
+            type="text"
+            value={athleteSearch}
+            onChange={(e) => setAthleteSearch(e.target.value)}
+            placeholder="Buscar por nombre, folio o disciplina…"
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+          />
+
+          {/* Lista de atletas */}
+          <div className="max-h-56 overflow-y-auto border border-gray-100 rounded-lg divide-y divide-gray-50">
+            {filteredAthletes.length === 0 ? (
+              <p className="text-xs text-gray-400 p-3 text-center">Sin resultados</p>
+            ) : (
+              filteredAthletes.map((a) => {
+                const selected = selectedAthleteIds.includes(a.id);
+                return (
+                  <label
+                    key={a.id}
+                    className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors text-sm ${
+                      selected ? 'bg-red-50' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => toggleAthlete(a.id)}
+                      className="accent-red-600 shrink-0"
+                    />
+                    <span className="flex-1 min-w-0">
+                      <span className="font-medium text-gray-800">{a.first_name} {a.last_name}</span>
+                      {a.athlete_code && (
+                        <span className="ml-2 text-xs text-gray-400">{a.athlete_code}</span>
+                      )}
+                    </span>
+                    {a.discipline && (
+                      <span className="text-xs text-gray-400 shrink-0 capitalize">{a.discipline.replace('_', ' ')}</span>
+                    )}
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ── Error ─────────────────────────────────────────────────────────── */}
       {error && (

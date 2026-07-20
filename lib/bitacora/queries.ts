@@ -9,6 +9,7 @@ import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import type {
   Activity,
+  ActivityAthlete,
   ActivityCardData,
   ActivityFilters,
   ActivityNarrative,
@@ -154,6 +155,7 @@ export async function getPublicActivityBySlug(
     photos:    (photosRes.data   ?? []) as ActivityPhoto[],
     narrative: narrativeRes.data ?? null,
     comments:  (commentsRes.data ?? []).map((c) => ({ ...c, author_email: null })),
+    athletes:  [],  // atletas beneficiarios solo disponibles en vista admin
   };
 }
 
@@ -249,7 +251,7 @@ export async function getAdminActivityById(
 
   if (error || !activity) return null;
 
-  const [photosRes, narrativeRes, commentsRes] = await Promise.all([
+  const [photosRes, narrativeRes, commentsRes, athletesRes] = await Promise.all([
     supabaseAdmin
       .from('activity_photos')
       .select('*')
@@ -267,13 +269,30 @@ export async function getAdminActivityById(
       .select('*')
       .eq('activity_id', id)
       .order('created_at', { ascending: true }),
+
+    supabaseAdmin
+      .from('activity_athletes')
+      .select('id, athlete_id, athletes(athlete_code, first_name, last_name, discipline)')
+      .eq('activity_id', id)
+      .order('created_at', { ascending: true }),
   ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const athletes: ActivityAthlete[] = (athletesRes.data ?? []).map((row: any) => ({
+    id:           row.id,
+    athlete_id:   row.athlete_id,
+    athlete_code: row.athletes?.athlete_code ?? null,
+    first_name:   row.athletes?.first_name   ?? '',
+    last_name:    row.athletes?.last_name    ?? '',
+    discipline:   row.athletes?.discipline   ?? null,
+  }));
 
   return {
     ...(activity as Activity),
     photos:    (photosRes.data   ?? []) as ActivityPhoto[],
     narrative: narrativeRes.data ?? null,
     comments:  commentsRes.data  ?? [],
+    athletes,
   };
 }
 

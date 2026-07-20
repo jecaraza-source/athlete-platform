@@ -39,8 +39,10 @@ export interface Activity {
   equipo_requerido:     string | null;
   objetivo:             string | null;
   // Atención Operativa (interno)
-  atencion_actividad:   string | null;
-  atencion_fecha:       string | null;
+  atencion_actividad:    string | null;
+  atencion_fecha:        string | null;
+  atencion_entregado_a:  string | null;  // nombre de quien recibió el apoyo
+  atencion_entregado_rol: string | null; // cargo/rol de quien recibió
 }
 
 export interface ActivityPhoto {
@@ -93,6 +95,16 @@ export interface MagazineIssue {
 // Joins y vistas compuestas
 // ---------------------------------------------------------------------------
 
+/** Atleta vinculado a una actividad (beneficiario). */
+export interface ActivityAthlete {
+  id:           string;  // activity_athletes.id
+  athlete_id:   string;
+  athlete_code: string | null;
+  first_name:   string;
+  last_name:    string;
+  discipline:   string | null;
+}
+
 /** Actividad con sus fotos y (opcionalmente) narrativa aprobada. */
 export interface ActivityWithRelations extends Activity {
   photos:    ActivityPhoto[];
@@ -100,6 +112,8 @@ export interface ActivityWithRelations extends Activity {
   narrative: ActivityNarrative | null;
   /** Comentarios aprobados (para vistas públicas) o todos (para admin). */
   comments:  ActivityComment[];
+  /** Atletas beneficiarios vinculados (admin only). */
+  athletes:  ActivityAthlete[];
 }
 
 /** Datos mínimos para la tarjeta del timeline público. */
@@ -165,27 +179,31 @@ export interface RevistaFilters {
 // ---------------------------------------------------------------------------
 
 export interface ActivityInput {
-  type:                 ActivityType;
-  title:                string;
-  slug?:                string;
-  description?:         string;
-  event_date?:          string;
-  location?:            string;
-  tags?:                string[];
-  editorial_eligible?:  boolean;
+  type:                   ActivityType;
+  title:                  string;
+  slug?:                  string;
+  description?:           string;
+  event_date?:            string;
+  location?:              string;
+  tags?:                  string[];
+  editorial_eligible?:    boolean;
   // Campos extendidos
-  disciplina?:          string;
-  especialidad?:        string;
-  actividad_tipo?:      string;
-  sede?:                string;
-  horario?:             string;
-  requerimiento?:       string;
-  numero_participantes?: number;
-  personal_requerido?:  string;
-  equipo_requerido?:    string;
-  objetivo?:            string;
-  atencion_actividad?:  string;
-  atencion_fecha?:      string;
+  disciplina?:            string;
+  especialidad?:          string;
+  actividad_tipo?:        string;
+  sede?:                  string;
+  horario?:               string;
+  requerimiento?:         string;
+  numero_participantes?:  number;
+  personal_requerido?:    string;
+  equipo_requerido?:      string;
+  objetivo?:              string;
+  atencion_actividad?:    string;
+  atencion_fecha?:        string;
+  atencion_entregado_a?:  string;
+  atencion_entregado_rol?: string;
+  /** IDs de atletas beneficiarios (se persisten en activity_athletes). */
+  athlete_ids?:           string[];
 }
 
 export interface PhotoInput {

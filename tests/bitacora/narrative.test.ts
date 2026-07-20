@@ -53,19 +53,22 @@ vi.mock('@/lib/storage-config', () => ({
 
 // Campos extendidos que se agregó a Activity después de crear los tests originales
 const NULL_EXTENDED_FIELDS = {
-  disciplina:           null,
-  especialidad:         null,
-  actividad_tipo:       null,
-  sede:                 null,
-  horario:              null,
-  requerimiento:        null,
-  numero_participantes: null,
-  personal_requerido:   null,
-  equipo_requerido:     null,
-  objetivo:             null,
-  atencion_actividad:   null,
-  atencion_fecha:       null,
-} as const;
+  disciplina:             null,
+  especialidad:           null,
+  actividad_tipo:         null,
+  sede:                   null,
+  horario:                null,
+  requerimiento:          null,
+  numero_participantes:   null,
+  personal_requerido:     null,
+  equipo_requerido:       null,
+  objetivo:               null,
+  atencion_actividad:     null,
+  atencion_fecha:         null,
+  atencion_entregado_a:   null,
+  atencion_entregado_rol: null,
+  athletes:               [] as never[],
+};
 
 describe('generateNarrative privacy guard', () => {
   it('throws when activity is not editorial_eligible', async () => {

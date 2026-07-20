@@ -76,13 +76,22 @@ export async function createActivity(
       personal_requerido:   input.personal_requerido   ?? null,
       equipo_requerido:     input.equipo_requerido     ?? null,
       objetivo:             input.objetivo             ?? null,
-      atencion_actividad:   input.atencion_actividad   ?? null,
-      atencion_fecha:       input.atencion_fecha        ?? null,
+      atencion_actividad:    input.atencion_actividad    ?? null,
+      atencion_fecha:         input.atencion_fecha         ?? null,
+      atencion_entregado_a:   input.atencion_entregado_a  ?? null,
+      atencion_entregado_rol: input.atencion_entregado_rol ?? null,
     })
     .select('id, slug')
     .single();
 
   if (error) return { error: error.message };
+
+  // Vincular atletas beneficiarios si se proporcionaron
+  if (input.athlete_ids && input.athlete_ids.length > 0) {
+    await supabaseAdmin
+      .from('activity_athletes')
+      .insert(input.athlete_ids.map((aid) => ({ activity_id: data.id, athlete_id: aid })));
+  }
 
   revalidatePath('/bitacora');
   revalidatePath('/admin/bitacora');
@@ -113,8 +122,10 @@ export async function updateActivity(
   if (input.personal_requerido   !== undefined) updates.personal_requerido   = input.personal_requerido   ?? null;
   if (input.equipo_requerido     !== undefined) updates.equipo_requerido     = input.equipo_requerido     ?? null;
   if (input.objetivo             !== undefined) updates.objetivo             = input.objetivo             ?? null;
-  if (input.atencion_actividad   !== undefined) updates.atencion_actividad   = input.atencion_actividad   ?? null;
-  if (input.atencion_fecha       !== undefined) updates.atencion_fecha       = input.atencion_fecha       ?? null;
+  if (input.atencion_actividad    !== undefined) updates.atencion_actividad    = input.atencion_actividad    ?? null;
+  if (input.atencion_fecha        !== undefined) updates.atencion_fecha        = input.atencion_fecha        ?? null;
+  if (input.atencion_entregado_a  !== undefined) updates.atencion_entregado_a  = input.atencion_entregado_a  ?? null;
+  if (input.atencion_entregado_rol !== undefined) updates.atencion_entregado_rol = input.atencion_entregado_rol ?? null;
 
   // Si cambia el título, regenerar el slug
   if (input.title && !input.slug) {
@@ -152,6 +163,38 @@ export async function updateActivity(
   revalidatePath('/bitacora');
   revalidatePath('/admin/bitacora');
   revalidatePath(`/admin/bitacora/${id}/editar`);
+  return { error: null };
+}
+
+/**
+ * Reemplaza la lista completa de atletas beneficiarios de una actividad.
+ * Estrategia delete-then-insert para mantener la tabla limpia.
+ */
+export async function setActivityAthletes(
+  activityId: string,
+  athleteIds: string[]
+): Promise<ActionResult> {
+  const denied = await assertAdminAccess();
+  if (denied) return { error: denied.error };
+
+  // Eliminar todos los vínculos anteriores
+  const { error: delErr } = await supabaseAdmin
+    .from('activity_athletes')
+    .delete()
+    .eq('activity_id', activityId);
+
+  if (delErr) return { error: delErr.message };
+
+  // Insertar los nuevos (si los hay)
+  if (athleteIds.length > 0) {
+    const rows = athleteIds.map((aid) => ({ activity_id: activityId, athlete_id: aid }));
+    const { error: insErr } = await supabaseAdmin
+      .from('activity_athletes')
+      .insert(rows);
+    if (insErr) return { error: insErr.message };
+  }
+
+  revalidatePath(`/admin/bitacora/${activityId}/editar`);
   return { error: null };
 }
 

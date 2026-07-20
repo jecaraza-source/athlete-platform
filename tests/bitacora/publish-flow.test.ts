@@ -503,6 +503,8 @@ function makeBaseActivity(overrides: object) {
     horario: null, requerimiento: null, numero_participantes: null,
     personal_requerido: null, equipo_requerido: null, objetivo: null,
     atencion_actividad: null, atencion_fecha: null,
+    atencion_entregado_a: null, atencion_entregado_rol: null,
+    athletes: [],
     // Core fields
     id: 'act-1', type: 'evento_deportivo' as const, title: 'Test',
     slug: 'test', description: null, event_date: null, location: null,
