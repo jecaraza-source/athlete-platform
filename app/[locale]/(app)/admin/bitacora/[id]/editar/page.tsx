@@ -14,6 +14,7 @@ import { MagazineActionBar }       from '@/components/bitacora/MagazineActionBar
 import { GalleryPhotoImporter }    from '@/components/bitacora/GalleryPhotoImporter';
 import { fetchImportablePhotos }   from '@/lib/historiaGraficaQueries';
 import { computePublishSteps }     from '@/lib/bitacora/stepper-logic';
+import { EntregablesCallout }      from '@/components/bitacora/EntregablesCallout';
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -95,6 +96,13 @@ export default async function EditarActividadPage({ params }: PageProps) {
 
         {/* Quick external links */}
         <div className="flex shrink-0 gap-2">
+          {/* Entregables link — siempre visible en el flujo editorial */}
+          <Link
+            href={`/${locale}/admin/bitacora/${id}/reporte`}
+            className="text-xs border border-emerald-500 text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors font-semibold"
+          >
+            🖨 Entregables
+          </Link>
           {isPublished && (
             <Link
               href={`/${locale}/bitacora/${activity.slug}`}
@@ -121,8 +129,16 @@ export default async function EditarActividadPage({ params }: PageProps) {
       {/* ── Stepper: flujo de 6 pasos ───────────────────────────────────── */}
       <BitacoraPublishStepper activity={activity} locale={locale} />
 
-      {/* ── Siguiente acción: banner contextual ────────────────────────── */}
+      {/* ── Siguiente acción: banner contextual ─────────────────────────────────── */}
       <NextActionCallout activity={activity} />
+
+      {/* ── Entregables Operativos ─────────────────────────────────────── */}
+      <EntregablesCallout
+        activityId={id}
+        locale={locale}
+        athletes={activity.athletes}
+        atencionCompleta={!!(activity.atencion_actividad && activity.atencion_entregado_a && activity.atencion_fecha)}
+      />
 
       {/* ── Sección 1: Información ─────────────────────────────────────── */}
       <section id="section-info" className="scroll-mt-6">

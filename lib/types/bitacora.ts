@@ -95,6 +95,21 @@ export interface MagazineIssue {
 // Joins y vistas compuestas
 // ---------------------------------------------------------------------------
 
+/** Atleta con datos demográficos completos para generación de reportes entregables. */
+export interface ReportAthlete {
+  athlete_id:    string;
+  athlete_code:  string | null;
+  first_name:    string;
+  last_name:     string;
+  discipline:    string | null;
+  sex:           string | null;   // 'H' | 'M'
+  date_of_birth: string | null;   // ISO date
+  curp:          string | null;
+  cp:            string | null;
+  colonia:       string | null;
+  phone:         string | null;
+}
+
 /** Atleta vinculado a una actividad (beneficiario). */
 export interface ActivityAthlete {
   id:           string;  // activity_athletes.id

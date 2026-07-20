@@ -17,6 +17,7 @@ import type {
   ActivityWithRelations,
   MagazineArticle,
   MagazineIssue,
+  ReportAthlete,
   RevistaFilters,
 } from '@/lib/types/bitacora';
 
@@ -459,6 +460,51 @@ export async function getMagazineIssueById(id: string): Promise<{
     });
 
   return { issue: issue as MagazineIssue, articles };
+}
+
+// ---------------------------------------------------------------------------
+// Reportes entregables
+// ---------------------------------------------------------------------------
+
+/**
+ * Datos completos para generar los 3 reportes entregables de una actividad.
+ * Incluye todos los campos demográficos de atletas (CURP, CP, colonia, teléfono).
+ */
+export async function getActivityForReport(id: string): Promise<{
+  activity: Activity | null;
+  athletes: ReportAthlete[];
+}> {
+  const [actRes, athletesRes] = await Promise.all([
+    supabaseAdmin
+      .from('activities')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle(),
+
+    supabaseAdmin
+      .from('activity_athletes')
+      .select(
+        'athlete_id, athletes(athlete_code, first_name, last_name, discipline, sex, date_of_birth, curp, cp, colonia, phone)'
+      )
+      .eq('activity_id', id)
+      .order('created_at', { ascending: true }),
+  ]);
+
+  const athletes: ReportAthlete[] = (athletesRes.data ?? []).map((row: any) => ({
+    athlete_id:    row.athlete_id,
+    athlete_code:  row.athletes?.athlete_code  ?? null,
+    first_name:    row.athletes?.first_name    ?? '',
+    last_name:     row.athletes?.last_name     ?? '',
+    discipline:    row.athletes?.discipline    ?? null,
+    sex:           row.athletes?.sex           ?? null,
+    date_of_birth: row.athletes?.date_of_birth ?? null,
+    curp:          row.athletes?.curp          ?? null,
+    cp:            row.athletes?.cp            ?? null,
+    colonia:       row.athletes?.colonia       ?? null,
+    phone:         row.athletes?.phone         ?? null,
+  }));
+
+  return { activity: actRes.data as Activity | null, athletes };
 }
 
 // ---------------------------------------------------------------------------
