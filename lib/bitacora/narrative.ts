@@ -127,8 +127,9 @@ Tipo de actividad: ${activity.actividad_tipo ?? 'No especificado'}
 Número de participantes: ${activity.numero_participantes ?? 'No especificado'}
 Personal requerido: ${activity.personal_requerido ?? 'No especificado'}
 Objetivo: ${activity.objetivo ?? 'Sin objetivo declarado'}
-Descripción: ${activity.description ?? 'Sin descripción adicional'}
 Tags: ${activity.tags.length > 0 ? activity.tags.join(', ') : 'Ninguno'}
+
+${activity.description ? `=== DESCRIPCIÓN EDITORIAL DEL EVENTO ===\n(Texto redactado por el staff. DEBES incorporar activamente su contenido, contexto y detalles específicos a lo largo de la narrativa. No lo omitas ni lo resumas en una sola línea.)\n${activity.description}` : ''}
 
 ${photoContextLines ? `=== CONTEXTO DE FOTOS ===\n${photoContextLines}\n` : ''}
 === FOTOS DEL EVENTO ===

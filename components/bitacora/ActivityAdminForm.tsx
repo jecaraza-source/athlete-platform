@@ -328,13 +328,13 @@ export function ActivityAdminForm({ activity, locale, allAthletes = [], linkedAt
         </Field>
 
         <Field>
-          <Label>Descripción <span className="text-gray-400 text-xs">(~300 caracteres)</span></Label>
+          <Label>Descripción <span className="text-gray-400 text-xs">(hasta ~500 palabras)</span></Label>
           <TextArea
             value={description} onChange={setDescription}
-            placeholder="Descripción breve del evento…"
-            rows={3} maxLength={400}
+            placeholder="Descripción detallada del evento. Incluye contexto, momentos destacados, logros, ambiente y cualquier detalle relevante. Esta descripción será usada por la IA para generar la narrativa editorial."
+            rows={7} maxLength={2500}
           />
-          <span className="text-xs text-gray-400 text-right">{description.length}/400</span>
+          <span className="text-xs text-gray-400 text-right">{description.length}/2500</span>
         </Field>
 
         <div className="grid sm:grid-cols-2 gap-3">
