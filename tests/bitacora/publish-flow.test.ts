@@ -329,8 +329,9 @@ vi.mock('@/lib/supabase-admin', () => ({
 }));
 
 vi.mock('@/lib/rbac/server', () => ({
-  assertAdminAccess: vi.fn().mockResolvedValue(null),
-  getAuthUser:       vi.fn().mockResolvedValue({ id: 'admin-uuid' }),
+  assertAdminAccess:    vi.fn().mockResolvedValue(null),
+  assertMagazineAccess: vi.fn().mockResolvedValue(null),
+  getAuthUser:          vi.fn().mockResolvedValue({ id: 'admin-uuid' }),
 }));
 
 vi.mock('@/lib/bitacora/notifications', () => ({

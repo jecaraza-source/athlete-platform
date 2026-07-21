@@ -34,8 +34,9 @@ vi.mock('@/lib/supabase-admin', () => ({
 }));
 
 vi.mock('@/lib/rbac/server', () => ({
-  assertAdminAccess: vi.fn().mockResolvedValue(null),
-  getAuthUser:       vi.fn().mockResolvedValue({ id: 'user-uuid' }),
+  assertAdminAccess:    vi.fn().mockResolvedValue(null),
+  assertMagazineAccess: vi.fn().mockResolvedValue(null),
+  getAuthUser:          vi.fn().mockResolvedValue({ id: 'user-uuid' }),
 }));
 
 vi.mock('@/lib/bitacora/notifications', () => ({
@@ -106,15 +107,16 @@ describe('submitComment', () => {
 
 describe('createActivity', () => {
   it('should deny non-admin access', async () => {
-    const { assertAdminAccess } = await import('@/lib/rbac/server');
-    vi.mocked(assertAdminAccess).mockResolvedValueOnce({ error: 'Admin access required.' });
+    // createActivity uses assertMagazineAccess (allows event_coordinators)
+    const { assertMagazineAccess } = await import('@/lib/rbac/server');
+    vi.mocked(assertMagazineAccess).mockResolvedValueOnce({ error: 'Se requiere acceso al módulo de Revista.' });
 
     const { createActivity } = await import('@/lib/bitacora/actions');
     const result = await createActivity({
       type:  'evento_deportivo',
       title: 'Test event',
     });
-    expect(result.error).toBe('Admin access required.');
+    expect(result.error).toBe('Se requiere acceso al módulo de Revista.');
   });
 });
 
