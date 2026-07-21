@@ -1,5 +1,6 @@
 import './globals.css';
 import { headers } from 'next/headers';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export default async function RootLayout({
   children,
@@ -10,7 +11,10 @@ export default async function RootLayout({
   const locale = headersList.get('x-next-intl-locale') ?? 'en';
   return (
     <html lang={locale}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }
