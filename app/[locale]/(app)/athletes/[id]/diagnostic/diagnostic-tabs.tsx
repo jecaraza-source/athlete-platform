@@ -20,6 +20,7 @@ import {
   type PhysioEvaluation,
   type IntegratedResults,
 } from '@/lib/types/diagnostic';
+import type { Plan } from '@/lib/plans/actions';
 import MedicalForm from './medical-form';
 import NutritionForm from './nutrition-form';
 import PsychologyForm from './psychology-form';
@@ -66,6 +67,10 @@ type Props = {
   allowedSections?: DiagnosticSectionKey[];
   /** Whether the "Resultado Integrado" tab is visible for this user. */
   canViewIntegratedResult?: boolean;
+  /** Training plans assigned to the athlete, shown in the Entrenador tab. */
+  trainingPlans?: Plan[];
+  /** Signed download URLs keyed by plan ID. */
+  trainingPlanSignedUrls?: Record<string, string | null>;
 };
 
 // ---------------------------------------------------------------------------
@@ -127,6 +132,8 @@ export default function DiagnosticTabs({
   labStudiesPanel,
   allowedSections = SECTION_KEYS,
   canViewIntegratedResult = false,
+  trainingPlans = [],
+  trainingPlanSignedUrls = {},
 }: Props) {
   type TabKey = DiagnosticSectionKey | 'resultado_integrado';
   const [activeTab, setActiveTab] = useState<TabKey>(allowedSections[0] ?? 'medico');
@@ -268,6 +275,8 @@ export default function DiagnosticTabs({
               athleteId={athlete.id}
               sectionStatus={(sectionMap['entrenador']?.status as DiagnosticStatus) ?? 'pendiente'}
               existingData={evaluations.entrenador}
+              trainingPlans={trainingPlans}
+              trainingPlanSignedUrls={trainingPlanSignedUrls}
             />
             {attachmentPanels['entrenador']}
           </>

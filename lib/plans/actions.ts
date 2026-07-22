@@ -177,6 +177,37 @@ export async function getAvailableDisciplines(): Promise<DisciplineOption[]> {
   return (data ?? []) as DisciplineOption[];
 }
 
+/** Returns training plans assigned to a specific athlete (all statuses). For staff/diagnostic view. */
+export async function getTrainingPlansForAthlete(athleteId: string): Promise<Plan[]> {
+  const { data: assignedRows } = await supabaseAdmin
+    .from('athlete_plans')
+    .select('plan_id')
+    .eq('athlete_id', athleteId);
+
+  const planIds = (assignedRows ?? []).map((r: { plan_id: string }) => r.plan_id);
+  if (planIds.length === 0) return [];
+
+  const { data, error } = await supabaseAdmin
+    .from('plans')
+    .select(`
+      *,
+      athlete_plans (
+        athlete_id,
+        assignment_mode,
+        athletes ( first_name, last_name )
+      )
+    `)
+    .in('id', planIds)
+    .eq('type', 'training')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[plans] getTrainingPlansForAthlete:', error.message);
+    return [];
+  }
+  return (data ?? []) as Plan[];
+}
+
 /** Returns all active athletes for the assignment picker. */
 export async function getActiveAthletes(): Promise<AthleteSummary[]> {
   const { data, error } = await supabaseAdmin

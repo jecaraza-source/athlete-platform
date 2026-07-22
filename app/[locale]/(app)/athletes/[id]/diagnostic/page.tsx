@@ -6,6 +6,7 @@ import BackButton from '@/components/back-button';
 import DiagnosticTabs from './diagnostic-tabs';
 import AttachmentsLoader from '@/components/attachments/attachments-loader';
 import { SECTION_KEYS, type DiagnosticSectionKey } from '@/lib/types/diagnostic';
+import { getTrainingPlansForAthlete, getPlanSignedUrl } from '@/lib/plans/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,6 +117,20 @@ export default async function DiagnosticPage({
       ])
   ) as Partial<Record<DiagnosticSectionKey, React.ReactNode>>;
 
+  // Fetch training plans for the athlete — only when the coach section is accessible
+  const trainingPlans = allowedSections.includes('entrenador')
+    ? await getTrainingPlansForAthlete(id)
+    : [];
+
+  const trainingPlanSignedUrls: Record<string, string | null> = {};
+  await Promise.all(
+    trainingPlans
+      .filter((p) => p.file_path)
+      .map(async (p) => {
+        trainingPlanSignedUrls[p.id] = await getPlanSignedUrl(p.file_path!);
+      })
+  );
+
   // Panel de estudios de laboratorio y gabinete — solo si el usuario puede ver la sección médica.
   const labStudiesPanel = allowedSections.includes('medico') ? (
     <AttachmentsLoader
@@ -149,6 +164,8 @@ export default async function DiagnosticPage({
         labStudiesPanel={labStudiesPanel}
         allowedSections={allowedSections}
         canViewIntegratedResult={canViewIntegratedResult}
+        trainingPlans={trainingPlans}
+        trainingPlanSignedUrls={trainingPlanSignedUrls}
       />
     </main>
   );

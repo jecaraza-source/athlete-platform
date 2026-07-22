@@ -1,9 +1,121 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { saveCoachSection } from './actions';
+import { saveCoachSection, completeCoachSectionFromPlans } from './actions';
 import type { DiagnosticStatus, CoachEvaluation } from '@/lib/types/diagnostic';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/types/diagnostic';
+
+// ---------------------------------------------------------------------------
+// Training plans panel types & helpers
+// ---------------------------------------------------------------------------
+
+type TrainingPlan = {
+  id:           string;
+  title:        string;
+  description:  string | null;
+  notes:        string | null;
+  file_name:    string | null;
+  file_size:    number | null;
+  created_at:   string;
+  is_published: boolean;
+};
+
+function formatSize(bytes: number | null): string {
+  if (!bytes) return '';
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function TrainingPlansPanel({
+  plans,
+  signedUrls,
+  isComplete,
+  onCompleteFromPlans,
+  completing,
+  completeError,
+}: {
+  plans:               TrainingPlan[];
+  signedUrls:          Record<string, string | null>;
+  isComplete:          boolean;
+  onCompleteFromPlans: () => void;
+  completing:          boolean;
+  completeError:       string | null;
+}) {
+  if (plans.length === 0) {
+    return (
+      <div className="mb-6 rounded-lg border border-dashed border-blue-200 bg-blue-50 p-4">
+        <p className="text-sm font-semibold text-blue-700 mb-1">📋 Planes de Entrenamiento</p>
+        <p className="text-xs text-blue-500">No hay planes de entrenamiento asignados a este atleta aún.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          📋 Planes de Entrenamiento asignados
+          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-normal text-blue-700">
+            {plans.length}
+          </span>
+        </p>
+        {!isComplete && (
+          <button
+            type="button"
+            onClick={onCompleteFromPlans}
+            disabled={completing}
+            className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+          >
+            {completing ? '⏳ Completando…' : '✓ Completar rubro desde plan'}
+          </button>
+        )}
+      </div>
+      {completeError && (
+        <p className="mb-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">{completeError}</p>
+      )}
+      <div className="space-y-2">
+        {plans.map((plan) => {
+          const signedUrl = signedUrls[plan.id] ?? null;
+          const date = new Date(plan.created_at).toLocaleDateString('es-MX', {
+            day: '2-digit', month: 'short', year: 'numeric',
+          });
+          return (
+            <div key={plan.id} className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{plan.title}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {date}
+                    {plan.file_name && ` · ${plan.file_name}`}
+                    {plan.file_size ? ` · ${formatSize(plan.file_size)}` : ''}
+                  </p>
+                  {plan.description && (
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">{plan.description}</p>
+                  )}
+                </div>
+                <div className="shrink-0 flex items-center gap-2">
+                  {!plan.is_published && (
+                    <span className="text-xs text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">Borrador</span>
+                  )}
+                  {signedUrl && (
+                    <a
+                      href={signedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      Ver PDF ↗
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -26,11 +138,19 @@ function Textarea({ label, name, defaultValue, placeholder, rows = 3 }: {
 }
 
 export default function CoachForm({
-  athleteId, sectionStatus, existingData,
-}: { athleteId: string; sectionStatus: DiagnosticStatus; existingData: CoachEvaluation | null; }) {
+  athleteId, sectionStatus, existingData, trainingPlans = [], trainingPlanSignedUrls = {},
+}: {
+  athleteId:               string;
+  sectionStatus:           DiagnosticStatus;
+  existingData:            CoachEvaluation | null;
+  trainingPlans?:          TrainingPlan[];
+  trainingPlanSignedUrls?: Record<string, string | null>;
+}) {
   const [error, setError]           = useState<string | null>(null);
   const [success, setSuccess]       = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [completing, setCompleting]  = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
   const formRef                     = useRef<HTMLFormElement>(null);
   const d                           = existingData;
   const isComplete                  = sectionStatus === 'completo';
@@ -44,8 +164,27 @@ export default function CoachForm({
     });
   }
 
+  async function handleCompleteFromPlans() {
+    setCompleteError(null);
+    setCompleting(true);
+    const result = await completeCoachSectionFromPlans(athleteId);
+    setCompleting(false);
+    if (result.error) {
+      setCompleteError(result.error);
+    }
+    // On success Next.js revalidates the page automatically
+  }
+
   return (
     <div>
+      <TrainingPlansPanel
+        plans={trainingPlans}
+        signedUrls={trainingPlanSignedUrls}
+        isComplete={isComplete}
+        onCompleteFromPlans={handleCompleteFromPlans}
+        completing={completing}
+        completeError={completeError}
+      />
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-bold text-gray-800">Rubro Entrenador</h2>
         <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${STATUS_COLORS[sectionStatus]}`}>

@@ -515,6 +515,77 @@ export async function savePhysioSection(
 }
 
 // ---------------------------------------------------------------------------
+// Completar rubro Entrenador desde planes de entrenamiento
+// ---------------------------------------------------------------------------
+
+/**
+ * Crea o actualiza la evaluación del Entrenador usando los datos del plan de
+ * entrenamiento asignado al atleta y marca el rubro como completo.
+ * Útil cuando el plan ya existe en el módulo de Planes y no es necesario
+ * volver a capturar los datos manualmente.
+ */
+export async function completeCoachSectionFromPlans(
+  athleteId: string,
+): Promise<{ error: string | null }> {
+  const denied = await assertSectionAccess('entrenador');
+  if (denied) return denied;
+
+  // Buscar planes de entrenamiento asignados al atleta
+  const { data: assignedRows } = await supabaseAdmin
+    .from('athlete_plans')
+    .select('plan_id')
+    .eq('athlete_id', athleteId);
+
+  const planIds = (assignedRows ?? []).map((r: { plan_id: string }) => r.plan_id);
+
+  let plans: { title: string; description: string | null; notes: string | null }[] = [];
+  if (planIds.length > 0) {
+    const { data } = await supabaseAdmin
+      .from('plans')
+      .select('title, description, notes')
+      .in('id', planIds)
+      .eq('type', 'training')
+      .order('created_at', { ascending: false });
+    plans = (data ?? []) as { title: string; description: string | null; notes: string | null }[];
+  }
+
+  if (plans.length === 0) {
+    return { error: 'No hay planes de entrenamiento asignados a este atleta.' };
+  }
+
+  const section = await ensureSectionRecord(athleteId, 'entrenador');
+  if (!section) return { error: 'No se pudo inicializar la sección de entrenador.' };
+
+  const planTitles    = plans.map((p) => p.title).join('; ');
+  const planDesc      = plans.filter((p) => p.description).map((p) => `${p.title}:\n${p.description}`).join('\n\n');
+  const planNotes     = plans.filter((p) => p.notes).map((p) => `${p.title}:\n${p.notes}`).join('\n\n');
+
+  const payload = {
+    discipline_intervention: planDesc  || `Plan(es) de entrenamiento asignado(s): ${planTitles}`,
+    plan_adjustments:        planNotes || `Planes asignados: ${planTitles}`,
+    performance_objectives:  'Ver plan de entrenamiento individualizado adjunto.',
+    observations:            `Rubro completado con base en ${plans.length} plan(es) de entrenamiento asignado(s): ${planTitles}`,
+    updated_at:              new Date().toISOString(),
+  };
+
+  const { error } = await supabaseAdmin
+    .from('athlete_coach_evaluation')
+    .upsert(
+      { diagnostic_section_id: section.id, athlete_id: athleteId, ...payload },
+      { onConflict: 'diagnostic_section_id' },
+    );
+
+  if (error) return { error: error.message };
+
+  await updateSectionStatus(section.id, section.diagnostic_id, athleteId, true);
+  await logAction(athleteId, section.diagnostic_id, 'entrenador', 'rubro_completado_desde_planes');
+
+  revalidatePath(`/athletes/${athleteId}/diagnostic`);
+  revalidatePath(`/athletes/${athleteId}`);
+  return { error: null };
+}
+
+// ---------------------------------------------------------------------------
 // Generación IA — Resultado integrado
 // ---------------------------------------------------------------------------
 
