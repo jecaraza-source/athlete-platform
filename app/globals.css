@@ -105,12 +105,12 @@
     page-break-inside: avoid !important;
   }
 
-  /* Figura contenedora de foto inline: flota a la derecha para que el texto rodee la foto */
+  /* Figura contenedora de foto inline: ancho completo en impresión para que se vea grande */
   figure:has(.print-img-inline) {
-    float: right !important;
-    width: 42% !important;
-    margin: 0 0 8pt 12pt !important;
-    clear: right !important;
+    float: none !important;
+    width: 100% !important;
+    margin: 12pt 0 !important;
+    clear: both !important;
   }
 
   .print-img-inline {
