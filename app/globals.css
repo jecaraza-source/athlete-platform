@@ -94,9 +94,11 @@
 
   .print-img-hero {
     position: relative !important;
-    height: 150px !important;
-    min-height: 150px !important;
-    max-height: 150px !important;
+    width: 100% !important;
+    aspect-ratio: 4 / 3 !important;
+    height: auto !important;
+    min-height: unset !important;
+    max-height: unset !important;
     overflow: hidden !important;
     background: #f3f4f6 !important;
     break-inside: avoid !important;
@@ -114,9 +116,10 @@
   .print-img-inline {
     position: relative !important;
     width: 100% !important;
-    height: 105px !important;
-    min-height: 105px !important;
-    max-height: 105px !important;
+    aspect-ratio: 4 / 3 !important;
+    height: auto !important;
+    min-height: unset !important;
+    max-height: unset !important;
     overflow: hidden !important;
     background: #f3f4f6 !important;
     break-inside: avoid !important;
@@ -124,9 +127,10 @@
   }
   .print-img-gallery {
     position: relative !important;
-    height: 62px !important;
-    min-height: 62px !important;
-    max-height: 62px !important;
+    aspect-ratio: 1 / 1 !important;
+    height: auto !important;
+    min-height: unset !important;
+    max-height: unset !important;
     overflow: hidden !important;
     background: #f3f4f6 !important;
     break-inside: avoid !important;
