@@ -192,10 +192,11 @@ function buildPrintDocument(
     <tr>
       <td style="font-weight:700">ENTRENADOR ${c.discipline.toUpperCase()}</td>
       <td style="text-align:center">${c.totalAthletes}</td>
+      <td style="text-align:center">${c.athletesWithApts}</td>
       <td style="text-align:center">${c.totalPlans}</td>
       <td style="text-align:center">${c.totalNotes}</td>
     </tr>`).join('')
-    : '<tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:12px">Sin datos de entrenadores para este período</td></tr>';
+    : '<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:12px">Sin datos de entrenadores para este período</td></tr>';
 
   const staffRows = data.staffMembers.length > 0
     ? data.staffMembers.map((s: ReportStaffMemberRow) => `
@@ -205,12 +206,14 @@ function buildPrintDocument(
         <div style="font-size:9px;color:#6b7280">${s.roleLabel}</div>
       </td>
       <td style="text-align:center">${s.scheduled}</td>
+      <td style="text-align:center">${s.upcoming}</td>
       <td style="text-align:center">${s.attendedPresential}</td>
       <td style="text-align:center">${s.attendedRemote}</td>
       <td style="text-align:center">${s.rescheduled}</td>
       <td style="text-align:center">${s.noShow}</td>
+      <td style="text-align:center">${s.attendanceRate !== null ? s.attendanceRate + '%' : '—'}</td>
     </tr>`).join('')
-    : '<tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:12px">Sin actividad de staff médico para este período</td></tr>';
+    : '<tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:12px">Sin actividad de staff médico para este período</td></tr>';
 
   const disciplineRows = data.disciplines.length > 0
     ? data.disciplines.map((d: ReportDisciplineRow) => `
@@ -220,11 +223,12 @@ function buildPrintDocument(
         <div style="font-size:9px;color:#6b7280">${d.disciplineBlock}</div>
       </td>
       <td style="text-align:center">${d.totalAthletes}</td>
+      <td style="text-align:center">${d.athletesWithUpcomingApts}</td>
       <td style="text-align:center">${d.athletesAttended}</td>
       <td style="text-align:center">${d.athletesNoShow}</td>
       <td style="text-align:center">${d.athletesWithPlans}</td>
     </tr>`).join('')
-    : '<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:12px">Sin atletas registrados por disciplina</td></tr>';
+    : '<tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:12px">Sin atletas registrados por disciplina</td></tr>';
 
   // Helper: embed a chart PNG inside a constrained wrapper
   function chartBlock(id: string, fullWidth = false): string {
@@ -302,10 +306,11 @@ function buildPrintDocument(
   <table>
     <thead>
       <tr>
-        <th style="width:34%">ENTRENADOR / DISCIPLINA</th>
-        <th style="width:22%;text-align:center">ATLETAS CON PLAN<br><span style="font-size:9px;font-weight:400">(acumulado)</span></th>
-        <th style="width:22%;text-align:center">PLANES ASIGNADOS<br><span style="font-size:9px;font-weight:400">(acumulado)</span></th>
-        <th style="width:22%;text-align:center">NOTAS SEGUIMIENTO<br><span style="font-size:9px;font-weight:400">(en el período)</span></th>
+        <th style="width:26%">ENTRENADOR / DISCIPLINA</th>
+        <th style="width:18.5%;text-align:center">ATLETAS CON PLAN<br><span style="font-size:9px;font-weight:400">(acumulado)</span></th>
+        <th style="width:18.5%;text-align:center">ATLETAS CON CITAS<br><span style="font-size:9px;font-weight:400">(en el período)</span></th>
+        <th style="width:18.5%;text-align:center">PLANES ASIGNADOS<br><span style="font-size:9px;font-weight:400">(acumulado)</span></th>
+        <th style="width:18.5%;text-align:center">NOTAS SEGUIMIENTO<br><span style="font-size:9px;font-weight:400">(en el período)</span></th>
       </tr>
     </thead>
     <tbody>${coachRows}</tbody>
@@ -315,12 +320,14 @@ function buildPrintDocument(
   <table>
     <thead>
       <tr>
-        <th style="width:22%">NOMBRE / ROL</th>
-        <th style="width:15.6%;text-align:center">CITAS AGENDADAS</th>
-        <th style="width:15.6%;text-align:center">ATENDIDAS PRESENCIAL</th>
-        <th style="width:15.6%;text-align:center">ATENDIDAS REMOTO</th>
-        <th style="width:15.6%;text-align:center">REPROGRAMADAS</th>
-        <th style="width:15.6%;text-align:center">NO ATENDIDAS</th>
+        <th style="width:16%">NOMBRE / ROL</th>
+        <th style="width:12%;text-align:center">TOTAL</th>
+        <th style="width:12%;text-align:center">PRÓXIMAS</th>
+        <th style="width:12%;text-align:center">PRESENCIAL</th>
+        <th style="width:12%;text-align:center">REMOTO</th>
+        <th style="width:12%;text-align:center">REPROG.</th>
+        <th style="width:12%;text-align:center">NO ATEND.</th>
+        <th style="width:12%;text-align:center">% ASIST.</th>
       </tr>
     </thead>
     <tbody>${staffRows}</tbody>
@@ -331,11 +338,12 @@ function buildPrintDocument(
   <table>
     <thead>
       <tr>
-        <th style="width:25%">DISCIPLINA</th>
-        <th style="width:18.75%;text-align:center">TOTAL ATLETAS</th>
-        <th style="width:18.75%;text-align:center">ATLETAS QUE ASISTIERON<br><span style="font-size:9px;font-weight:400">(en el período)</span></th>
-        <th style="width:18.75%;text-align:center">ATLETAS NO ASISTIERON<br><span style="font-size:9px;font-weight:400">(en el período)</span></th>
-        <th style="width:18.75%;text-align:center">CON PLAN ASIGNADO<br><span style="font-size:9px;font-weight:400">(acumulado)</span></th>
+        <th style="width:20%">DISCIPLINA</th>
+        <th style="width:16%;text-align:center">TOTAL ATLETAS</th>
+        <th style="width:16%;text-align:center">CON CITAS PRÓXIMAS<br><span style="font-size:9px;font-weight:400">(en el período)</span></th>
+        <th style="width:16%;text-align:center">ASISTIERON<br><span style="font-size:9px;font-weight:400">(en el período)</span></th>
+        <th style="width:16%;text-align:center">NO ASISTIERON<br><span style="font-size:9px;font-weight:400">(en el período)</span></th>
+        <th style="width:16%;text-align:center">CON PLAN<br><span style="font-size:9px;font-weight:400">(acumulado)</span></th>
       </tr>
     </thead>
     <tbody>${disciplineRows}</tbody>
@@ -508,9 +516,7 @@ function ServiceTable({ rows, loading }: { rows: ReportServiceRow[]; loading: bo
 
 function StaffMemberTable({ rows, loading }: { rows: ReportStaffMemberRow[]; loading: boolean }) {
   if (loading) {
-    return (
-      <div className="rounded-xl border border-[#2A2D3A] h-36 animate-pulse bg-[#1A1D27]" />
-    );
+    return <div className="rounded-xl border border-[#2A2D3A] h-36 animate-pulse bg-[#1A1D27]" />;
   }
   if (rows.length === 0) {
     return (
@@ -525,11 +531,16 @@ function StaffMemberTable({ rows, loading }: { rows: ReportStaffMemberRow[]; loa
         <thead>
           <tr className="border-b border-[#2A2D3A] bg-[#1A1D27]">
             <th className="px-4 py-3 text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Nombre / Rol</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Citas Agendadas</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Atendidas Presencial</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Atendidas Remoto</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Reprogramadas</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">No Atendidas</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Total</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+              <div>Próximas</div>
+              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">futuras</div>
+            </th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Presencial</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Remoto</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Reprog.</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">No Atend.</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">% Asist.</th>
           </tr>
         </thead>
         <tbody>
@@ -546,6 +557,13 @@ function StaffMemberTable({ rows, loading }: { rows: ReportStaffMemberRow[]; loa
               </td>
               <td className="px-4 py-3 text-center">
                 <span className="rounded bg-[#2A2D3A] px-2 py-0.5 text-[#F1F5F9] font-medium">{s.scheduled}</span>
+              </td>
+              <td className="px-4 py-3 text-center">
+                {s.upcoming > 0 ? (
+                  <span className="rounded bg-sky-900/30 px-2 py-0.5 text-sky-300 font-medium">{s.upcoming}</span>
+                ) : (
+                  <span className="text-[#94A3B8]">—</span>
+                )}
               </td>
               <td className="px-4 py-3 text-center">
                 <span className="rounded bg-emerald-900/30 px-2 py-0.5 text-emerald-300 font-medium">{s.attendedPresential}</span>
@@ -571,6 +589,17 @@ function StaffMemberTable({ rows, loading }: { rows: ReportStaffMemberRow[]; loa
                   <span className="text-[#94A3B8]">0</span>
                 )}
               </td>
+              <td className="px-4 py-3 text-center">
+                {s.attendanceRate !== null ? (
+                  <span className={`rounded px-2 py-0.5 font-medium text-xs ${
+                    s.attendanceRate >= 80 ? 'bg-emerald-900/30 text-emerald-300'
+                    : s.attendanceRate >= 50 ? 'bg-amber-900/30 text-amber-300'
+                    : 'bg-red-900/30 text-red-400'
+                  }`}>{s.attendanceRate}%</span>
+                ) : (
+                  <span className="text-[#64748B] text-xs italic">sin datos</span>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -581,9 +610,7 @@ function StaffMemberTable({ rows, loading }: { rows: ReportStaffMemberRow[]; loa
 
 function DisciplineTable({ rows, loading }: { rows: ReportDisciplineRow[]; loading: boolean }) {
   if (loading) {
-    return (
-      <div className="rounded-xl border border-[#2A2D3A] h-36 animate-pulse bg-[#1A1D27]" />
-    );
+    return <div className="rounded-xl border border-[#2A2D3A] h-36 animate-pulse bg-[#1A1D27]" />;
   }
   if (rows.length === 0) {
     return (
@@ -600,11 +627,15 @@ function DisciplineTable({ rows, loading }: { rows: ReportDisciplineRow[]; loadi
             <th className="px-4 py-3 text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Disciplina</th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Total Atletas</th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
-              <div>Atletas que Asistieron</div>
+              <div>Con Citas Próximas</div>
               <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">en el período</div>
             </th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
-              <div>Atletas No Asistieron</div>
+              <div>Asistieron</div>
+              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">en el período</div>
+            </th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+              <div>No Asistieron</div>
               <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">en el período</div>
             </th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
@@ -629,6 +660,13 @@ function DisciplineTable({ rows, loading }: { rows: ReportDisciplineRow[]; loadi
                 <span className="rounded bg-[#2A2D3A] px-2 py-0.5 text-[#F1F5F9] font-medium">{d.totalAthletes}</span>
               </td>
               <td className="px-4 py-3 text-center">
+                {d.athletesWithUpcomingApts > 0 ? (
+                  <span className="rounded bg-sky-900/30 px-2 py-0.5 text-sky-300 font-medium">{d.athletesWithUpcomingApts}</span>
+                ) : (
+                  <span className="text-[#94A3B8]">0</span>
+                )}
+              </td>
+              <td className="px-4 py-3 text-center">
                 <span className="rounded bg-teal-900/30 px-2 py-0.5 text-teal-300 font-medium">{d.athletesAttended}</span>
               </td>
               <td className="px-4 py-3 text-center">
@@ -651,9 +689,7 @@ function DisciplineTable({ rows, loading }: { rows: ReportDisciplineRow[]; loadi
 
 function CoachTable({ rows, loading }: { rows: ReportCoachRow[]; loading: boolean }) {
   if (loading) {
-    return (
-      <div className="rounded-xl border border-[#2A2D3A] h-32 animate-pulse bg-[#1A1D27]" />
-    );
+    return <div className="rounded-xl border border-[#2A2D3A] h-32 animate-pulse bg-[#1A1D27]" />;
   }
   if (rows.length === 0) {
     return (
@@ -669,15 +705,19 @@ function CoachTable({ rows, loading }: { rows: ReportCoachRow[]; loading: boolea
           <tr className="border-b border-[#2A2D3A] bg-[#1A1D27]">
             <th className="px-4 py-3 text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Disciplina / Entrenador</th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
-              <div>Atletas con Plan</div>
+              <div>Atletas c/Plan</div>
               <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">acumulado</div>
+            </th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+              <div>Atletas c/Citas Méd.</div>
+              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">en el período</div>
             </th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
               <div>Planes Asignados</div>
               <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">acumulado</div>
             </th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
-              <div>Notas de Seguimiento</div>
+              <div>Notas Seguimiento</div>
               <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">en el período</div>
             </th>
           </tr>
@@ -691,13 +731,23 @@ function CoachTable({ rows, loading }: { rows: ReportCoachRow[]; loading: boolea
               }`}
             >
               <td className="px-4 py-3">
-                <div className="font-semibold text-[#F1F5F9]">
-                  {c.discipline.toUpperCase()}
-                </div>
+                <div className="font-semibold text-[#F1F5F9]">{c.discipline.toUpperCase()}</div>
                 <div className="text-xs text-[#94A3B8] mt-0.5">{c.coachName}</div>
               </td>
               <td className="px-4 py-3 text-center">
                 <span className="rounded bg-teal-900/30 px-2 py-0.5 text-teal-300 font-medium">{c.totalAthletes}</span>
+              </td>
+              <td className="px-4 py-3 text-center">
+                {c.athletesWithApts > 0 ? (
+                  <span className="rounded bg-sky-900/30 px-2 py-0.5 text-sky-300 font-medium">
+                    {c.athletesWithApts}
+                    {c.totalAthletes > 0 && (
+                      <span className="text-[#64748B] font-normal"> / {c.totalAthletes}</span>
+                    )}
+                  </span>
+                ) : (
+                  <span className="text-[#94A3B8]">—</span>
+                )}
               </td>
               <td className="px-4 py-3 text-center">
                 <span className="rounded bg-indigo-900/30 px-2 py-0.5 text-indigo-300 font-medium">{c.totalPlans}</span>
@@ -783,11 +833,12 @@ function AttendancePieChart({
 function ServicesBarChart({ rows, id }: { rows: ReportServiceRow[]; id?: string }) {
   if (rows.length === 0) return null;
   const chartData = rows.map(r => ({
-    name:           r.service,
-    Programadas:    r.scheduled,
-    Presencial:     r.attendedPresential,
-    Remoto:         r.attendedRemote ?? 0,
-    'No Atendidas': r.noShow,
+    name:              r.service,
+    Programadas:       r.scheduled,
+    Presencial:        r.attendedPresential,
+    Remoto:            r.attendedRemote ?? 0,
+    'Notas Seguim.':   r.followUpNotes,
+    'No Atendidas':    r.noShow,
   }));
   return (
     <div id={id} className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4">
@@ -795,16 +846,17 @@ function ServicesBarChart({ rows, id }: { rows: ReportServiceRow[]; id?: string 
         Citas por Servicio
       </p>
       <ResponsiveContainer width="100%" height={190}>
-        <BarChart data={chartData} barCategoryGap="30%" barGap={3}>
+        <BarChart data={chartData} barCategoryGap="25%" barGap={2}>
           <CartesianGrid strokeDasharray="3 3" stroke="#2A2D3A" vertical={false} />
           <XAxis dataKey="name" tick={A_TICK} axisLine={false} tickLine={false} />
           <YAxis tick={A_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip contentStyle={TOOLTIP_STYLE} />
           <Legend iconType="square" wrapperStyle={LEG_STY} />
-          <Bar dataKey="Programadas"   fill={CHT.scheduled}  radius={[3,3,0,0]} />
-          <Bar dataKey="Presencial"    fill={CHT.presential} radius={[3,3,0,0]} />
-          <Bar dataKey="Remoto"        fill={CHT.remote}     radius={[3,3,0,0]} />
-          <Bar dataKey="No Atendidas"  fill={CHT.noShow}     radius={[3,3,0,0]} />
+          <Bar dataKey="Programadas"     fill={CHT.scheduled}  radius={[3,3,0,0]} />
+          <Bar dataKey="Presencial"      fill={CHT.presential} radius={[3,3,0,0]} />
+          <Bar dataKey="Remoto"          fill={CHT.remote}     radius={[3,3,0,0]} />
+          <Bar dataKey="Notas Seguim."  fill={CHT.notes}      radius={[3,3,0,0]} />
+          <Bar dataKey="No Atendidas"    fill={CHT.noShow}     radius={[3,3,0,0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -813,13 +865,26 @@ function ServicesBarChart({ rows, id }: { rows: ReportServiceRow[]; id?: string 
 
 // ─── Chart: entrenadores (grouped bar) ───────────────────────────────────────
 
+/** Returns the initials of a full name, e.g. "Carlos Ruiz Torres" → "C.R.T." */
+function initials(fullName: string): string {
+  return fullName
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase())
+    .join('.')  + '.';
+}
+
 function CoachesBarChart({ rows, id }: { rows: ReportCoachRow[]; id?: string }) {
   if (rows.length === 0) return null;
   const chartData = rows.map(c => ({
-    name:             c.discipline,
-    'Atletas c/Plan': c.totalAthletes,
-    Planes:           c.totalPlans,
-    Seguimientos:     c.totalNotes,
+    name:              initials(c.coachName),
+    // Keep full name in a separate field so the Tooltip can display it
+    fullName:          c.coachName,
+    discipline:        c.discipline,
+    'Atletas c/Plan':  c.totalAthletes,
+    'c/Citas Méd.':   c.athletesWithApts,
+    Planes:            c.totalPlans,
+    Seguimientos:      c.totalNotes,
   }));
   return (
     <div id={id} className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4 mb-4">
@@ -831,9 +896,17 @@ function CoachesBarChart({ rows, id }: { rows: ReportCoachRow[]; id?: string }) 
           <CartesianGrid strokeDasharray="3 3" stroke="#2A2D3A" vertical={false} />
           <XAxis dataKey="name" tick={A_TICK} axisLine={false} tickLine={false} />
           <YAxis tick={A_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
-          <Tooltip contentStyle={TOOLTIP_STYLE} />
+          <Tooltip
+            contentStyle={TOOLTIP_STYLE}
+            formatter={(value, key) => [value, key]}
+            labelFormatter={(label, payload) => {
+              const row = payload?.[0]?.payload as { fullName?: string; discipline?: string } | undefined;
+              return row ? `${row.fullName} (${row.discipline})` : label;
+            }}
+          />
           <Legend iconType="square" wrapperStyle={LEG_STY} />
           <Bar dataKey="Atletas c/Plan" fill={CHT.athletes}  radius={[3,3,0,0]} />
+          <Bar dataKey="c/Citas Méd."  fill='#38bdf8'       radius={[3,3,0,0]} />
           <Bar dataKey="Planes"         fill={CHT.plans}     radius={[3,3,0,0]} />
           <Bar dataKey="Seguimientos"   fill={CHT.notes}     radius={[3,3,0,0]} />
         </BarChart>
@@ -847,11 +920,12 @@ function CoachesBarChart({ rows, id }: { rows: ReportCoachRow[]; id?: string }) 
 function DisciplinesBarChart({ rows, id }: { rows: ReportDisciplineRow[]; id?: string }) {
   if (rows.length === 0) return null;
   const chartData = rows.map(d => ({
-    name:            d.disciplineName,
-    Total:           d.totalAthletes,
-    Asistieron:      d.athletesAttended,
-    'No Asistieron': d.athletesNoShow,
-    'Con Plan':      d.athletesWithPlans,
+    name:             d.disciplineName,
+    Total:            d.totalAthletes,
+    'Citas Próximas': d.athletesWithUpcomingApts,
+    Asistieron:       d.athletesAttended,
+    'No Asistieron':  d.athletesNoShow,
+    'Con Plan':       d.athletesWithPlans,
   }));
   const height = Math.max(200, chartData.length * 40 + 60);
   return (
@@ -873,10 +947,11 @@ function DisciplinesBarChart({ rows, id }: { rows: ReportDisciplineRow[]; id?: s
           />
           <Tooltip contentStyle={TOOLTIP_STYLE} />
           <Legend iconType="square" wrapperStyle={LEG_STY} />
-          <Bar dataKey="Total"          fill={CHT.scheduled}  radius={[0,3,3,0]} />
-          <Bar dataKey="Asistieron"     fill={CHT.presential} radius={[0,3,3,0]} />
-          <Bar dataKey="No Asistieron"  fill={CHT.noShow}     radius={[0,3,3,0]} />
-          <Bar dataKey="Con Plan"       fill={CHT.plans}      radius={[0,3,3,0]} />
+          <Bar dataKey="Total"           fill={CHT.scheduled}  radius={[0,3,3,0]} />
+          <Bar dataKey="Citas Próximas"  fill='#38bdf8'        radius={[0,3,3,0]} />
+          <Bar dataKey="Asistieron"      fill={CHT.presential} radius={[0,3,3,0]} />
+          <Bar dataKey="No Asistieron"   fill={CHT.noShow}     radius={[0,3,3,0]} />
+          <Bar dataKey="Con Plan"        fill={CHT.plans}      radius={[0,3,3,0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -1281,11 +1356,12 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
 
           {/* Summary KPI cards */}
           {!loading && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-              <StatCard label="Citas Programadas"     value={totalScheduled} />
-              <StatCard label="Atendidas Presencial"  value={totalAttended}  accent />
-              <StatCard label="Notas de Seguimiento"  value={totalNotes} />
-              <StatCard label="No Atendidas"          value={totalNoShow} />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+              <StatCard label="Citas Programadas"    value={totalScheduled} />
+              <StatCard label="Atendidas Presencial" value={totalAttended}  accent />
+              <StatCard label="Atendidas Remoto"     value={totalRemote}    accent />
+              <StatCard label="Notas de Seguimiento" value={totalNotes} />
+              <StatCard label="No Atendidas"         value={totalNoShow} />
             </div>
           )}
 
@@ -1313,7 +1389,7 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
             </h2>
             <div className="flex-1 h-px bg-[#2A2D3A]" />
             <span className="text-xs text-[#94A3B8] shrink-0">
-              Atletas y planes: acumulado total &nbsp;·&nbsp; Seguimientos: {meta.label}
+              Atletas/planes: acumulado &nbsp;·&nbsp; Citas méd. y seguimientos: {meta.label}
             </span>
           </div>
           {!loading && <CoachesBarChart rows={data.coaches} id="chart-coaches-bar" />}

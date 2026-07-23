@@ -117,6 +117,9 @@ export interface ReportCoachRow {
   totalPlans: number;
   /** training_sessions logged by this coach in period */
   totalNotes: number;
+  /** Distinct athletes in this coach's group who have any medical appointment
+   *  (event_participants) in the period — links training group to medical coverage */
+  athletesWithApts: number;
 }
 
 export interface ReportStaffMemberRow {
@@ -124,8 +127,10 @@ export interface ReportStaffMemberRow {
   staffName: string;
   /** Rol legible: Médico, Nutricionista, Fisioterapeuta, Psicólogo/a */
   roleLabel: string;
-  /** Total de eventos creados en el período (todos los estatus) */
+  /** Total de eventos en el período (todos los estatus) */
   scheduled: number;
+  /** Eventos status='scheduled' con start_at futuro al momento del reporte */
+  upcoming: number;
   /** Eventos con status='show' */
   attendedPresential: number;
   /** Eventos con status='show_remote' */
@@ -134,6 +139,9 @@ export interface ReportStaffMemberRow {
   rescheduled: number;
   /** Eventos con status IN ('no_show','no_show_remote') */
   noShow: number;
+  /** Tasa de asistencia: (show+show_remote)/(show+show_remote+no_show) × 100
+   *  null cuando no hay eventos con resultado conocido aún */
+  attendanceRate: number | null;
 }
 
 export interface ReportDisciplineRow {
@@ -146,6 +154,8 @@ export interface ReportDisciplineRow {
   athletesAttended: number;
   /** Atletas que tuvieron al menos 1 no_show/no_show_remote en el período */
   athletesNoShow: number;
+  /** Atletas con al menos 1 cita futura programada (status='scheduled', start_at > now) */
+  athletesWithUpcomingApts: number;
   /** Atletas con al menos 1 plan asignado (acumulado) */
   athletesWithPlans: number;
 }

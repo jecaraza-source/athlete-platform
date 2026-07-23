@@ -94,43 +94,58 @@
 
   .print-img-hero {
     position: relative !important;
-    height: 310px !important;
-    min-height: 310px !important;
-    max-height: 310px !important;
+    height: 150px !important;
+    min-height: 150px !important;
+    max-height: 150px !important;
     overflow: hidden !important;
+    background: #f3f4f6 !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+
+  /* Figura contenedora de foto inline: flota a la derecha para que el texto rodee la foto */
+  figure:has(.print-img-inline) {
+    float: right !important;
+    width: 42% !important;
+    margin: 0 0 8pt 12pt !important;
+    clear: right !important;
+  }
+
   .print-img-inline {
     position: relative !important;
-    height: 230px !important;
-    min-height: 230px !important;
-    max-height: 230px !important;
+    width: 100% !important;
+    height: 105px !important;
+    min-height: 105px !important;
+    max-height: 105px !important;
     overflow: hidden !important;
+    background: #f3f4f6 !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
   .print-img-gallery {
     position: relative !important;
-    height: 95px !important;
-    min-height: 95px !important;
-    max-height: 95px !important;
+    height: 62px !important;
+    min-height: 62px !important;
+    max-height: 62px !important;
     overflow: hidden !important;
+    background: #f3f4f6 !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
-  /* Next.js fill images: mantener absolute para que llenen su contenedor */
+  /* Next.js fill images en print: contain muestra la foto completa sin recorte.
+     Se eliminan min-width/min-height: 100% y max-width/height: none para evitar
+     que el img desborde su contenedor y sea recortado por overflow:hidden. */
   img[data-nimg="fill"] {
     position: absolute !important;
     inset: 0 !important;
     width: 100% !important;
     height: 100% !important;
-    min-width: 100% !important;
-    min-height: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
-    object-fit: cover !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
     object-position: center !important;
     display: block !important;
   }

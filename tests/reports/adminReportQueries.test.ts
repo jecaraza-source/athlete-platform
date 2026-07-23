@@ -78,7 +78,7 @@ function makeQuery(result: QueryResult) {
 function installFromMock(queues: Record<string, QueryResult[]>) {
   const cursors: Record<string, number> = {};
 
-  (supabaseAdmin as { from: ReturnType<typeof vi.fn> }).from
+  (supabaseAdmin as unknown as { from: ReturnType<typeof vi.fn> }).from
     .mockImplementation((table: string) => {
       const queue = queues[table] ?? [];
       const idx   = cursors[table] ?? 0;
@@ -86,6 +86,10 @@ function installFromMock(queues: Record<string, QueryResult[]>) {
       return makeQuery(queue[idx] ?? { data: [], count: null });
     });
 }
+
+// Future and past timestamps for upcoming event classification
+const FUTURE_ISO = '2099-01-01T00:00:00.000Z';
+const PAST_ISO   = '2020-01-01T00:00:00.000Z';
 
 /** Minimal no-op data for tables we don't care about in a given test. */
 function emptyQueues(): Record<string, QueryResult[]> {
@@ -242,12 +246,12 @@ describe('fetchReportData — Staff Médico section', () => {
     queues.events = [{
       data: [
         // Medic events: 1 show, 1 show_remote, 1 no_show (3 total)
-        { id: 'e1', title: 'MÉDICO 1', status: 'show',        created_by_profile_id: MEDIC_ID },
-        { id: 'e2', title: 'MÉDICO 2', status: 'show_remote', created_by_profile_id: MEDIC_ID },
-        { id: 'e3', title: 'MÉDICO 3', status: 'no_show',     created_by_profile_id: MEDIC_ID },
+        { id: 'e1', title: 'MÉDICO 1', status: 'show',        created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
+        { id: 'e2', title: 'MÉDICO 2', status: 'show_remote', created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
+        { id: 'e3', title: 'MÉDICO 3', status: 'no_show',     created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
         // Nutritionist: 1 rescheduled, 1 no_show_remote (2 total)
-        { id: 'e4', title: 'NUTRICIÓN 1', status: 'rescheduled',    created_by_profile_id: NUTRI_ID },
-        { id: 'e5', title: 'NUTRICIÓN 2', status: 'no_show_remote', created_by_profile_id: NUTRI_ID },
+        { id: 'e4', title: 'NUTRICIÓN 1', status: 'rescheduled',    created_by_profile_id: NUTRI_ID, start_at: PAST_ISO },
+        { id: 'e5', title: 'NUTRICIÓN 2', status: 'no_show_remote', created_by_profile_id: NUTRI_ID, start_at: PAST_ISO },
       ],
     }];
 
@@ -282,6 +286,63 @@ describe('fetchReportData — Staff Médico section', () => {
     expect(nutri!.rescheduled).toBe(1);
     expect(nutri!.noShow).toBe(1);           // no_show_remote counts as noShow
     expect(nutri!.roleLabel).toBe('Nutricionista');
+  });
+
+  it('computes upcoming correctly: only future scheduled events count', async () => {
+    const queues = emptyQueues();
+    const MEDIC_ID = 'staff-medic';
+
+    queues.events = [{
+      data: [
+        // Past show — not upcoming
+        { id: 'e1', title: 'MÉDICO', status: 'show',      created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
+        // Future scheduled — IS upcoming
+        { id: 'e2', title: 'MÉDICO', status: 'scheduled', created_by_profile_id: MEDIC_ID, start_at: FUTURE_ISO },
+        // Future scheduled — IS upcoming
+        { id: 'e3', title: 'MÉDICO', status: 'scheduled', created_by_profile_id: MEDIC_ID, start_at: FUTURE_ISO },
+        // Past scheduled (no outcome yet but in the past) — NOT upcoming
+        { id: 'e4', title: 'MÉDICO', status: 'scheduled', created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
+      ],
+    }];
+
+    queues.profiles = [
+      { data: [] },
+      { data: [{ id: MEDIC_ID, first_name: 'Dr', last_name: 'Test', role: 'medic' }] },
+    ];
+
+    installFromMock(queues);
+    const result = await fetchReportData('2024-01-01', '2024-01-31');
+
+    const medic = result.staffMembers.find((s) => s.staffId === MEDIC_ID);
+    expect(medic).toBeDefined();
+    expect(medic!.upcoming).toBe(2);          // only the two FUTURE scheduled events
+    expect(medic!.scheduled).toBe(4);         // all 4 events total
+    expect(medic!.attendedPresential).toBe(1);
+  });
+
+  it('computes attendanceRate as null when no events have an outcome yet', async () => {
+    const queues = emptyQueues();
+    const PHYSIO_ID = 'staff-physio';
+
+    // All events are still scheduled (no outcome)
+    queues.events = [{
+      data: [
+        { id: 'e1', title: 'FISIO', status: 'scheduled', created_by_profile_id: PHYSIO_ID, start_at: FUTURE_ISO },
+        { id: 'e2', title: 'FISIO', status: 'scheduled', created_by_profile_id: PHYSIO_ID, start_at: FUTURE_ISO },
+      ],
+    }];
+    queues.profiles = [
+      { data: [] },
+      { data: [{ id: PHYSIO_ID, first_name: 'Ana', last_name: 'Fisio', role: 'physio' }] },
+    ];
+
+    installFromMock(queues);
+    const result = await fetchReportData('2024-01-01', '2024-01-31');
+
+    const physio = result.staffMembers.find((s) => s.staffId === PHYSIO_ID);
+    expect(physio).toBeDefined();
+    expect(physio!.attendanceRate).toBeNull();  // no outcomes yet
+    expect(physio!.upcoming).toBe(2);
   });
 
   it('omits staff members who had no events in the period', async () => {
@@ -321,6 +382,7 @@ describe('fetchReportData — Staff Médico section', () => {
         title: 'MÉDICO',
         status: 'show',
         created_by_profile_id: p.id,
+        start_at: PAST_ISO,
       })),
     }];
 
@@ -339,9 +401,9 @@ describe('fetchReportData — Staff Médico section', () => {
 
     queues.events = [{
       data: [
-        { id: 'e1', title: 'MÉDICO', status: 'show', created_by_profile_id: 'coach-profile' },
-        { id: 'e2', title: 'MÉDICO', status: 'show', created_by_profile_id: 'athlete-profile' },
-        { id: 'e3', title: 'MÉDICO', status: 'show', created_by_profile_id: 'medic-profile' },
+        { id: 'e1', title: 'MÉDICO', status: 'show', created_by_profile_id: 'coach-profile',   start_at: PAST_ISO },
+        { id: 'e2', title: 'MÉDICO', status: 'show', created_by_profile_id: 'athlete-profile', start_at: PAST_ISO },
+        { id: 'e3', title: 'MÉDICO', status: 'show', created_by_profile_id: 'medic-profile',   start_at: PAST_ISO },
       ],
     }];
 
@@ -383,9 +445,9 @@ describe('fetchReportData — Por Disciplina section', () => {
     // Events in period
     queues.events = [{
       data: [
-        { id: 'e1', title: 'MÉDICO', status: 'show',    created_by_profile_id: null },
-        { id: 'e2', title: 'MÉDICO', status: 'no_show', created_by_profile_id: null },
-        { id: 'e3', title: 'MÉDICO', status: 'show',    created_by_profile_id: null },
+        { id: 'e1', title: 'MÉDICO', status: 'show',    created_by_profile_id: null, start_at: PAST_ISO },
+        { id: 'e2', title: 'MÉDICO', status: 'no_show', created_by_profile_id: null, start_at: PAST_ISO },
+        { id: 'e3', title: 'MÉDICO', status: 'show',    created_by_profile_id: null, start_at: PAST_ISO },
       ],
     }];
 
@@ -419,6 +481,40 @@ describe('fetchReportData — Por Disciplina section', () => {
     expect(box!.athletesWithPlans).toBe(0);
   });
 
+  it('athletesWithUpcomingApts: athletes with future scheduled events in the period', async () => {
+    const queues = emptyQueues();
+
+    queues.athletes = [
+      { count: 2 },
+      { data: [{ id: 'AT1', discipline: 'taekwondo' }, { id: 'AT2', discipline: 'taekwondo' }] },
+    ];
+
+    queues.events = [{
+      data: [
+        // AT1: future scheduled — should count as upcoming
+        { id: 'e1', title: 'MÉDICO', status: 'scheduled', created_by_profile_id: null, start_at: FUTURE_ISO },
+        // AT2: past show — NOT upcoming
+        { id: 'e2', title: 'MÉDICO', status: 'show',      created_by_profile_id: null, start_at: PAST_ISO },
+      ],
+    }];
+
+    queues.event_participants = [{
+      data: [
+        { event_id: 'e1', participant_id: 'AT1' },
+        { event_id: 'e2', participant_id: 'AT2' },
+      ],
+    }];
+
+    installFromMock(queues);
+    const result = await fetchReportData('2024-01-01', '2024-01-31');
+
+    const tkd = result.disciplines.find((d) => d.disciplineCode === 'taekwondo');
+    expect(tkd).toBeDefined();
+    expect(tkd!.athletesWithUpcomingApts).toBe(1);  // only AT1 has upcoming
+    expect(tkd!.athletesAttended).toBe(1);          // AT2 attended (show)
+    expect(tkd!.athletesNoShow).toBe(0);
+  });
+
   it('counts an athlete as attended if they have at least one show or show_remote event', async () => {
     const queues = emptyQueues();
 
@@ -429,8 +525,8 @@ describe('fetchReportData — Por Disciplina section', () => {
 
     queues.events = [{
       data: [
-        { id: 'e1', title: 'MÉDICO', status: 'no_show',     created_by_profile_id: null },
-        { id: 'e2', title: 'MÉDICO', status: 'show_remote', created_by_profile_id: null },
+        { id: 'e1', title: 'MÉDICO', status: 'no_show',     created_by_profile_id: null, start_at: PAST_ISO },
+        { id: 'e2', title: 'MÉDICO', status: 'show_remote', created_by_profile_id: null, start_at: PAST_ISO },
       ],
     }];
 
@@ -496,6 +592,42 @@ describe('fetchReportData — Por Disciplina section', () => {
       (d) => !d.disciplineCode || d.disciplineCode === ''
     );
     expect(nullEntry).toBeUndefined();
+  });
+
+  it('athletesWithApts in coaches: only athletes with period appointments count', async () => {
+    const queues = emptyQueues();
+
+    // Coach P-coach has two athletes: A1 has a period appointment, A2 does not
+    queues.training_sessions = [
+      { data: [
+        { athlete_id: 'A1', coach_profile_id: 'P-coach' },
+        { athlete_id: 'A2', coach_profile_id: 'P-coach' },
+      ]},
+      { data: [] },
+    ];
+
+    // Period events: A1 has one appointment, A2 has none
+    queues.events = [{
+      data: [{ id: 'e1', title: 'MÉDICO', status: 'show', created_by_profile_id: null, start_at: PAST_ISO }],
+    }];
+
+    queues.event_participants = [{
+      data: [{ event_id: 'e1', participant_id: 'A1' }],
+    }];
+
+    queues.profiles = [
+      { data: [] },                 // call 1: legacy coaches
+      { data: [] },                 // call 2: medical staff
+      { data: [{ id: 'P-coach', first_name: 'Carlos', last_name: 'Ruiz', specialty: 'Boxeo', role: 'coach' }] },
+    ];
+
+    installFromMock(queues);
+    const result = await fetchReportData('2024-01-01', '2024-01-31');
+
+    expect(result.coaches).toHaveLength(1);
+    const coach = result.coaches[0];
+    expect(coach.totalAthletes).toBe(2);    // A1 + A2 in all-time sessions
+    expect(coach.athletesWithApts).toBe(1); // only A1 had an appointment in period
   });
 
   it('correctly uses all-time plans (not period-filtered) for athletesWithPlans', async () => {

@@ -76,9 +76,9 @@ export async function fetchReportData(
     // 0. Active athletes count (global)
     supabaseAdmin.from('athletes')
       .select('*', { count: 'exact', head: true }).eq('status', 'active'),
-    // 1. Events in period — include id + creator for staff section
+    // 1. Events in period — include id + creator + start_at for staff/upcoming logic
     supabaseAdmin.from('events')
-      .select('id, title, status, created_by_profile_id')
+      .select('id, title, status, created_by_profile_id, start_at')
       .gte('start_at', fromISO(from)).lte('start_at', toISO(to)),
     // 2-5. Follow-up session notes per service
     supabaseAdmin.from('medical_sessions')
@@ -115,7 +115,10 @@ export async function fetchReportData(
 
   // ── 1. Services section ───────────────────────────────────────────────────
 
-  type RawEvent = { id: string; title: string | null; status: string; created_by_profile_id: string | null };
+  // nowUTC is used to classify events as upcoming vs past
+  const nowUTC = new Date().toISOString();
+
+  type RawEvent = { id: string; title: string | null; status: string; created_by_profile_id: string | null; start_at: string };
 
   const HEALTH_SERVICES: ServiceType[] = ['medico', 'nutricion', 'psicologia', 'fisioterapia'];
   type Tally = { scheduled: number; show: number; show_remote: number; no_show: number };
@@ -148,15 +151,20 @@ export async function fetchReportData(
   type MedStaffProfile = { id: string; first_name: string; last_name: string; role: string | null };
   const medStaffIdSet = new Set((medStaffProfiles ?? [] as MedStaffProfile[]).map((p) => p.id));
 
-  type StaffTally = { scheduled: number; show: number; show_remote: number; rescheduled: number; no_show: number };
+  type StaffTally = {
+    scheduled: number; upcoming: number;
+    show: number; show_remote: number; rescheduled: number; no_show: number;
+  };
   const staffTally: Record<string, StaffTally> = {};
 
-  (events ?? [] as RawEvent[]).forEach(({ status, created_by_profile_id }) => {
+  (events ?? [] as RawEvent[]).forEach(({ status, created_by_profile_id, start_at }) => {
     const cid = created_by_profile_id;
     if (!cid || !medStaffIdSet.has(cid)) return;
-    if (!staffTally[cid]) staffTally[cid] = { scheduled: 0, show: 0, show_remote: 0, rescheduled: 0, no_show: 0 };
+    if (!staffTally[cid]) staffTally[cid] = { scheduled: 0, upcoming: 0, show: 0, show_remote: 0, rescheduled: 0, no_show: 0 };
     staffTally[cid].scheduled++;
-    if (status === 'show')                                          staffTally[cid].show++;
+    // Upcoming = still in the future and not yet given an outcome
+    if (status === 'scheduled' && start_at > nowUTC)               staffTally[cid].upcoming++;
+    else if (status === 'show')                                     staffTally[cid].show++;
     else if (status === 'show_remote')                              staffTally[cid].show_remote++;
     else if (status === 'rescheduled')                              staffTally[cid].rescheduled++;
     else if (status === 'no_show' || status === 'no_show_remote')   staffTally[cid].no_show++;
@@ -166,16 +174,25 @@ export async function fetchReportData(
     (medStaffProfiles ?? [] as MedStaffProfile[])
   )
     .filter((p) => staffTally[p.id] !== undefined)
-    .map((p) => ({
-      staffId:            p.id,
-      staffName:          `${p.first_name} ${p.last_name}`.trim(),
-      roleLabel:          STAFF_ROLE_LABELS[p.role ?? ''] ?? p.role ?? '',
-      scheduled:          staffTally[p.id].scheduled,
-      attendedPresential: staffTally[p.id].show,
-      attendedRemote:     staffTally[p.id].show_remote,
-      rescheduled:        staffTally[p.id].rescheduled,
-      noShow:             staffTally[p.id].no_show,
-    }))
+    .map((p) => {
+      const t = staffTally[p.id];
+      // Attendance rate only counts events with a definitive outcome (show / no_show)
+      const outcomeTotal = t.show + t.show_remote + t.no_show;
+      return {
+        staffId:            p.id,
+        staffName:          `${p.first_name} ${p.last_name}`.trim(),
+        roleLabel:          STAFF_ROLE_LABELS[p.role ?? ''] ?? p.role ?? '',
+        scheduled:          t.scheduled,
+        upcoming:           t.upcoming,
+        attendedPresential: t.show,
+        attendedRemote:     t.show_remote,
+        rescheduled:        t.rescheduled,
+        noShow:             t.no_show,
+        attendanceRate:     outcomeTotal > 0
+          ? Math.round(((t.show + t.show_remote) / outcomeTotal) * 100)
+          : null,
+      };
+    })
     .sort((a, b) => a.roleLabel.localeCompare(b.roleLabel, 'es') || a.staffName.localeCompare(b.staffName, 'es'));
 
   // ── Round 2: RBAC coaches + event participants (parallel) ─────────────────
@@ -217,17 +234,29 @@ export async function fetchReportData(
   //   • athletesNoShow   — distinct athletes with at least 1 no_show/no_show_remote
   //   • athletesWithPlans — distinct athletes with at least 1 plan (all-time)
 
-  // Build athlete → event-statuses map using participant data
+  // Build athlete → event-statuses + event-start_at maps for discipline aggregation
   const eventStatusMap = new Map<string, string>();
-  (events ?? [] as RawEvent[]).forEach((e) => eventStatusMap.set(e.id, e.status));
+  const eventStartMap  = new Map<string, string>();
+  (events ?? [] as RawEvent[]).forEach((e) => {
+    eventStatusMap.set(e.id, e.status);
+    eventStartMap.set(e.id, e.start_at);
+  });
 
-  const athleteStatuses = new Map<string, Set<string>>();
+  const athleteStatuses  = new Map<string, Set<string>>();
+  const athleteHasUpcoming = new Set<string>(); // athletes with at least 1 future scheduled event
   eventParticipants.forEach(({ event_id, participant_id }) => {
-    const evStatus = eventStatusMap.get(event_id);
+    const evStatus  = eventStatusMap.get(event_id);
+    const evStartAt = eventStartMap.get(event_id);
     if (!evStatus) return;
     if (!athleteStatuses.has(participant_id)) athleteStatuses.set(participant_id, new Set());
     athleteStatuses.get(participant_id)!.add(evStatus);
+    if (evStatus === 'scheduled' && evStartAt && evStartAt > nowUTC) {
+      athleteHasUpcoming.add(participant_id);
+    }
   });
+
+  // Athletes who have any medical appointment participant in the period (for coaches section)
+  const athletesWithPeriodApts = new Set(eventParticipants.map((ep) => ep.participant_id));
 
   // Athletes who have at least 1 plan assigned (all-time)
   type AthletePlanRow = { plan_id: string; athlete_id: string };
@@ -261,13 +290,19 @@ export async function fetchReportData(
         if (athletesWithPlanSet.has(aid)) athletesWithPlans++;
       });
 
+      let athletesWithUpcomingApts = 0;
+      athleteIds.forEach((aid) => {
+        if (athleteHasUpcoming.has(aid)) athletesWithUpcomingApts++;
+      });
+
       return {
-        disciplineCode:   d.value,
-        disciplineName:   d.label,
-        disciplineBlock:  d.block,
-        totalAthletes:    athleteIds.size,
+        disciplineCode:          d.value,
+        disciplineName:          d.label,
+        disciplineBlock:         d.block,
+        totalAthletes:           athleteIds.size,
         athletesAttended,
         athletesNoShow,
+        athletesWithUpcomingApts,
         athletesWithPlans,
       };
     })
@@ -352,14 +387,22 @@ export async function fetchReportData(
       }[]
     )
       .filter((p) => !ATHLETE_ROLES.has(p.role ?? ''))
-      .map((p) => ({
-        coachId:       p.id,
-        coachName:     `${p.first_name} ${p.last_name}`.trim(),
-        discipline:    p.specialty ?? 'Sin especialidad',
-        totalAthletes: sessionAthletes[p.id]?.size ?? 0,
-        totalPlans:    planAgg[p.id]?.planIds.size  ?? 0,
-        totalNotes:    sessionAgg[p.id]?.notes       ?? 0,
-      }))
+      .map((p) => {
+        // Count how many of this coach's athletes have any medical appointment in the period
+        const coachAthleteIds = sessionAthletes[p.id];
+        const athletesWithApts = coachAthleteIds
+          ? [...coachAthleteIds].filter((aid) => athletesWithPeriodApts.has(aid)).length
+          : 0;
+        return {
+          coachId:          p.id,
+          coachName:        `${p.first_name} ${p.last_name}`.trim(),
+          discipline:       p.specialty ?? 'Sin especialidad',
+          totalAthletes:    coachAthleteIds?.size ?? 0,
+          totalPlans:       planAgg[p.id]?.planIds.size  ?? 0,
+          totalNotes:       sessionAgg[p.id]?.notes       ?? 0,
+          athletesWithApts,
+        };
+      })
       .sort((a, b) => a.discipline.localeCompare(b.discipline, 'es'));
   }
 

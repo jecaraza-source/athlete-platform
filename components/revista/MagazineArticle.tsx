@@ -52,14 +52,14 @@ export function MagazineArticle({ article, appUrl, showShare = true, deleteButto
     <article className="max-w-2xl mx-auto print:max-w-none">
       {/* Hero */}
       {coverPhoto && (
-        <div className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden mb-6 print:rounded-none print:break-inside-avoid print-img-hero">
+        <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden mb-6 bg-gray-100 print:rounded-none print:break-inside-avoid print-img-hero">
           <Image
             src={getHeroUrl(coverPhoto.storage_path)}
             alt={coverPhoto.alt_text || activity.title}
             fill
             priority
             sizes="(max-width: 768px) 100vw, 768px"
-            className="object-cover"
+            className="object-contain"
           />
         </div>
       )}
@@ -124,13 +124,13 @@ export function MagazineArticle({ article, appUrl, showShare = true, deleteButto
               <p className="text-gray-700 leading-relaxed mb-4">{paragraph}</p>
               {photo && (
                 <figure className="my-6 print:break-inside-avoid">
-                  <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden print:rounded-none print-img-inline">
+                  <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 print:rounded-none print-img-inline">
                     <Image
                       src={getThumbnailUrl(photo.storage_path)}
                       alt={photo.alt_text}
                       fill
                       sizes="(max-width: 768px) 100vw, 600px"
-                      className="object-cover"
+                      className="object-contain"
                     />
                   </div>
                   {photo.caption && (
@@ -151,13 +151,13 @@ export function MagazineArticle({ article, appUrl, showShare = true, deleteButto
           <h2 className="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Galería</h2>
           <div className="grid grid-cols-3 gap-2">
             {photoPool.slice(Math.ceil(paragraphs.length / photoEvery)).map((photo) => (
-              <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden print:break-inside-avoid print-img-gallery">
+              <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 print:break-inside-avoid print-img-gallery">
                 <Image
                   src={getThumbnailUrl(photo.storage_path)}
                   alt={photo.alt_text}
                   fill
                   sizes="200px"
-                  className="object-cover"
+                  className="object-contain"
                 />
               </div>
             ))}
