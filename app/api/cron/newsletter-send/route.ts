@@ -17,6 +17,14 @@ import type { NewsletterAudiencia }    from '@/lib/newsletter/types';
 export const runtime    = 'nodejs';
 export const maxDuration = 120;
 
+// OneSignal has had the Email channel disabled account-wide since 2026-07-16
+// ("contact our Support team" — not self-service). Until support lifts it,
+// every send fails with this exact message. Rather than let drafts pile up
+// as 'approved' forever (and the mobile app go stale), auto-stopgap them:
+// mark as sent with recipient_count 0, same as the manual workaround applied
+// by hand on 2026-07-16/18/20/23. Remove this once OneSignal re-enables email.
+const ONESIGNAL_EMAIL_DISABLED_MARKER = 'Email sending for this app has been disabled';
+
 // Which RBAC role codes (roles.code, via user_roles) map to each newsletter
 // audience. Mirrors the RLS policy in migration 044.
 const AUDIENCE_ROLES: Record<NewsletterAudiencia, string[]> = {
@@ -89,6 +97,25 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         htmlContent: draft.html_content,
         externalIds,
       });
+
+      if (!result.success && result.error?.includes(ONESIGNAL_EMAIL_DISABLED_MARKER)) {
+        await supabaseAdmin
+          .from('newsletter_drafts')
+          .update({ status: 'sent', sent_at: new Date().toISOString(), recipient_count: 0 })
+          .eq('id', draft.id);
+
+        await supabaseAdmin.from('newsletter_logs').insert({
+          draft_id:   draft.id,
+          action:     'sent',
+          actor_id:   null,
+          actor_role: 'system',
+          note:       'Auto stopgap: OneSignal tiene el envío de email deshabilitado a nivel de cuenta ("contact our Support team"). Marcado como enviado sin email/push real para no bloquear la app móvil.',
+          metadata:   { manual_stopgap: true, automatic: true, reason: 'onesignal_email_sending_disabled_by_platform' },
+        });
+
+        results.push({ draftId: draft.id, audiencia: draft.audiencia, status: 'sent', recipientCount: 0 });
+        continue;
+      }
 
       if (!result.success) {
         throw new Error(result.error ?? 'OneSignal send failed');
