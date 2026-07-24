@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { assertPermission, getCurrentUser } from '@/lib/rbac/server';
 import { sendEmailDirect } from '@/lib/notifications/email-service';
 import { oneSignalAdapter } from '@/lib/notifications/providers/onesignal-adapter';
+import { mxLocalToUTC } from '@/lib/timezone';
 
 export async function createEvent(formData: FormData) {
   const denied = await assertPermission('manage_calendar');
@@ -19,8 +20,11 @@ export async function createEvent(formData: FormData) {
     title:                 formData.get('title')                 as string,
     event_type:            formData.get('event_type')            as string,
     sport_id:             (formData.get('sport_id') as string)  || null,
-    start_at:              formData.get('start_at')              as string,
-    end_at:                formData.get('end_at')                as string,
+    // Convert naive datetime-local values (no TZ suffix) from Mexico City local time to UTC.
+    // Without this, PostgreSQL timestamptz would treat them as UTC, placing the event 5-6
+    // hours earlier than intended.
+    start_at:             mxLocalToUTC(formData.get('start_at') as string),
+    end_at:               mxLocalToUTC(formData.get('end_at')   as string),
     status:               (formData.get('status') as string)    || 'scheduled',
     description:          (formData.get('description') as string) || null,
     created_by_profile_id: createdByProfileId,
@@ -110,6 +114,7 @@ export async function createEvent(formData: FormData) {
   }
 
   revalidatePath('/calendar');
+  revalidatePath('/medical/appointments');
   return { error: null };
 }
 
@@ -121,8 +126,9 @@ export async function updateEvent(id: string, formData: FormData) {
     title:       formData.get('title')       as string,
     event_type:  formData.get('event_type')  as string,
     sport_id:   (formData.get('sport_id') as string) || null,
-    start_at:    formData.get('start_at')    as string,
-    end_at:      formData.get('end_at')      as string,
+    // Convert naive datetime-local values from MX local time to UTC (same as createEvent)
+    start_at:   mxLocalToUTC(formData.get('start_at') as string),
+    end_at:     mxLocalToUTC(formData.get('end_at')   as string),
     status:      formData.get('status')      as string,
     description: (formData.get('description') as string) || null,
   };
@@ -130,21 +136,50 @@ export async function updateEvent(id: string, formData: FormData) {
   const { error } = await supabaseAdmin.from('events').update(payload).eq('id', id);
   if (error) return { error: error.message };
 
-  // Replace participants: delete all existing, then insert selected ones
-  await supabaseAdmin.from('event_participants').delete().eq('event_id', id);
-
+  // Update participants using a differential strategy to preserve attendance_status.
+  // The old approach (delete-all + re-insert with 'planned') would erase attendance
+  // records already registered by medical staff through /medical/appointments.
   const athleteIds = (formData.getAll('athlete_id') as string[]).filter(Boolean);
-  if (athleteIds.length > 0) {
+
+  // Fetch existing participants with their current attendance_status
+  const { data: existing } = await supabaseAdmin
+    .from('event_participants')
+    .select('participant_id, attendance_status')
+    .eq('event_id', id);
+
+  const existingMap = new Map(
+    (existing ?? []).map((p) => [p.participant_id as string, p.attendance_status as string])
+  );
+  const existingIds = new Set(existingMap.keys());
+  const newIds      = new Set(athleteIds);
+
+  // Remove participants that are no longer in the list
+  const toDelete = [...existingIds].filter((pid) => !newIds.has(pid));
+  if (toDelete.length > 0) {
+    await supabaseAdmin
+      .from('event_participants')
+      .delete()
+      .eq('event_id', id)
+      .in('participant_id', toDelete);
+  }
+
+  // Insert only newly added participants (start as 'planned')
+  const toInsert = athleteIds.filter((aid) => !existingIds.has(aid));
+  if (toInsert.length > 0) {
     const { error: partErr } = await supabaseAdmin
       .from('event_participants')
-      .insert(athleteIds.map((aid) => ({
+      .insert(toInsert.map((aid) => ({
         event_id:          id,
         participant_id:    aid,
         participant_type:  'athlete',
         attendance_status: 'planned',
       })));
     if (partErr) return { error: `Event updated but participants failed: ${partErr.message}` };
+  }
+  // Participants present in both old and new lists are left untouched,
+  // preserving any attendance_status recorded via /medical/appointments.
 
+  if (athleteIds.length > 0) {
     // Notify participants of the update if requested
     const notifyEmail = formData.get('notify_email') === 'on';
     const notifyPush  = formData.get('notify_push')  === 'on';
@@ -208,6 +243,7 @@ export async function updateEvent(id: string, formData: FormData) {
   }
 
   revalidatePath('/calendar');
+  revalidatePath('/medical/appointments');
   return { error: null };
 }
 
@@ -219,6 +255,7 @@ export async function deleteEvent(id: string) {
   if (error) return { error: error.message };
 
   revalidatePath('/calendar');
+  revalidatePath('/medical/appointments');
   return { error: null };
 }
 
@@ -234,5 +271,6 @@ export async function updateEventStatus(id: string, status: string) {
   if (error) return { error: error.message };
 
   revalidatePath('/calendar');
+  revalidatePath('/medical/appointments');
   return { error: null };
 }

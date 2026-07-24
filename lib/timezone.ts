@@ -105,6 +105,39 @@ export function todayInMX(): string {
 }
 
 // ---------------------------------------------------------------------------
+// Conversion helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Converts a naive datetime string (no timezone suffix) from Mexico City local
+ * time to a UTC ISO string.
+ *
+ * Use this when processing `datetime-local` HTML inputs from users in Mexico.
+ * Those inputs submit values like `'2026-07-06T06:30'` or `'2026-07-06T06:30:00'`
+ * without any timezone, which Node.js/PostgreSQL would otherwise interpret as UTC.
+ *
+ * If the string already contains timezone information (Z, +HH:MM, -HH:MM) it is
+ * returned as-is (already UTC-convertible by Date constructor).
+ *
+ * @example
+ *   mxLocalToUTC('2026-07-06T06:30')  // → '2026-07-06T11:30:00.000Z'  (CDT = UTC-5)
+ */
+export function mxLocalToUTC(naive: string): string {
+  if (!naive) return naive;
+  // Already has timezone info — just normalise to ISO string
+  if (naive.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(naive)) {
+    return new Date(naive).toISOString();
+  }
+  // Ensure seconds are present so the Date constructor parses correctly
+  const withSeconds = naive.length === 16 ? naive + ':00' : naive;
+  // Treat the naive string as UTC temporarily to get a Date instance;
+  // then shift by the MX offset to obtain the true UTC equivalent.
+  const naiveAsUTC = new Date(withSeconds);
+  const offsetMs   = getMXOffsetMs(naiveAsUTC);
+  return new Date(naiveAsUTC.getTime() + offsetMs).toISOString();
+}
+
+// ---------------------------------------------------------------------------
 // Scheduling helper (for crons that need to target a specific MX local time)
 // ---------------------------------------------------------------------------
 

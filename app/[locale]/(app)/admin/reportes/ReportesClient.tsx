@@ -183,8 +183,9 @@ function buildPrintDocument(
       <td style="text-align:center">${r.scheduled}</td>
       <td style="text-align:center">${r.attendedPresential}</td>
       <td style="text-align:center">${r.attendedRemote === null ? 'NO APLICA' : r.attendedRemote}</td>
-      <td style="text-align:center">${r.followUpNotes}</td>
       <td style="text-align:center">${r.noShow}</td>
+      <td style="text-align:center">${r.followUpNotes}</td>
+      <td style="text-align:center">${r.followUpCases}</td>
     </tr>`).join('');
 
   const coachRows = data.coaches.length > 0
@@ -290,12 +291,13 @@ function buildPrintDocument(
   <table>
     <thead>
       <tr>
-        <th style="width:18%">SERVICIOS</th>
-        <th style="width:16.4%;text-align:center">TOTAL CITAS PROGRAMADAS</th>
-        <th style="width:16.4%;text-align:center">CITAS ATENDIDAS PRESENCIAL</th>
-        <th style="width:16.4%;text-align:center">CITAS ATENDIDAS VÍA REMOTA</th>
-        <th style="width:16.4%;text-align:center">NOTAS DE SEGUIMIENTO</th>
-        <th style="width:16.4%;text-align:center">CITAS NO ATENDIDAS</th>
+        <th style="width:16%">SERVICIOS</th>
+        <th style="width:14%;text-align:center">TOTAL RESUELTAS</th>
+        <th style="width:14%;text-align:center">CITAS PRESENCIAL</th>
+        <th style="width:14%;text-align:center">CITAS REMOTA</th>
+        <th style="width:14%;text-align:center">NO ATENDIDAS</th>
+        <th style="width:14%;text-align:center">NOTAS SEGUIMIENTO</th>
+        <th style="width:14%;text-align:center">CASOS ACTIVOS</th>
       </tr>
     </thead>
     <tbody>${serviceRows}</tbody>
@@ -467,11 +469,24 @@ function ServiceTable({ rows, loading }: { rows: ReportServiceRow[]; loading: bo
         <thead>
           <tr className="border-b border-[#2A2D3A] bg-[#1A1D27]">
             <th className="px-4 py-3 text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Servicio</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Citas Programadas</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Atendidas Presencial</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Atendidas Remoto</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Notas Seguimiento</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+              <div>Citas Resueltas</div>
+              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">presencial + remoto + no atend.</div>
+            </th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Presencial</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+              <div>Remoto</div>
+              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">Llamada/Mensaje</div>
+            </th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">No Atendidas</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+              <div>Notas Seguim.</div>
+              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">sesiones en el período</div>
+            </th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+              <div>Casos Activos</div>
+              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">atletas en seguimiento</div>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -497,11 +512,18 @@ function ServiceTable({ rows, loading }: { rows: ReportServiceRow[]; loading: bo
                 )}
               </td>
               <td className="px-4 py-3 text-center">
+                {r.noShow > 0 ? (
+                  <span className="rounded bg-red-900/30 px-2 py-0.5 text-red-400 font-medium">{r.noShow}</span>
+                ) : (
+                  <span className="text-[#94A3B8]">0</span>
+                )}
+              </td>
+              <td className="px-4 py-3 text-center">
                 <span className="rounded bg-indigo-900/30 px-2 py-0.5 text-indigo-300 font-medium">{r.followUpNotes}</span>
               </td>
               <td className="px-4 py-3 text-center">
-                {r.noShow > 0 ? (
-                  <span className="rounded bg-red-900/30 px-2 py-0.5 text-red-400 font-medium">{r.noShow}</span>
+                {r.followUpCases > 0 ? (
+                  <span className="rounded bg-violet-900/30 px-2 py-0.5 text-violet-300 font-medium">{r.followUpCases}</span>
                 ) : (
                   <span className="text-[#94A3B8]">0</span>
                 )}

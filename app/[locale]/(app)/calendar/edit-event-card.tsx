@@ -63,11 +63,16 @@ function formatDateTime(v: string) {
   });
 }
 
-/** Convert an ISO datetime string to the value expected by <input type="datetime-local"> */
+/** Convert an ISO datetime string to the value expected by <input type="datetime-local">.
+ *  Uses Mexico City timezone so the displayed time matches local wall-clock regardless
+ *  of the user's browser timezone setting.
+ */
 function toDatetimeLocal(iso: string) {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  // sv-SE locale gives 'YYYY-MM-DD HH:MM:SS'; slice to 'YYYY-MM-DDTHH:MM'
+  return new Date(iso)
+    .toLocaleString('sv-SE', { timeZone: 'America/Mexico_City' })
+    .slice(0, 16)
+    .replace(' ', 'T');
 }
 
 export default function EditEventCard({
@@ -99,7 +104,16 @@ export default function EditEventCard({
     { value: 'scheduled', label: t('statusScheduled') },
     { value: 'completed', label: t('statusCompleted')  },
     { value: 'cancelled', label: t('statusCancelled')  },
+    // Medical-module statuses — included as disabled options so that events already
+    // registered via /medical/appointments keep their correct defaultValue and are not
+    // silently reset to 'scheduled' (the first option) when this form is saved.
+    { value: 'show',           label: '✅ Atendida (módulo médico)'        },
+    { value: 'no_show',        label: '❌ No asistió (módulo médico)'      },
+    { value: 'no_show_remote', label: '📞 Llamada/Mensaje (módulo médico)' },
+    { value: 'rescheduled',    label: '🔄 Reagendada (módulo médico)'      },
   ];
+  // Statuses managed exclusively by /medical/appointments — not editable from calendar
+  const MEDICAL_STATUSES = new Set(['show', 'no_show', 'no_show_remote', 'rescheduled']);
   // Build label map — English canonical keys + Spanish aliases stored in DB
   const EVENT_TYPE_LABEL: Record<string, string> = {
     ...Object.fromEntries(EVENT_TYPES.map((et) => [et.value, et.label])),
@@ -370,9 +384,19 @@ export default function EditEventCard({
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             >
               {STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
+                // Medical statuses are disabled: they appear in the list so the
+                // defaultValue resolves correctly, but cannot be actively chosen here.
+                <option key={s.value} value={s.value} disabled={MEDICAL_STATUSES.has(s.value)}>
+                  {s.label}
+                </option>
               ))}
             </select>
+            {MEDICAL_STATUSES.has(event.status) && (
+              <p className="mt-1 text-xs text-amber-700">
+                Estado registrado por el módulo médico. Cámbialo desde{' '}
+                <span className="font-medium">Mis Citas</span>.
+              </p>
+            )}
           </div>
 
           {/* Start */}

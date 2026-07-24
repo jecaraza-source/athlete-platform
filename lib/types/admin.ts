@@ -95,16 +95,31 @@ export type ReportPeriodKey = 'today' | 'week' | 'month' | 'quarter';
 export interface ReportServiceRow {
   /** Display label, e.g. "MÉDICO" */
   service: string;
-  /** All events in period regardless of status */
+  /**
+   * Events with a definitive outcome in the period: show + no_show_remote + no_show.
+   * Equals attendedPresential + attendedRemote + noShow by construction.
+   * (Pending, rescheduled, and cancelled events are excluded so the equation holds.)
+   */
   scheduled: number;
-  /** Events with status='show' */
+  /** Events with status='show' (attended in person) */
   attendedPresential: number;
-  /** Events with status='show_remote'; null = NO APLICA for this service */
+  /**
+   * Events with status='no_show_remote' (Llamada/Mensaje — doctor contacted
+   * the patient by phone/message = remote service delivery).
+   * null = NO APLICA for this service.
+   */
   attendedRemote: number | null;
-  /** Follow-up session notes logged in period */
+  /** Follow-up session or check-in notes logged in the period */
   followUpNotes: number;
-  /** Events with status IN ('no_show', 'no_show_remote') */
+  /** Events with status='no_show' only (no contact made) */
   noShow: number;
+  /**
+   * Distinct athletes with an active follow-up case or plan in this service
+   * (all-time, not period-filtered).
+   * Sources: medical_cases open/in_progress, nutrition_plans active,
+   * physio_cases open/in_progress, psychology_cases open/in_progress.
+   */
+  followUpCases: number;
 }
 
 export interface ReportCoachRow {

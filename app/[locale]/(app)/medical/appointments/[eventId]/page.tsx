@@ -122,11 +122,17 @@ export default async function AppointmentDetailPage({
 
   const event = rawEvent as unknown as AppointmentEvent;
 
-  // Ownership check: created_by_profile_id must match, user is admin, or user is auditor
   const isAdmin   = userRoleCodes.some((c) => ADMIN_ROLE_CODES.includes(c));
   const isAuditor = userRoleCodes.some((c) => AUDITOR_ROLE_CODES.includes(c));
   const isOwner   = event.created_by_profile_id === user.profile.id;
-  if (!isOwner && !isAdmin && !isAuditor) redirect(`/${locale}/dashboard`);
+  // Medical staff (non-admin practitioners) can access ANY medical appointment.
+  // This is the core fix for the coordinator-created event visibility gap:
+  // when a coordinator schedules an appointment for a doctor, the doctor must be
+  // able to open it and record attendance — not get redirected to the dashboard.
+  const isStrictMedical = userRoleCodes.some((c) =>
+    ['medic', 'psychologist', 'nutritionist', 'physio'].includes(c)
+  );
+  if (!isOwner && !isAdmin && !isAuditor && !isStrictMedical) redirect(`/${locale}/dashboard`);
 
   // Extract athlete from event_participants — fetch separately (no FK in PostgREST cache)
   const participant     = event.event_participants?.[0] ?? null;
@@ -168,8 +174,10 @@ export default async function AppointmentDetailPage({
   }
 
   const isReadOnly = CLOSED_STATUSES.includes(event.status);
-  // Auditors never edit — they only observe for audit purposes.
-  const canEdit = (isOwner || isAdmin) && !isAuditor;
+  // Any medical staff member can record attendance, not just the creator.
+  // A coordinator-created appointment has no doctor as owner, but the attending
+  // doctor still needs to be able to mark it as attended/no-show/etc.
+  const canEdit = !isAuditor && (isOwner || isAdmin || isStrictMedical);
 
   return (
     <main className="p-6 max-w-3xl mx-auto">
