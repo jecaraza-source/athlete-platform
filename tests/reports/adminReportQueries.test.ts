@@ -94,7 +94,7 @@ const PAST_ISO   = '2020-01-01T00:00:00.000Z';
 /** Minimal no-op data for tables we don't care about in a given test. */
 function emptyQueues(): Record<string, QueryResult[]> {
   return {
-    // Round 1 — 18 parallel queries (14 original + 4 follow-up case tables)
+    // Round 1 — 14 parallel queries
     athletes:           [{ count: 0 }, { data: [] }],
     events:             [{ data: [] }],
     medical_sessions:   [{ count: 0 }],
@@ -106,11 +106,6 @@ function emptyQueues(): Record<string, QueryResult[]> {
     plans:              [{ data: [] }],
     profiles:           [{ data: [] }, { data: [] }],
     athlete_plans:      [{ data: [] }],
-    // Follow-up active cases/plans (queries 14-17)
-    medical_cases:      [{ data: [] }],
-    nutrition_plans:    [{ data: [] }],
-    physio_cases:       [{ data: [] }],
-    psychology_cases:   [{ data: [] }],
     // Round 2 (only queried when needed)
     user_roles:         [{ data: [] }],
     event_participants: [{ data: [] }],
@@ -121,137 +116,6 @@ function emptyQueues(): Record<string, QueryResult[]> {
 
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-// =============================================================================
-// Section 0: Servicios de Salud — status mapping + math invariant
-// =============================================================================
-
-describe('fetchReportData — Servicios de Salud section', () => {
-  it('maps no_show_remote to attendedRemote (not noShow) for all services', async () => {
-    const queues = emptyQueues();
-
-    queues.events = [{
-      data: [
-        { id: 'e1', title: 'MÉDICO',    status: 'show',           created_by_profile_id: null, start_at: PAST_ISO },
-        { id: 'e2', title: 'MÉDICO',    status: 'no_show_remote', created_by_profile_id: null, start_at: PAST_ISO },
-        { id: 'e3', title: 'MÉDICO',    status: 'no_show',        created_by_profile_id: null, start_at: PAST_ISO },
-        { id: 'e4', title: 'NUTRICIÓN', status: 'no_show_remote', created_by_profile_id: null, start_at: PAST_ISO },
-      ],
-    }];
-
-    installFromMock(queues);
-    const result = await fetchReportData('2024-01-01', '2024-01-31');
-
-    const medico = result.services.find((s) => s.service === 'MÉDICO')!;
-    expect(medico.attendedPresential).toBe(1);   // show
-    expect(medico.attendedRemote).toBe(1);        // no_show_remote → remote
-    expect(medico.noShow).toBe(1);                // pure no_show
-
-    const nutri = result.services.find((s) => s.service === 'NUTRICIÓN')!;
-    expect(nutri.attendedRemote).toBe(1);          // no_show_remote → remote
-    expect(nutri.noShow).toBe(0);                  // zero pure no-shows
-  });
-
-  it('satisfies the equation: scheduled = attendedPresential + attendedRemote + noShow', async () => {
-    const queues = emptyQueues();
-
-    queues.events = [{
-      data: [
-        // 3 processed médico events
-        { id: 'e1', title: 'MÉDICO', status: 'show',           created_by_profile_id: null, start_at: PAST_ISO },
-        { id: 'e2', title: 'MÉDICO', status: 'no_show_remote', created_by_profile_id: null, start_at: PAST_ISO },
-        { id: 'e3', title: 'MÉDICO', status: 'no_show',        created_by_profile_id: null, start_at: PAST_ISO },
-        // These must NOT count in the totals (not processed outcomes)
-        { id: 'e4', title: 'MÉDICO', status: 'scheduled',  created_by_profile_id: null, start_at: FUTURE_ISO },
-        { id: 'e5', title: 'MÉDICO', status: 'rescheduled', created_by_profile_id: null, start_at: PAST_ISO  },
-        { id: 'e6', title: 'MÉDICO', status: 'cancelled',   created_by_profile_id: null, start_at: PAST_ISO  },
-      ],
-    }];
-
-    installFromMock(queues);
-    const result = await fetchReportData('2024-01-01', '2024-01-31');
-
-    const medico = result.services.find((s) => s.service === 'MÉDICO')!;
-    // Core invariant: scheduled = presential + remote + no_show
-    expect(medico.scheduled).toBe(3);
-    expect(medico.attendedPresential + (medico.attendedRemote ?? 0) + medico.noShow).toBe(medico.scheduled);
-    // Pending/rescheduled/cancelled must NOT inflate scheduled
-    expect(medico.scheduled).not.toBe(6);
-  });
-
-  it('excludes pending, rescheduled, and cancelled events from scheduled total', async () => {
-    const queues = emptyQueues();
-
-    queues.events = [{
-      data: [
-        { id: 'e1', title: 'NUTRICIÓN', status: 'scheduled',  created_by_profile_id: null, start_at: FUTURE_ISO },
-        { id: 'e2', title: 'NUTRICIÓN', status: 'rescheduled', created_by_profile_id: null, start_at: PAST_ISO  },
-        { id: 'e3', title: 'NUTRICIÓN', status: 'cancelled',   created_by_profile_id: null, start_at: PAST_ISO  },
-      ],
-    }];
-
-    installFromMock(queues);
-    const result = await fetchReportData('2024-01-01', '2024-01-31');
-
-    const nutri = result.services.find((s) => s.service === 'NUTRICIÓN')!;
-    expect(nutri.scheduled).toBe(0);          // no processed outcomes
-    expect(nutri.attendedPresential).toBe(0);
-    expect(nutri.attendedRemote).toBe(0);
-    expect(nutri.noShow).toBe(0);
-  });
-
-  it('followUpCases reflects active follow-up cases per service', async () => {
-    const queues = emptyQueues();
-
-    // 3 distinct athletes with active medical cases
-    queues.medical_cases = [{
-      data: [
-        { athlete_id: 'AT1' },
-        { athlete_id: 'AT2' },
-        { athlete_id: 'AT3' },
-        { athlete_id: 'AT1' }, // duplicate — should be counted once
-      ],
-    }];
-    // 2 athletes with active nutrition plans
-    queues.nutrition_plans = [{
-      data: [{ athlete_id: 'AT4' }, { athlete_id: 'AT5' }],
-    }];
-    // 1 active physio case
-    queues.physio_cases = [{ data: [{ athlete_id: 'AT6' }] }];
-
-    installFromMock(queues);
-    const result = await fetchReportData('2024-01-01', '2024-01-31');
-
-    expect(result.services.find((s) => s.service === 'MÉDICO')!.followUpCases).toBe(3);       // 3 distinct
-    expect(result.services.find((s) => s.service === 'NUTRICIÓN')!.followUpCases).toBe(2);
-    expect(result.services.find((s) => s.service === 'FISIOTERAPIA')!.followUpCases).toBe(1);
-    expect(result.services.find((s) => s.service === 'PSICOLOGÍA')!.followUpCases).toBe(0);
-  });
-
-  it('followUpCases athletes count toward athletesWithPlans in disciplines', async () => {
-    const queues = emptyQueues();
-
-    queues.athletes = [
-      { count: 2 },
-      { data: [
-        { id: 'AT1', discipline: 'boxeo' },
-        { id: 'AT2', discipline: 'boxeo' },
-      ]},
-    ];
-
-    // AT1 has NO entry in athlete_plans but HAS an active nutrition follow-up plan
-    queues.athlete_plans  = [{ data: [] }];  // empty general plans
-    queues.nutrition_plans = [{ data: [{ athlete_id: 'AT1' }] }];
-
-    installFromMock(queues);
-    const result = await fetchReportData('2024-01-01', '2024-01-31');
-
-    const box = result.disciplines.find((d) => d.disciplineCode === 'boxeo');
-    expect(box).toBeDefined();
-    // AT1 should count as having a plan (via nutrition follow-up), AT2 does not
-    expect(box!.athletesWithPlans).toBe(1);
-  });
 });
 
 // =============================================================================
@@ -373,7 +237,7 @@ describe('fetchReportData — Entrenadores section', () => {
 // =============================================================================
 
 describe('fetchReportData — Staff Médico section', () => {
-  it('tallies show/no_show_remote/rescheduled/no_show per staff member', async () => {
+  it('tallies show/show_remote/rescheduled/no_show per staff member', async () => {
     const queues = emptyQueues();
 
     const MEDIC_ID = 'staff-medic';
@@ -381,10 +245,10 @@ describe('fetchReportData — Staff Médico section', () => {
 
     queues.events = [{
       data: [
-        // Medic: 1 show (presential), 1 no_show_remote (remote), 1 no_show (3 total)
-        { id: 'e1', title: 'MÉDICO 1', status: 'show',           created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
-        { id: 'e2', title: 'MÉDICO 2', status: 'no_show_remote', created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
-        { id: 'e3', title: 'MÉDICO 3', status: 'no_show',        created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
+        // Medic events: 1 show, 1 show_remote, 1 no_show (3 total)
+        { id: 'e1', title: 'MÉDICO 1', status: 'show',        created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
+        { id: 'e2', title: 'MÉDICO 2', status: 'show_remote', created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
+        { id: 'e3', title: 'MÉDICO 3', status: 'no_show',     created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
         // Nutritionist: 1 rescheduled, 1 no_show_remote (2 total)
         { id: 'e4', title: 'NUTRICIÓN 1', status: 'rescheduled',    created_by_profile_id: NUTRI_ID, start_at: PAST_ISO },
         { id: 'e5', title: 'NUTRICIÓN 2', status: 'no_show_remote', created_by_profile_id: NUTRI_ID, start_at: PAST_ISO },
@@ -409,18 +273,18 @@ describe('fetchReportData — Staff Médico section', () => {
     expect(medic).toBeDefined();
     expect(medic!.scheduled).toBe(3);
     expect(medic!.attendedPresential).toBe(1);
-    expect(medic!.attendedRemote).toBe(1);   // no_show_remote → attendedRemote
+    expect(medic!.attendedRemote).toBe(1);
     expect(medic!.rescheduled).toBe(0);
-    expect(medic!.noShow).toBe(1);            // only pure no_show
+    expect(medic!.noShow).toBe(1);
     expect(medic!.roleLabel).toBe('Médico');
 
     const nutri = result.staffMembers.find((s) => s.staffId === NUTRI_ID);
     expect(nutri).toBeDefined();
     expect(nutri!.scheduled).toBe(2);
     expect(nutri!.attendedPresential).toBe(0);
-    expect(nutri!.attendedRemote).toBe(1);   // no_show_remote → attendedRemote (not noShow)
+    expect(nutri!.attendedRemote).toBe(0);
     expect(nutri!.rescheduled).toBe(1);
-    expect(nutri!.noShow).toBe(0);            // no pure no_show events
+    expect(nutri!.noShow).toBe(1);           // no_show_remote counts as noShow
     expect(nutri!.roleLabel).toBe('Nutricionista');
   });
 
@@ -651,7 +515,7 @@ describe('fetchReportData — Por Disciplina section', () => {
     expect(tkd!.athletesNoShow).toBe(0);
   });
 
-  it('counts an athlete as attended if they have at least one no_show_remote (Llamada/Mensaje) event', async () => {
+  it('counts an athlete as attended if they have at least one show or show_remote event', async () => {
     const queues = emptyQueues();
 
     queues.athletes = [
@@ -661,12 +525,12 @@ describe('fetchReportData — Por Disciplina section', () => {
 
     queues.events = [{
       data: [
-        { id: 'e1', title: 'MÉDICO', status: 'no_show',        created_by_profile_id: null, start_at: PAST_ISO },
-        { id: 'e2', title: 'MÉDICO', status: 'no_show_remote', created_by_profile_id: null, start_at: PAST_ISO },
+        { id: 'e1', title: 'MÉDICO', status: 'no_show',     created_by_profile_id: null, start_at: PAST_ISO },
+        { id: 'e2', title: 'MÉDICO', status: 'show_remote', created_by_profile_id: null, start_at: PAST_ISO },
       ],
     }];
 
-    // AT1 had a pure no-show, then the doctor called (remote contact)
+    // AT1 no-showed first, then attended remotely
     queues.event_participants = [{
       data: [
         { event_id: 'e1', participant_id: 'AT1' },
@@ -680,8 +544,8 @@ describe('fetchReportData — Por Disciplina section', () => {
 
     const natacion = result.disciplines.find((d) => d.disciplineCode === 'natacion');
     expect(natacion).toBeDefined();
-    expect(natacion!.athletesAttended).toBe(1);  // no_show_remote (Llamada/Mensaje) = remote attended
-    expect(natacion!.athletesNoShow).toBe(1);    // no_show also recorded (counts independently)
+    expect(natacion!.athletesAttended).toBe(1);  // show_remote counts as attended
+    expect(natacion!.athletesNoShow).toBe(1);    // also had a no_show (counts independently)
   });
 
   it('excludes disciplines with zero athletes from the result', async () => {

@@ -6,7 +6,7 @@ import { getCurrentUser } from '@/lib/rbac/server';
 import BackButton from '@/components/back-button';
 import { Suspense } from 'react';
 import AppointmentsFilters from './appointments-filters';
-import { todayInMX, TZ, mxLocalToUTC } from '@/lib/timezone';
+import { todayInMX, TZ } from '@/lib/timezone';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,19 +78,14 @@ export default async function AppointmentsListPage({
   const PROGRAM_START = '2026-06-01T00:00:00'; // Start of the program
   const PROGRAM_END   = '2026-12-31T23:59:59';
 
-  // Month filter overrides range start/end.
-  // Boundaries are converted to UTC using Mexico City timezone so that, e.g.,
-  // filtering for "July" returns events from July 1 00:00 MX through July 31 23:59 MX
-  // rather than the equivalent UTC window (which would miss early-morning MX events
-  // on the 1st and include late-evening events that fall in the next calendar month).
+  // Month filter overrides range start/end
   let filterStart = PROGRAM_START;
   let filterEnd   = PROGRAM_END;
   if (monthParam !== 'all') {
-    const mo      = parseInt(monthParam, 10);
+    const mo = parseInt(monthParam, 10);
     const lastDay = new Date(2026, mo, 0).getDate();
-    const pad     = (n: number) => String(n).padStart(2, '0');
-    filterStart = mxLocalToUTC(`2026-${pad(mo)}-01T00:00:00`);
-    filterEnd   = mxLocalToUTC(`2026-${pad(mo)}-${lastDay}T23:59:59`);
+    filterStart = `2026-${String(mo).padStart(2, '0')}-01T00:00:00`;
+    filterEnd   = `2026-${String(mo).padStart(2, '0')}-${lastDay}T23:59:59`;
   }
 
   // Build query — paginated to bypass Supabase's 1,000-row server cap.
@@ -110,11 +105,7 @@ export default async function AppointmentsListPage({
       .order('start_at', { ascending: true })
       .range(from, from + PAGE - 1);
 
-    // All medical staff see ALL medical appointments in the program.
-    // Coordinators create events on behalf of doctors; filtering by created_by_profile_id
-    // would make those events invisible to the assigned doctor, causing the
-    // "doctor sees attended / coordinator sees pending" discrepancy (Nahui Mariana case).
-    // Auditors always see all events (no additional filter needed either).
+    if (!isAdmin && !isAuditor) q = q.eq('created_by_profile_id', user.profile.id);
     if (serviceParam !== 'all') q = q.ilike('title', `%${serviceParam}%`);
     if (statusParam !== 'all') q = q.eq('status', statusParam);
 
@@ -234,7 +225,7 @@ export default async function AppointmentsListPage({
 
       <h1 className="mt-5 text-2xl font-bold text-gray-900">Mis Citas</h1>
       <p className="text-sm text-gray-500 mt-0.5 mb-3">
-        {isAuditor ? 'Vista de auditoría — todas las citas (solo lectura)' : 'Citas del programa médico'}
+        {isAdmin ? 'Todas las citas del sistema' : isAuditor ? 'Vista de auditoría — todas las citas (solo lectura)' : 'Citas asignadas a tu perfil'}
         {' — '}{monthLabel}
       </p>
 

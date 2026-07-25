@@ -13,7 +13,6 @@
 import { supabaseAdmin }       from '@/lib/supabase-admin';
 import { requireReportAccess }  from '@/lib/rbac/server';
 import { DISCIPLINES }          from '@/lib/types/diagnostic';
-import { mxLocalToUTC }         from '@/lib/timezone';
 import type {
   ReportData, ReportServiceRow, ReportCoachRow, ServiceType,
   ReportStaffMemberRow, ReportDisciplineRow,
@@ -21,12 +20,8 @@ import type {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// Convert YYYY-MM-DD date boundaries to UTC ISO strings anchored to Mexico City midnight.
-// Without this, a naive '2026-07-31T23:59:59' is treated as UTC by Supabase/PostgreSQL,
-// which would miss events scheduled 18:00-23:59 MX on the last day of the period
-// (those hours fall into the NEXT UTC day).
-function fromISO(date: string): string { return mxLocalToUTC(`${date}T00:00:00`); }
-function toISO(date: string):   string { return mxLocalToUTC(`${date}T23:59:59`); }
+function fromISO(date: string): string { return `${date}T00:00:00`; }
+function toISO(date: string):   string { return `${date}T23:59:59`; }
 
 const SERVICE_KEYWORDS: [string, ServiceType][] = [
   ['fisio',    'fisioterapia'],
@@ -77,12 +72,6 @@ export async function fetchReportData(
     { data: medStaffProfiles },
     { data: allActiveAthletes },
     { data: allAthletePlans },
-    // Follow-up active cases/plans (all-time, not period-filtered).
-    // Used for: a) disciplines.athletesWithPlans, b) services.followUpCases
-    { data: medCaseAthletes },
-    { data: nutrPlanAthletes },
-    { data: physioCaseAthletes },
-    { data: psychCaseAthletes },
   ] = await Promise.all([
     // 0. Active athletes count (global)
     supabaseAdmin.from('athletes')
@@ -120,17 +109,8 @@ export async function fetchReportData(
       .in('role', MEDICAL_STAFF_ROLES),
     // 12. Active athletes with discipline (for disciplines section)
     supabaseAdmin.from('athletes').select('id, discipline').eq('status', 'active'),
-    // 13. All athlete plan assignments (general Plans module)
+    // 13. All athlete plan assignments — used for both coaches and disciplines
     supabaseAdmin.from('athlete_plans').select('plan_id, athlete_id'),
-    // 14-17. Active follow-up cases / plans per service (all-time)
-    supabaseAdmin.from('medical_cases').select('athlete_id')
-      .in('status', ['open', 'in_progress']),
-    supabaseAdmin.from('nutrition_plans').select('athlete_id')
-      .eq('status', 'active'),
-    supabaseAdmin.from('physio_cases').select('athlete_id')
-      .in('status', ['open', 'in_progress']),
-    supabaseAdmin.from('psychology_cases').select('athlete_id')
-      .in('status', ['open', 'in_progress']),
   ]);
 
   // ── 1. Services section ───────────────────────────────────────────────────
@@ -140,13 +120,6 @@ export async function fetchReportData(
 
   type RawEvent = { id: string; title: string | null; status: string; created_by_profile_id: string | null; start_at: string };
 
-  // Follow-up active case/plan counts per service (all-time, distinct athletes)
-  type FollowUpRow = { athlete_id: string | null };
-  const medActiveCases   = new Set((medCaseAthletes   ?? [] as FollowUpRow[]).map((r) => r.athlete_id).filter(Boolean)).size;
-  const nutrActivePlans  = new Set((nutrPlanAthletes  ?? [] as FollowUpRow[]).map((r) => r.athlete_id).filter(Boolean)).size;
-  const physioActiveCases= new Set((physioCaseAthletes?? [] as FollowUpRow[]).map((r) => r.athlete_id).filter(Boolean)).size;
-  const psychActiveCases = new Set((psychCaseAthletes ?? [] as FollowUpRow[]).map((r) => r.athlete_id).filter(Boolean)).size;
-
   const HEALTH_SERVICES: ServiceType[] = ['medico', 'nutricion', 'psicologia', 'fisioterapia'];
   type Tally = { scheduled: number; show: number; show_remote: number; no_show: number };
   const tally: Record<ServiceType, Tally> = {} as Record<ServiceType, Tally>;
@@ -154,33 +127,20 @@ export async function fetchReportData(
     tally[s] = { scheduled: 0, show: 0, show_remote: 0, no_show: 0 };
   });
 
-  // Only events with a definitive outcome count toward the totals.
-  // This makes the equation hold: scheduled = presential + remote + no_show.
-  // Events still in 'scheduled', 'rescheduled', or 'cancelled' state are excluded
-  // because they have not yet been resolved and would inflate the denominator
-  // without contributing to any outcome column.
-  //
-  // Status mapping:
-  //   'show'           → attended in person (presential)
-  //   'no_show_remote' → attended via phone/message (remote) — “Llamada/Mensaje”
-  //   'no_show'        → did not attend and no contact was made
-  const PROCESSED_STATUSES = new Set(['show', 'no_show_remote', 'no_show']);
-
   (events ?? [] as RawEvent[]).forEach(({ title, status }) => {
     const st = titleToServiceType(title ?? '');
     if (!HEALTH_SERVICES.includes(st)) return;
-    if (!PROCESSED_STATUSES.has(status)) return; // skip pending/rescheduled/cancelled
-    tally[st].scheduled++;                        // total = sum of all outcomes
-    if (status === 'show')             tally[st].show++;
-    else if (status === 'no_show_remote') tally[st].show_remote++; // remote service delivery
-    else if (status === 'no_show')     tally[st].no_show++;
+    tally[st].scheduled++;
+    if (status === 'show')                                          tally[st].show++;
+    else if (status === 'show_remote')                              tally[st].show_remote++;
+    else if (status === 'no_show' || status === 'no_show_remote')   tally[st].no_show++;
   });
 
   const services: ReportServiceRow[] = [
-    { service: 'MÉDICO',       scheduled: tally.medico.scheduled,       attendedPresential: tally.medico.show,       attendedRemote: tally.medico.show_remote,       followUpNotes: medNotes   ?? 0, noShow: tally.medico.no_show,       followUpCases: medActiveCases    },
-    { service: 'NUTRICIÓN',    scheduled: tally.nutricion.scheduled,    attendedPresential: tally.nutricion.show,    attendedRemote: tally.nutricion.show_remote,    followUpNotes: nutrNotes  ?? 0, noShow: tally.nutricion.no_show,    followUpCases: nutrActivePlans   },
-    { service: 'PSICOLOGÍA',   scheduled: tally.psicologia.scheduled,   attendedPresential: tally.psicologia.show,   attendedRemote: tally.psicologia.show_remote,   followUpNotes: psychNotes ?? 0, noShow: tally.psicologia.no_show,   followUpCases: psychActiveCases  },
-    { service: 'FISIOTERAPIA', scheduled: tally.fisioterapia.scheduled, attendedPresential: tally.fisioterapia.show, attendedRemote: null, followUpNotes: physioNotes ?? 0, noShow: tally.fisioterapia.no_show, followUpCases: physioActiveCases },
+    { service: 'MÉDICO',       scheduled: tally.medico.scheduled,       attendedPresential: tally.medico.show,       attendedRemote: tally.medico.show_remote,       followUpNotes: medNotes   ?? 0, noShow: tally.medico.no_show },
+    { service: 'NUTRICIÓN',    scheduled: tally.nutricion.scheduled,    attendedPresential: tally.nutricion.show,    attendedRemote: tally.nutricion.show_remote,    followUpNotes: nutrNotes  ?? 0, noShow: tally.nutricion.no_show },
+    { service: 'PSICOLOGÍA',   scheduled: tally.psicologia.scheduled,   attendedPresential: tally.psicologia.show,   attendedRemote: tally.psicologia.show_remote,   followUpNotes: psychNotes ?? 0, noShow: tally.psicologia.no_show },
+    { service: 'FISIOTERAPIA', scheduled: tally.fisioterapia.scheduled, attendedPresential: tally.fisioterapia.show, attendedRemote: null, followUpNotes: physioNotes ?? 0, noShow: tally.fisioterapia.no_show },
   ];
 
   // ── 2. Staff Médico section ────────────────────────────────────────────────
@@ -204,10 +164,10 @@ export async function fetchReportData(
     staffTally[cid].scheduled++;
     // Upcoming = still in the future and not yet given an outcome
     if (status === 'scheduled' && start_at > nowUTC)               staffTally[cid].upcoming++;
-    else if (status === 'show')             staffTally[cid].show++;
-    else if (status === 'no_show_remote')    staffTally[cid].show_remote++;   // Llamada/Mensaje = remote service
-    else if (status === 'rescheduled')       staffTally[cid].rescheduled++;
-    else if (status === 'no_show')           staffTally[cid].no_show++;       // pure no-show only
+    else if (status === 'show')                                     staffTally[cid].show++;
+    else if (status === 'show_remote')                              staffTally[cid].show_remote++;
+    else if (status === 'rescheduled')                              staffTally[cid].rescheduled++;
+    else if (status === 'no_show' || status === 'no_show_remote')   staffTally[cid].no_show++;
   });
 
   const staffMembers: ReportStaffMemberRow[] = (
@@ -298,21 +258,11 @@ export async function fetchReportData(
   // Athletes who have any medical appointment participant in the period (for coaches section)
   const athletesWithPeriodApts = new Set(eventParticipants.map((ep) => ep.participant_id));
 
-  // Athletes who have at least 1 plan or active follow-up case (all-time).
-  // Sources:
-  //   - athlete_plans (general Plans module — training, medical, nutrition, etc.)
-  //   - medical_cases with status open/in_progress (follow-up Médico module)
-  //   - nutrition_plans with status active (follow-up Nutrición module)
-  //   - physio_cases with status open/in_progress (follow-up Fisioterapia module)
-  //   - psychology_cases with status open/in_progress (follow-up Psicología module)
+  // Athletes who have at least 1 plan assigned (all-time)
   type AthletePlanRow = { plan_id: string; athlete_id: string };
-  const athletesWithPlanSet = new Set([
-    ...(allAthletePlans    ?? [] as AthletePlanRow[]).map((ap) => ap.athlete_id),
-    ...(medCaseAthletes    ?? [] as FollowUpRow[]).map((r) => r.athlete_id).filter((id): id is string => id != null),
-    ...(nutrPlanAthletes   ?? [] as FollowUpRow[]).map((r) => r.athlete_id).filter((id): id is string => id != null),
-    ...(physioCaseAthletes ?? [] as FollowUpRow[]).map((r) => r.athlete_id).filter((id): id is string => id != null),
-    ...(psychCaseAthletes  ?? [] as FollowUpRow[]).map((r) => r.athlete_id).filter((id): id is string => id != null),
-  ]);
+  const athletesWithPlanSet = new Set(
+    (allAthletePlans ?? [] as AthletePlanRow[]).map((ap) => ap.athlete_id)
+  );
 
   // Group active athletes by discipline code
   type ActiveAthlete = { id: string; discipline: string | null };
@@ -334,10 +284,8 @@ export async function fetchReportData(
       athleteIds.forEach((aid) => {
         const statuses = athleteStatuses.get(aid);
         if (statuses) {
-          // 'no_show_remote' = Llamada/Mensaje = remote service delivery → counts as attended
-          if (statuses.has('show') || statuses.has('no_show_remote'))  athletesAttended++;
-          // Only pure no-show (no contact made) counts as not attended
-          if (statuses.has('no_show'))                                  athletesNoShow++;
+          if (statuses.has('show') || statuses.has('show_remote'))         athletesAttended++;
+          if (statuses.has('no_show') || statuses.has('no_show_remote'))   athletesNoShow++;
         }
         if (athletesWithPlanSet.has(aid)) athletesWithPlans++;
       });

@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { assertPermission, getCurrentUser } from '@/lib/rbac/server';
 import { oneSignalAdapter } from '@/lib/notifications/providers/onesignal-adapter';
-import { TZ } from '@/lib/timezone';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,7 +51,6 @@ export async function confirmShow(eventId: string, notes: string) {
 
   revalidatePath(`/medical/appointments/${eventId}`);
   revalidatePath('/medical/appointments');
-  revalidatePath('/calendar');
   return { error: null };
 }
 
@@ -108,7 +106,6 @@ export async function confirmNoShowRemote(
 
   revalidatePath(`/medical/appointments/${eventId}`);
   revalidatePath('/medical/appointments');
-  revalidatePath('/calendar');
   return { error: null };
 }
 
@@ -169,7 +166,6 @@ export async function confirmNoShow(
 
   revalidatePath(`/medical/appointments/${eventId}`);
   revalidatePath('/medical/appointments');
-  revalidatePath('/calendar');
   return { error: null };
 }
 
@@ -210,10 +206,7 @@ export async function confirmReschedule(
     .update({ attendance_status: 'rescheduled' })
     .eq('event_id', originalEventId);
 
-  // 2. Create the new event.
-  // Always use the acting user's profileId so the doctor who performs the reschedule
-  // remains the owner of the new appointment and can see/access it in their list.
-  // (specialistId may point to the original coordinator if the event was admin-created.)
+  // 2. Create the new event (use created_by_profile_id as specialist identifier)
   const { data: newEvent, error: newErr } = await supabaseAdmin
     .from('events')
     .insert({
@@ -223,7 +216,7 @@ export async function confirmReschedule(
       end_at:               newEndAt,
       status:               'scheduled',
       description:          rescheduleNotes ? `Reagendado desde cita anterior.\n${rescheduleNotes}` : 'Reagendado desde cita anterior.',
-      created_by_profile_id: profileId,
+      created_by_profile_id: specialistId ?? profileId,
     })
     .select('id')
     .single();
@@ -273,7 +266,6 @@ export async function confirmReschedule(
 
   revalidatePath(`/medical/appointments/${originalEventId}`);
   revalidatePath('/medical/appointments');
-  revalidatePath('/calendar');
   return { error: null, newEventId: newEvent.id };
 }
 
@@ -337,10 +329,8 @@ export async function fetchAvailableSlots(
 
   const takenTimes = new Set(
     (booked ?? []).map((e) => {
-      // Use Mexico City timezone — getHours() returns UTC time on Vercel which would
-      // shift slots by 5-6 hours and cause incorrect double-booking detection.
       const d = new Date(e.start_at as string);
-      return d.toLocaleTimeString('sv-SE', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).slice(0, 5);
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     })
   );
 
