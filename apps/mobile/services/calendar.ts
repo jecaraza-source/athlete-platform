@@ -54,17 +54,17 @@ export async function createCalendarEvent(
 
 /**
  * Insert participant rows for an event.
- * participant_id stores a profiles.id value (works for both staff and athletes).
+ * participant_id references athletes.id.
  */
 export async function addEventParticipants(
   eventId: string,
-  profileIds: string[],
+  athleteIds: string[],
 ): Promise<void> {
-  if (!profileIds.length) return;
-  const rows = profileIds.map((profileId) => ({
+  if (!athleteIds.length) return;
+  const rows = athleteIds.map((athleteId) => ({
     event_id:          eventId,
-    participant_id:    profileId,
-    participant_type:  'profile',   // mobile uses profiles.id; web uses athletes.id
+    participant_id:    athleteId,
+    participant_type:  'athlete',
     attendance_status: 'planned',
   }));
   const { error } = await supabase.from('event_participants').insert(rows);
@@ -125,8 +125,10 @@ export async function listEventsInRange(
 
 /**
  * Fetch events visible to a specific user (athlete or staff).
- * participant_id is compared against profiles.id.
- * Rules: included if (a) profile is an explicit participant, OR
+ * The mobile session identifies the user by profiles.id, while
+ * event_participants.participant_id references athletes.id. Resolve the
+ * athlete record first, then compare consistent identifiers.
+ * Rules: included if (a) the resolved athlete is an explicit participant, OR
  *        (b) the event has no participants at all (global event).
  */
 export async function listEventsForAthlete(
@@ -134,6 +136,16 @@ export async function listEventsForAthlete(
   startISO: string,
   endISO: string,
 ): Promise<CalendarEvent[]> {
+  const { data: athlete, error: athleteErr } = await supabase
+    .from('athletes')
+    .select('id')
+    .eq('profile_id', profileId)
+    .maybeSingle();
+
+  if (athleteErr) {
+    console.warn('[calendar] listEventsForAthlete athlete lookup error:', athleteErr.message);
+  }
+  const athleteId = athlete?.id;
   // Step 1 — all events in the month range
   const { data: allEvents, error: eventsErr } = await supabase
     .from('events')
@@ -159,7 +171,7 @@ export async function listEventsForAthlete(
   // Set of event IDs where THIS athlete is explicitly a participant
   const athleteEventIds = new Set(
     participants
-      .filter((p) => p.participant_id === profileId)
+      .filter((p) => athleteId != null && p.participant_id === athleteId)
       .map((p) => p.event_id),
   );
 

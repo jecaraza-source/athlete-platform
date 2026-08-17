@@ -27,6 +27,9 @@ const EVENT_TYPE: Record<string, EventTypeConfig> = {
   competition: { label: 'Competencia',  color: '#dc2626', bg: '#fee2e2', icon: 'trophy-outline' },
   meeting:     { label: 'Reunión',      color: '#7c3aed', bg: '#f3e8ff', icon: 'people-outline' },
   medical:     { label: 'Médico',       color: '#15803d', bg: '#dcfce7', icon: 'medical-outline' },
+  nutrition:   { label: 'Nutrición',    color: '#0f766e', bg: '#ccfbf1', icon: 'nutrition-outline' },
+  psychology:  { label: 'Psicología',   color: '#7e22ce', bg: '#f3e8ff', icon: 'chatbubble-ellipses-outline' },
+  physio:      { label: 'Fisioterapia', color: '#c2410c', bg: '#ffedd5', icon: 'walk-outline' },
 };
 const EVENT_TYPE_DEFAULT: EventTypeConfig = {
   label: 'Evento', color: '#92400e', bg: '#fef3c7', icon: 'calendar-outline',
@@ -155,7 +158,8 @@ export default function CalendarScreen() {
           let data: CalendarEvent[];
 
           if (isAthleteUser) {
-            // Athlete: filter events by their profile ID.
+            // Athlete: resolve their profile to athletes.id before filtering
+            // event_participants (which stores athletes.id).
             if (profileId) {
               data = await listEventsForAthlete(profileId, startISO, endISO);
             } else {

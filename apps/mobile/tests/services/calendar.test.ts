@@ -194,6 +194,7 @@ describe('listEventsInRange', () => {
 
 describe('listEventsForAthlete', () => {
   const ATHLETE_PROFILE_ID = 'profile-athlete-001';
+  const ATHLETE_ID = 'athlete-001';
 
   it('returns an empty array when there are no events in the range', async () => {
     vi.mocked(supabase.from).mockReturnValue(
@@ -211,6 +212,9 @@ describe('listEventsForAthlete', () => {
 
   it('includes global events (events with no participants)', async () => {
     vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === 'athletes') {
+        return makeChain({ data: { id: ATHLETE_ID }, error: null }) as never;
+      }
       if (table === 'events') {
         return makeChain({ data: [EVENT_A], error: null }) as never;
       }
@@ -229,6 +233,9 @@ describe('listEventsForAthlete', () => {
 
   it('includes events where the athlete is an explicit participant', async () => {
     vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === 'athletes') {
+        return makeChain({ data: { id: ATHLETE_ID }, error: null }) as never;
+      }
       if (table === 'events') {
         return makeChain({ data: [EVENT_A, EVENT_B], error: null }) as never;
       }
@@ -236,8 +243,8 @@ describe('listEventsForAthlete', () => {
         return makeChain({
           data: [
             // Both events have participants; athlete is only in EVENT_A
-            { event_id: 'evt-001', participant_id: ATHLETE_PROFILE_ID },
-            { event_id: 'evt-002', participant_id: 'profile-other-001' },
+            { event_id: 'evt-001', participant_id: ATHLETE_ID },
+            { event_id: 'evt-002', participant_id: 'athlete-other-001' },
           ],
           error: null,
         }) as never;
@@ -274,12 +281,15 @@ describe('listEventsForAthlete', () => {
     // EVENT_A: global (no participants)
     // EVENT_B: has participants and athlete is one of them
     vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === 'athletes') {
+        return makeChain({ data: { id: ATHLETE_ID }, error: null }) as never;
+      }
       if (table === 'events') {
         return makeChain({ data: [EVENT_A, EVENT_B], error: null }) as never;
       }
       if (table === 'event_participants') {
         return makeChain({
-          data: [{ event_id: 'evt-002', participant_id: ATHLETE_PROFILE_ID }],
+          data: [{ event_id: 'evt-002', participant_id: ATHLETE_ID }],
           error: null,
         }) as never;
       }
