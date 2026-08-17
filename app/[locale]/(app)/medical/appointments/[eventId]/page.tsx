@@ -7,18 +7,14 @@ import AppointmentHeader from '@/components/medical/AppointmentHeader';
 import AthleteHistory from '@/components/medical/AthleteHistory';
 import AttendanceActions from '@/components/medical/AttendanceActions';
 import AppointmentReadOnly from '@/components/medical/AppointmentReadOnly';
+import {
+  AUDITOR_MEDICAL_ROLE_CODES,
+  MEDICAL_ROLE_CODES,
+  canAccessMedicalEventType,
+} from '@/lib/medical-appointments';
 
 export const dynamic = 'force-dynamic';
 
-// Role codes that can access this view
-const MEDICAL_ROLE_CODES = [
-  'medic', 'psychologist', 'nutritionist', 'physio',
-  'admin', 'super_admin', 'program_director', 'event_coordinator',
-  'auditor', // read-only audit access
-];
-const ADMIN_ROLE_CODES = ['admin', 'super_admin', 'program_director', 'event_coordinator'];
-// Auditors can view any appointment in read-only mode but cannot modify status.
-const AUDITOR_ROLE_CODES = ['auditor'];
 
 // Statuses that make the view read-only
 const CLOSED_STATUSES = ['show', 'no_show', 'no_show_remote', 'rescheduled', 'cancelled'];
@@ -88,7 +84,9 @@ export default async function AppointmentDetailPage({
   if (!user?.profile) redirect(`/${locale}/login`);
 
   const userRoleCodes = user.roles.map((r) => r.code);
-  const isMedicalStaff = userRoleCodes.some((c) => MEDICAL_ROLE_CODES.includes(c));
+  const isMedicalStaff = userRoleCodes.some((c) =>
+    MEDICAL_ROLE_CODES.includes(c as typeof MEDICAL_ROLE_CODES[number]),
+  );
   if (!isMedicalStaff) redirect(`/${locale}/dashboard`);
 
   // Fetch the event with all related data
@@ -122,11 +120,11 @@ export default async function AppointmentDetailPage({
 
   const event = rawEvent as unknown as AppointmentEvent;
 
-  // Ownership check: created_by_profile_id must match, user is admin, or user is auditor
-  const isAdmin   = userRoleCodes.some((c) => ADMIN_ROLE_CODES.includes(c));
-  const isAuditor = userRoleCodes.some((c) => AUDITOR_ROLE_CODES.includes(c));
-  const isOwner   = event.created_by_profile_id === user.profile.id;
-  if (!isOwner && !isAdmin && !isAuditor) redirect(`/${locale}/dashboard`);
+  // Specialists can open only the service type assigned to their role.
+  const isAuditor = userRoleCodes.some((c) => AUDITOR_MEDICAL_ROLE_CODES.includes(c as typeof AUDITOR_MEDICAL_ROLE_CODES[number]));
+  if (!canAccessMedicalEventType(userRoleCodes, event.event_type)) {
+    redirect(`/${locale}/dashboard`);
+  }
 
   // Extract athlete from event_participants — fetch separately (no FK in PostgREST cache)
   const participant     = event.event_participants?.[0] ?? null;
@@ -169,7 +167,7 @@ export default async function AppointmentDetailPage({
 
   const isReadOnly = CLOSED_STATUSES.includes(event.status);
   // Auditors never edit — they only observe for audit purposes.
-  const canEdit = (isOwner || isAdmin) && !isAuditor;
+  const canEdit = !isAuditor;
 
   return (
     <main className="p-6 max-w-3xl mx-auto">

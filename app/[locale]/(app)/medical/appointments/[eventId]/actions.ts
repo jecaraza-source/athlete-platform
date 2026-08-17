@@ -2,8 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { assertPermission, getCurrentUser } from '@/lib/rbac/server';
+import { getCurrentUser } from '@/lib/rbac/server';
 import { oneSignalAdapter } from '@/lib/notifications/providers/onesignal-adapter';
+import {
+  MEDICAL_ROLE_CODES,
+  canManageMedicalEventType,
+} from '@/lib/medical-appointments';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -19,14 +23,38 @@ export type SlotInfo = {
 // Guard helper — medical staff only
 // ---------------------------------------------------------------------------
 
-const MEDICAL_ROLE_CODES = ['medic', 'psychologist', 'nutritionist', 'physio', 'admin', 'super_admin', 'program_director', 'event_coordinator'];
 
 async function assertMedicalAccess(): Promise<{ error: string } | null> {
   const user = await getCurrentUser();
   if (!user) return { error: 'No estás autenticado.' };
-  const isMedical = user.roles.some((r) => MEDICAL_ROLE_CODES.includes(r.code));
+  const isMedical = user.roles.some((r) =>
+    r.code !== 'auditor'
+    && MEDICAL_ROLE_CODES.includes(r.code as typeof MEDICAL_ROLE_CODES[number]),
+  );
   if (!isMedical) return { error: 'No tienes acceso a esta sección.' };
   return null;
+}
+type EventServiceAccess = { eventType: string } | { error: string };
+
+async function assertEventServiceAccess(eventId: string): Promise<EventServiceAccess> {
+  const denied = await assertMedicalAccess();
+  if (denied) return denied;
+
+  const [user, { data: event, error }] = await Promise.all([
+    getCurrentUser(),
+    supabaseAdmin
+      .from('events')
+      .select('event_type')
+      .eq('id', eventId)
+      .maybeSingle(),
+  ]);
+
+  if (error || !event) return { error: 'Cita no encontrada.' };
+  const roleCodes = user?.roles.map((role) => role.code) ?? [];
+  if (!canManageMedicalEventType(roleCodes, event.event_type)) {
+    return { error: 'No tienes acceso a citas de este servicio.' };
+  }
+  return { eventType: event.event_type };
 }
 
 // ---------------------------------------------------------------------------
@@ -34,8 +62,8 @@ async function assertMedicalAccess(): Promise<{ error: string } | null> {
 // ---------------------------------------------------------------------------
 
 export async function confirmShow(eventId: string, notes: string) {
-  const denied = await assertMedicalAccess();
-  if (denied) return denied;
+  const access = await assertEventServiceAccess(eventId);
+  if ('error' in access) return access;
 
   const { error: evErr } = await supabaseAdmin
     .from('events')
@@ -59,8 +87,8 @@ export async function confirmShow(eventId: string, notes: string) {
 // ---------------------------------------------------------------------------
 
 export async function autosaveNotes(eventId: string, notes: string) {
-  const denied = await assertMedicalAccess();
-  if (denied) return denied;
+  const access = await assertEventServiceAccess(eventId);
+  if ('error' in access) return access;
 
   const { error } = await supabaseAdmin
     .from('events')
@@ -85,8 +113,8 @@ export async function confirmNoShowRemote(
   notes: string,
   athleteProfileId: string | null,
 ) {
-  const denied = await assertMedicalAccess();
-  if (denied) return denied;
+  const access = await assertEventServiceAccess(eventId);
+  if ('error' in access) return access;
 
   // Encode contact method and notes together in description
   const desc = [method ? `CONTACTO: ${method}` : '', notes ? `NOTAS: ${notes}` : '']
@@ -115,8 +143,8 @@ export async function confirmNoShow(
   notes: string,
   athleteProfileId: string | null,
 ) {
-  const denied = await assertMedicalAccess();
-  if (denied) return denied;
+  const access = await assertEventServiceAccess(eventId);
+  if ('error' in access) return access;
 
   // Store reason + notes in description since no dedicated column exists yet
   const NO_SHOW_LABELS: Record<string, string> = {
@@ -183,12 +211,11 @@ export async function confirmReschedule(
   specialistId: string,
   serviceType: string,
 ) {
-  const denied = await assertMedicalAccess();
-  if (denied) return denied;
+  const access = await assertEventServiceAccess(originalEventId);
+  if ('error' in access) return access;
 
   const user = await getCurrentUser();
   const profileId = user?.profile?.id;
-  const now = new Date().toISOString();
 
   // 1. Mark original event as rescheduled
   const { error: origErr } = await supabaseAdmin
@@ -211,7 +238,7 @@ export async function confirmReschedule(
     .from('events')
     .insert({
       title:                serviceType,
-      event_type:           'medical',
+      event_type:           access.eventType,
       start_at:             newStartAt,
       end_at:               newEndAt,
       status:               'scheduled',

@@ -309,6 +309,14 @@ describe('7. confirmShow — Server Action de escritura bloqueada para auditor',
     vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
       if (table === 'events') {
         return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { event_type: 'medical' },
+                error: null,
+              }),
+            }),
+          }),
           update: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ error: null }),
           }),

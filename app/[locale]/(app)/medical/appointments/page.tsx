@@ -7,13 +7,14 @@ import BackButton from '@/components/back-button';
 import { Suspense } from 'react';
 import AppointmentsFilters from './appointments-filters';
 import { todayInMX, TZ } from '@/lib/timezone';
+import {
+  ADMIN_MEDICAL_ROLE_CODES,
+  AUDITOR_MEDICAL_ROLE_CODES,
+  MEDICAL_ROLE_CODES,
+  allowedMedicalEventTypes,
+} from '@/lib/medical-appointments';
 
 export const dynamic = 'force-dynamic';
-
-const MEDICAL_ROLE_CODES = [
-  'medic', 'psychologist', 'nutritionist', 'physio',
-  'admin', 'super_admin', 'program_director', 'event_coordinator', 'auditor',
-];
 
 const STATUS_PILL: Record<string, string> = {
   scheduled:      'bg-blue-100 text-blue-700',
@@ -62,16 +63,15 @@ export default async function AppointmentsListPage({
   if (!user?.profile) redirect(`/${locale}/login`);
 
   const userRoleCodes = user.roles.map((r) => r.code);
-  if (!userRoleCodes.some((c) => MEDICAL_ROLE_CODES.includes(c))) {
+  if (!userRoleCodes.some((c) => MEDICAL_ROLE_CODES.includes(c as typeof MEDICAL_ROLE_CODES[number]))) {
     redirect(`/${locale}/dashboard`);
   }
 
-  const isAdmin = userRoleCodes.some((c) =>
-    ['admin', 'super_admin', 'program_director', 'event_coordinator'].includes(c),
-  );
+  const isAdmin = userRoleCodes.some((c) => ADMIN_MEDICAL_ROLE_CODES.includes(c as typeof ADMIN_MEDICAL_ROLE_CODES[number]));
   // Auditors get a read-only view of all appointments (audit trail) but are
   // NOT treated as admin — they cannot create, edit, or change appointment status.
-  const isAuditor = userRoleCodes.includes('auditor');
+  const isAuditor = userRoleCodes.some((c) => AUDITOR_MEDICAL_ROLE_CODES.includes(c as typeof AUDITOR_MEDICAL_ROLE_CODES[number]));
+  const permittedEventTypes = allowedMedicalEventTypes(userRoleCodes);
 
   // Date range: full program Jun 2026 → Dec 2026 (including past appointments)
   const todayMX      = todayInMX();           // 'YYYY-MM-DD' in Mexico City
@@ -89,7 +89,8 @@ export default async function AppointmentsListPage({
   }
 
   // Build query — paginated to bypass Supabase's 1,000-row server cap.
-  // With 2,800+ medical events in Jun-Dec 2026 a single limited query misses many.
+  // The program contains thousands of appointments, so paginate past Supabase's
+  // 1,000-row cap before applying client-side grouping.
   const PAGE = 1000;
   const allEvents: EventRow[] = [];
   let fetchError: { message: string } | null = null;
@@ -99,13 +100,11 @@ export default async function AppointmentsListPage({
     let q = supabaseAdmin
       .from('events')
       .select('id, title, start_at, end_at, status, event_participants(participant_id)')
-      .eq('event_type', 'medical')
       .gte('start_at', filterStart)
       .lte('start_at', filterEnd)
       .order('start_at', { ascending: true })
       .range(from, from + PAGE - 1);
-
-    if (!isAdmin && !isAuditor) q = q.eq('created_by_profile_id', user.profile.id);
+    if (!isAdmin && !isAuditor) q = q.in('event_type', permittedEventTypes);
     if (serviceParam !== 'all') q = q.ilike('title', `%${serviceParam}%`);
     if (statusParam !== 'all') q = q.eq('status', statusParam);
 
