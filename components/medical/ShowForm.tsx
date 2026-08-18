@@ -6,13 +6,14 @@ import { autosaveNotes, confirmShow } from '@/app/[locale]/(app)/medical/appoint
 type Props = {
   eventId: string;
   initialNotes: string;
+  athleteProfileId: string | null;
   onSuccess: () => void;
   onError: (msg: string) => void;
 };
 
 type SaveStatus = 'idle' | 'saving' | 'saved';
 
-export default function ShowForm({ eventId, initialNotes, onSuccess, onError }: Props) {
+export default function ShowForm({ eventId, initialNotes, athleteProfileId, onSuccess, onError }: Props) {
   const [notes, setNotes]           = useState(initialNotes);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [isPending, startTransition] = useTransition();
@@ -38,7 +39,7 @@ export default function ShowForm({ eventId, initialNotes, onSuccess, onError }: 
 
   function handleConfirm() {
     startTransition(async () => {
-      const result = await confirmShow(eventId, notes);
+      const result = await confirmShow(eventId, notes, athleteProfileId);
       if (result?.error) {
         onError(result.error);
       } else {

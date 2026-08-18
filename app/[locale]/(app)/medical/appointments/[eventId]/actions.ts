@@ -19,6 +19,11 @@ export type SlotInfo = {
   taken: boolean;
 };
 
+// Mobile has no appointment-detail screen yet, so every appointment push
+// deep-links to the calendar tab. use-push-notifications.ts branches on
+// `type` to route there instead of falling through to no-op.
+const APPOINTMENT_NOTIFICATION_DATA = { type: 'appointment_update', deep_link: '/app/calendar' };
+
 // ---------------------------------------------------------------------------
 // Guard helper — medical staff only
 // ---------------------------------------------------------------------------
@@ -61,7 +66,7 @@ async function assertEventServiceAccess(eventId: string): Promise<EventServiceAc
 // confirmShow — mark event as attended, save notes
 // ---------------------------------------------------------------------------
 
-export async function confirmShow(eventId: string, notes: string) {
+export async function confirmShow(eventId: string, notes: string, athleteProfileId: string | null) {
   const access = await assertEventServiceAccess(eventId);
   if ('error' in access) return access;
 
@@ -76,6 +81,29 @@ export async function confirmShow(eventId: string, notes: string) {
     .from('event_participants')
     .update({ attendance_status: 'show' })
     .eq('event_id', eventId);
+
+  // Push notification to athlete (best-effort, non-blocking)
+  if (athleteProfileId) {
+    const { data: tokens } = await supabaseAdmin
+      .from('push_device_tokens')
+      .select('onesignal_player_id')
+      .eq('profile_id', athleteProfileId)
+      .eq('is_active', true)
+      .not('onesignal_player_id', 'is', null);
+
+    const playerIds = (tokens ?? [])
+      .map((t) => t.onesignal_player_id as string)
+      .filter(Boolean);
+
+    if (playerIds.length > 0) {
+      oneSignalAdapter.send({
+        player_ids: playerIds,
+        title: 'Cita registrada',
+        message: 'Tu asistencia a la cita de hoy fue registrada correctamente.',
+        extra_data: APPOINTMENT_NOTIFICATION_DATA,
+      }).catch(() => {});
+    }
+  }
 
   revalidatePath(`/medical/appointments/${eventId}`);
   revalidatePath('/medical/appointments');
@@ -131,6 +159,29 @@ export async function confirmNoShowRemote(
     .from('event_participants')
     .update({ attendance_status: 'no_show_remote' })
     .eq('event_id', eventId);
+
+  // Push notification to athlete (best-effort, non-blocking)
+  if (athleteProfileId) {
+    const { data: tokens } = await supabaseAdmin
+      .from('push_device_tokens')
+      .select('onesignal_player_id')
+      .eq('profile_id', athleteProfileId)
+      .eq('is_active', true)
+      .not('onesignal_player_id', 'is', null);
+
+    const playerIds = (tokens ?? [])
+      .map((t) => t.onesignal_player_id as string)
+      .filter(Boolean);
+
+    if (playerIds.length > 0) {
+      oneSignalAdapter.send({
+        player_ids: playerIds,
+        title: 'Cita registrada',
+        message: 'Tu cita de hoy fue registrada como atendida por contacto remoto (llamada o mensaje).',
+        extra_data: APPOINTMENT_NOTIFICATION_DATA,
+      }).catch(() => {});
+    }
+  }
 
   revalidatePath(`/medical/appointments/${eventId}`);
   revalidatePath('/medical/appointments');
@@ -188,6 +239,7 @@ export async function confirmNoShow(
         player_ids: playerIds,
         title: 'Cita no registrada',
         message: 'No se registró tu asistencia a la cita de hoy. Contáctanos si fue un error.',
+        extra_data: APPOINTMENT_NOTIFICATION_DATA,
       }).catch(() => {});
     }
   }
@@ -286,7 +338,7 @@ export async function confirmReschedule(
         player_ids: playerIds,
         title: '📅 Tu cita fue reagendada',
         message: `Nueva cita: ${dateLabel}`,
-        extra_data: { appointmentId: newEvent.id },
+        extra_data: { ...APPOINTMENT_NOTIFICATION_DATA, appointmentId: newEvent.id },
       }).catch(() => {});
     }
   }

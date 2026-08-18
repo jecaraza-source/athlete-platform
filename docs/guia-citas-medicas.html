@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guía de Citas Médicas — Staff Médico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fff;--bg2:#f5f5f5;--bg3:#ebebeb;
+  --text:#1a1a1a;--text2:#555;--text3:#888;
+  --border:rgba(0,0,0,.11);--border2:rgba(0,0,0,.22);
+  --r:8px;--rl:12px;
+  --green:#15803d;--green-bg:#f0fdf4;--green-b:#bbf7d0;
+  --red:#b91c1c;--red-bg:#fff1f2;--red-b:#fecdd3;
+  --amber:#92400e;--amber-bg:#fffbeb;--amber-b:#fde68a;
+  --blue:#1d4ed8;--blue-bg:#eff6ff;--blue-b:#bfdbfe;
+  --gray:#374151;--gray-bg:#f9fafb;--gray-b:#e5e7eb;
+  --indigo:#4338ca;--indigo-bg:#eef2ff;--indigo-b:#c7d2fe;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;
+    --text:#f0f0f0;--text2:#aaa;--text3:#666;
+    --border:rgba(255,255,255,.1);--border2:rgba(255,255,255,.22);
+    --green:#4ade80;--green-bg:#052e16;--green-b:#166534;
+    --red:#f87171;--red-bg:#450a0a;--red-b:#7f1d1d;
+    --amber:#fbbf24;--amber-bg:#451a03;--amber-b:#78350f;
+    --blue:#60a5fa;--blue-bg:#1e3a5f;--blue-b:#1d4ed8;
+    --gray:#9ca3af;--gray-bg:#111827;--gray-b:#374151;
+    --indigo:#818cf8;--indigo-bg:#1e1b4b;--indigo-b:#3730a3;
+  }
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg3);color:var(--text);min-height:100vh;padding:2rem 1rem 3rem}
+.page-header{text-align:center;margin-bottom:1.75rem}
+.page-header h1{font-size:21px;font-weight:500;color:var(--text);margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:8px}
+.page-header p{font-size:13px;color:var(--text3)}
+.container{max-width:760px;margin:0 auto;background:var(--bg);border-radius:var(--rl);border:.5px solid var(--border);padding:1.75rem}
+
+/* ── Step nav ─ */
+.step-nav{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1.5rem}
+.sbtn{padding:5px 13px;border-radius:20px;border:.5px solid var(--border2);background:var(--bg2);color:var(--text2);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .12s;font-family:inherit;line-height:1.4}
+.sbtn.active{background:var(--indigo-bg);color:var(--indigo);border-color:var(--indigo-b);font-weight:500}
+.sbtn:hover:not(.active){background:var(--bg3);color:var(--text)}
+
+/* ── Progress ─ */
+.pbar{height:3px;background:var(--bg2);border-radius:2px;margin-bottom:1.5rem;overflow:hidden}
+.pfill{height:100%;background:var(--indigo);border-radius:2px;transition:width .2s}
+
+/* ── Visibility ─ */
+.step{display:none}.step.visible{display:block}
+.subpanel{display:none}.subpanel.visible{display:block}
+
+/* ── Step header ─ */
+.sh{display:flex;align-items:center;gap:12px;margin-bottom:1rem}
+.snum{width:36px;height:36px;border-radius:50%;background:var(--indigo-bg);color:var(--indigo);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:500;flex-shrink:0}
+.stitle{font-size:18px;font-weight:500;color:var(--text)}
+.sdesc{font-size:14px;color:var(--text2);line-height:1.65;margin-bottom:1.25rem}
+
+/* ── Mockup ─ */
+.mk{background:var(--bg);border:.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:1.25rem}
+.mkbar{background:var(--bg2);border-bottom:.5px solid var(--border);padding:9px 14px;display:flex;align-items:center;gap:8px}
+.dots{display:flex;gap:5px}.dot{width:9px;height:9px;border-radius:50%;background:var(--border2)}
+.mku{font-size:11px;color:var(--text3);background:var(--bg3);border-radius:6px;padding:3px 10px;flex:1;font-family:'Menlo','Courier New',monospace}
+.mkb{padding:18px}
+
+/* ── Form statics ─ */
+.fg{margin-bottom:13px}
+.fl{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:4px;display:block}
+.fi,.fta,.fse{width:100%;border:.5px solid var(--border2);border-radius:var(--r);padding:8px 12px;font-size:13px;color:var(--text3);background:var(--bg);font-family:inherit}
+.fta{resize:none;height:72px;padding-top:9px}.fse{width:auto}
+
+/* ── Buttons (mockup) ─ */
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:var(--r);padding:9px 18px;font-size:13px;font-weight:500;font-family:inherit;cursor:default}
+.btn-green{background:#16a34a;color:#fff;border:none}
+.btn-red{background:#dc2626;color:#fff;border:none}
+.btn-amber{background:#d97706;color:#fff;border:none}
+.btn-indigo{background:#4f46e5;color:#fff;border:none}
+.btn-ghost{background:var(--bg);border:.5px solid var(--border2);color:var(--text)}
+.btn-amber-out{background:var(--amber-bg);border:.5px solid var(--amber-b);color:#92400e}
+
+/* ── Badges ─ */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500}
+.b-sched{background:var(--blue-bg);color:var(--blue)}
+.b-show{background:var(--green-bg);color:var(--green)}
+.b-noshow{background:var(--red-bg);color:var(--red)}
+.b-resch{background:var(--amber-bg);color:var(--amber)}
+.b-cancel{background:var(--gray-bg);color:var(--gray)}
+
+/* ── Tips ─ */
+.tip{border-radius:var(--r);padding:11px 13px;display:flex;gap:9px;align-items:flex-start;font-size:13px;line-height:1.55;margin-bottom:10px}
+.tip.info{background:var(--blue-bg);color:var(--blue);border:.5px solid var(--blue-b)}
+.tip.warn{background:var(--amber-bg);color:var(--amber);border:.5px solid var(--amber-b)}
+.tip.ok{background:var(--green-bg);color:var(--green);border:.5px solid var(--green-b)}
+.tip.danger{background:var(--red-bg);color:var(--red);border:.5px solid var(--red-b)}
+.tip.neutral{background:var(--gray-bg);color:var(--gray);border:.5px solid var(--gray-b)}
+.ti{font-size:15px;flex-shrink:0;margin-top:1px}
+
+/* ── Checklist ─ */
+.cl{display:flex;flex-direction:column;gap:7px;margin-bottom:1.25rem}
+.ci{display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:var(--r);border:.5px solid var(--border);background:var(--bg)}
+.ck{font-size:15px;margin-top:1px;flex-shrink:0;color:#15803d}
+.ct{font-size:13px;color:var(--text);line-height:1.5}
+.ct strong{font-weight:500}
+
+/* ── Grid 2 ─ */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.25rem}
+@media(max-width:520px){.g2{grid-template-columns:1fr}}
+.c2{background:var(--bg2);border-radius:var(--r);padding:13px;font-size:13px}
+.c2t{font-weight:500;color:var(--text);margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.c2l{color:var(--text2);line-height:1.85}
+
+/* ── Status flow ─ */
+.sf{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:1.25rem}
+.sf-arr{color:var(--text3);font-size:14px}
+
+/* ── List row ─ */
+.list-row{display:flex;align-items:center;gap:14px;padding:13px 16px;border-bottom:.5px solid var(--border)}
+.list-row:last-child{border-bottom:none}
+.date-block{width:44px;text-align:center;flex-shrink:0}
+.date-mon{font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase}
+.date-day{font-size:22px;font-weight:700;color:var(--text);line-height:1}
+.row-info{flex:1;min-width:0}
+.row-name{font-size:13px;font-weight:600;color:var(--text)}
+.row-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.dot-action{width:8px;height:8px;border-radius:50%;background:#6366f1;flex-shrink:0}
+
+/* ── Attendance action panel ─ */
+.action-panel{border-radius:var(--rl);padding:16px;margin-bottom:10px}
+.ap-green{border:.5px solid var(--green-b);background:var(--green-bg)}
+.ap-red{border:.5px solid var(--red-b);background:var(--red-bg)}
+.ap-amber{border:.5px solid var(--amber-b);background:var(--amber-bg)}
+.ap-gray{border:.5px solid var(--gray-b);background:var(--gray-bg)}
+.ap-title{font-weight:600;font-size:14px;margin-bottom:10px}
+.ap-green .ap-title{color:var(--green)}
+.ap-red .ap-title{color:var(--red)}
+.ap-amber .ap-title{color:var(--amber)}
+
+/* ── Autosave indicator ─ */
+.autosave{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)}
+.pulse{width:8px;height:8px;border-radius:50%;background:#f59e0b;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.saved{color:var(--green);font-size:11px;font-weight:500}
+
+/* ── Radio list ─ */
+.radio-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.radio-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text)}
+.rb{width:16px;height:16px;border-radius:50%;border:.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.rb.sel{background:#dc2626;border-color:#dc2626}.rb.sel::after{content:'';width:6px;height:6px;border-radius:50%;background:#fff}
+
+/* ── Calendar mini ─ */
+.cal{border:.5px solid var(--border);border-radius:var(--r);background:var(--bg);padding:12px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-nav{width:28px;height:28px;border-radius:50%;border:.5px solid var(--border2);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text2);cursor:default}
+.cal-month{font-size:13px;font-weight:600;color:var(--text)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-dh{font-size:10px;color:var(--text3);text-align:center;padding:3px 0}
+.cal-d{height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:12px;color:var(--text);cursor:default}
+.cal-d.past{color:var(--text3)}
+.cal-d.today{border:1.5px solid var(--indigo);color:var(--indigo);font-weight:600}
+.cal-d.sel{background:var(--indigo);color:#fff;font-weight:600}
+.cal-d.avail:not(.sel):not(.past){background:var(--bg2)}
+
+/* ── Slot grid ─ */
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.slot{height:36px;border-radius:var(--r);border:.5px solid var(--border2);font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;color:var(--text2);cursor:default}
+.slot.taken{color:var(--text3);text-decoration:line-through;background:var(--bg2)}
+.slot.sel{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+.slot.free{color:var(--text);background:var(--bg)}
+
+/* ── History row ─ */
+.hist-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:.5px solid var(--border)}
+.hist-row:last-child{border-bottom:none}
+.hdt{font-size:12px;color:var(--text2);flex:1}
+.hdt b{color:var(--text);font-weight:500}
+
+/* ── Roles table ─ */
+.rtable{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1.25rem}
+.rtable th{text-align:left;font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;padding:6px 10px;border-bottom:.5px solid var(--border)}
+.rtable td{padding:8px 10px;border-bottom:.5px solid var(--border);color:var(--text2);vertical-align:top}
+.rtable tr:last-child td{border-bottom:none}
+.rtable td:first-child{font-weight:500;color:var(--text);white-space:nowrap}
+
+/* ── Nav footer ─ */
+.nf{display:flex;justify-content:space-between;align-items:center;margin-top:1.5rem;padding-top:1.25rem;border-top:.5px solid var(--border);gap:8px}
+.nb{padding:8px 16px;border-radius:var(--r);border:.5px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:background .12s}
+.nb:hover{background:var(--bg3)}
+.nb.primary{background:var(--indigo-bg);color:var(--indigo);border-color:var(--indigo-b)}
+.nctr{font-size:13px;color:var(--text3)}
+code{font-family:'Menlo','Courier New',monospace;font-size:12px;background:var(--bg2);padding:2px 6px;border-radius:4px;color:var(--text)}
+
+/* ── Subtabs ─ */
+.stabs{display:flex;gap:6px;margin-bottom:1rem}
+.stab{padding:5px 12px;border-radius:6px;border:.5px solid var(--border2);background:var(--bg2);color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:all .12s}
+.stab.active{background:var(--indigo-bg);color:var(--indigo);border-color:var(--indigo-b);font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1><i class="ti ti-calendar-event"></i> Citas Médicas — Guía del Staff Médico</h1>
+  <p>Plataforma AO Deportes · Módulo <code>/medical/appointments</code> · junio 2026</p>
+</div>
+
+<div class="container">
+
+  <div class="step-nav" id="nav">
+    <button class="sbtn active" data-s="0"><i class="ti ti-shield-check"></i> Acceso y roles</button>
+    <button class="sbtn" data-s="1"><i class="ti ti-list"></i> Lista de citas</button>
+    <button class="sbtn" data-s="2"><i class="ti ti-calendar-plus"></i> Alta de cita</button>
+    <button class="sbtn" data-s="3"><i class="ti ti-circle-check"></i> Atención / Show</button>
+    <button class="sbtn" data-s="4"><i class="ti ti-circle-x"></i> No-Show</button>
+    <button class="sbtn" data-s="5"><i class="ti ti-calendar-repeat"></i> Reagendar</button>
+    <button class="sbtn" data-s="6"><i class="ti ti-ban"></i> Cancelar</button>
+    <button class="sbtn" data-s="7"><i class="ti ti-history"></i> Historial</button>
+    <button class="sbtn" data-s="8"><i class="ti ti-activity"></i> Estados</button>
+  </div>
+
+  <div class="pbar"><div class="pfill" id="pfill" style="width:11%"></div></div>
+
+  <!-- ══ 0: ACCESO Y ROLES ════════════════════════════════════════════ -->
+  <div class="step visible" id="s0">
+    <div class="sh"><div class="snum"><i class="ti ti-shield-check"></i></div><div class="stitle">Acceso y roles con permisos</div></div>
+    <p class="sdesc">El módulo de citas médicas está en <code>/medical/appointments</code>. Solo los roles listados abajo pueden acceder — cualquier otro rol es redirigido al dashboard.</p>
+
+    <table class="rtable">
+      <thead><tr><th>Rol</th><th>Ve sus propias citas</th><th>Ve todas las citas</th><th>Puede confirmar / registrar</th><th>Puede editar notas cerradas</th></tr></thead>
+      <tbody>
+        <tr><td>medic</td><td><span style="color:var(--green)">✓</span></td><td>—</td><td><span style="color:var(--green)">✓</span></td><td><span style="color:var(--green)">✓</span></td></tr>
+        <tr><td>physio</td><td><span style="color:var(--green)">✓</span></td><td>—</td><td><span style="color:var(--green)">✓</span></td><td><span style="color:var(--green)">✓</span></td></tr>
+        <tr><td>nutritionist</td><td><span style="color:var(--green)">✓</span></td><td>—</td><td><span style="color:var(--green)">✓</span></td><td><span style="color:var(--green)">✓</span></td></tr>
+        <tr><td>psychologist</td><td><span style="color:var(--green)">✓</span></td><td>—</td><td><span style="color:var(--green)">✓</span></td><td><span style="color:var(--green)">✓</span></td></tr>
+        <tr><td>admin / super_admin</td><td><span style="color:var(--green)">✓</span></td><td><span style="color:var(--green)">✓</span></td><td><span style="color:var(--green)">✓</span></td><td><span style="color:var(--green)">✓</span></td></tr>
+        <tr><td>program_director</td><td><span style="color:var(--green)">✓</span></td><td><span style="color:var(--green)">✓</span></td><td><span style="color:var(--green)">✓</span></td><td><span style="color:var(--green)">✓</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="tip info"><i class="ti ti-info-circle ti"></i>
+      <span>Cada especialista solo ve las citas en las que aparece como <strong>specialist_id</strong>. Los admins y directores ven todo el sistema sin filtro.</span>
+    </div>
+
+    <div class="g2">
+      <div class="c2">
+        <div class="c2t"><i class="ti ti-clock" style="font-size:14px"></i> Disponibilidad</div>
+        <div class="c2l">
+          El sistema genera slots automáticamente desde la tabla <code>specialist_availability</code><br><br>
+          Por defecto: <strong>Lun–Vie 09:00–17:00</strong>, bloques de 30 min<br><br>
+          Un administrador puede configurar disponibilidad por día y especialista
+        </div>
+      </div>
+      <div class="c2">
+        <div class="c2t"><i class="ti ti-lock" style="font-size:14px"></i> Seguridad</div>
+        <div class="c2l">
+          Verificación de propiedad: solo el especialista asignado puede actuar en la cita<br><br>
+          Admins pueden actuar en cualquier cita independientemente del specialist_id<br><br>
+          Los atletas no tienen acceso a este módulo
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 1: LISTA DE CITAS ════════════════════════════════════════════ -->
+  <div class="step" id="s1">
+    <div class="sh"><div class="snum">1</div><div class="stitle">Lista de citas y navegación</div></div>
+    <p class="sdesc">Al entrar a <code>/medical/appointments</code> verás dos secciones: citas próximas (pendientes de acción) y el historial reciente. Las citas están ordenadas de más reciente a más antigua.</p>
+
+    <div class="mk">
+      <div class="mkbar"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div class="mku">plataforma.com/medical/appointments</div></div>
+      <div class="mkb">
+        <div style="font-size:17px;font-weight:500;color:var(--text);margin-bottom:4px">Mis citas médicas</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Citas asignadas a tu perfil.</div>
+
+        <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Próximas · pendientes de acción</div>
+        <div style="border:.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:16px">
+          <div class="list-row">
+            <div class="date-block"><div class="date-mon">jun</div><div class="date-day">19</div></div>
+            <div class="row-info">
+              <div style="display:flex;align-items:center;gap:6px"><div class="row-name">Ramírez, Daniela</div><div class="dot-action" title="Requiere acción"></div></div>
+              <div class="row-meta">10:00 · Consulta Médica General</div>
+            </div>
+            <span class="badge b-sched">Programada</span>
+            <span style="color:var(--text3);font-size:14px">›</span>
+          </div>
+          <div class="list-row">
+            <div class="date-block"><div class="date-mon">jun</div><div class="date-day">21</div></div>
+            <div class="row-info">
+              <div style="display:flex;align-items:center;gap:6px"><div class="row-name">Torres, Andrés</div><div class="dot-action"></div></div>
+              <div class="row-meta">14:30 · Evaluación Física</div>
+            </div>
+            <span class="badge b-sched">Programada</span>
+            <span style="color:var(--text3);font-size:14px">›</span>
+          </div>
+        </div>
+
+        <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Historial reciente</div>
+        <div style="border:.5px solid var(--border);border-radius:var(--rl);overflow:hidden">
+          <div class="list-row">
+            <div class="date-block"><div class="date-mon">jun</div><div class="date-day">15</div></div>
+            <div class="row-info">
+              <div class="row-name">López, Sofía</div>
+              <div class="row-meta">09:00 · Nutrición</div>
+            </div>
+            <span class="badge b-show">Atendida</span>
+            <span style="color:var(--text3);font-size:14px">›</span>
+          </div>
+          <div class="list-row">
+            <div class="date-block"><div class="date-mon">jun</div><div class="date-day">14</div></div>
+            <div class="row-info">
+              <div class="row-name">Gutiérrez, Marco</div>
+              <div class="row-meta">11:00 · Fisioterapia</div>
+            </div>
+            <span class="badge b-noshow">No asistió</span>
+            <span style="color:var(--text3);font-size:14px">›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl">
+      <div class="ci"><i class="ti ti-point ck" style="color:var(--indigo)"></i><div class="ct">El punto <strong>azul</strong> junto al nombre indica una cita en estado <em>Programada</em> que requiere acción del especialista</div></div>
+      <div class="ci"><i class="ti ti-point ck" style="color:var(--indigo)"></i><div class="ct">Toca cualquier fila para abrir el detalle y registrar la atención, no-show o reagendamiento</div></div>
+      <div class="ci"><i class="ti ti-point ck" style="color:var(--indigo)"></i><div class="ct">Se muestran hasta <strong>50 citas</strong> ordenadas por fecha descendente</div></div>
+    </div>
+  </div>
+
+  <!-- ══ 2: ALTA DE CITA ══════════════════════════════════════════════ -->
+  <div class="step" id="s2">
+    <div class="sh"><div class="snum">2</div><div class="stitle">Dar de alta una cita médica</div></div>
+    <p class="sdesc">Las citas médicas se crean como eventos de tipo <code>medical</code> en el sistema de calendario. El alta se hace desde el panel de administración o desde la consola de administrador. Cada cita requiere:</p>
+
+    <div class="mk">
+      <div class="mkbar"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div class="mku">admin/console → Crear evento médico</div></div>
+      <div class="mkb">
+        <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:14px">Nueva cita médica</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <div class="fg">
+              <div class="fl">Título / Tipo de consulta <span style="color:#dc2626">*</span></div>
+              <div class="fi">ej. Consulta Médica General</div>
+            </div>
+            <div class="fg">
+              <div class="fl">Atleta <span style="color:#dc2626">*</span></div>
+              <div class="fi" style="color:var(--text3)">Buscar atleta…</div>
+            </div>
+            <div class="fg">
+              <div class="fl">Especialista asignado <span style="color:#dc2626">*</span></div>
+              <select class="fse" style="width:100%" disabled><option>Dr. Martínez — Médico</option></select>
+            </div>
+          </div>
+          <div>
+            <div class="fg">
+              <div class="fl">Fecha <span style="color:#dc2626">*</span></div>
+              <div class="fi">2026-06-19</div>
+            </div>
+            <div class="fg">
+              <div class="fl">Hora inicio <span style="color:#dc2626">*</span></div>
+              <div class="fi">10:00 AM</div>
+            </div>
+            <div class="fg">
+              <div class="fl">Hora fin <span style="color:#dc2626">*</span></div>
+              <div class="fi">10:30 AM</div>
+            </div>
+          </div>
+        </div>
+        <div class="fg">
+          <div class="fl">Descripción / Motivo de consulta</div>
+          <div class="fta">Revisión de seguimiento post-temporada…</div>
+        </div>
+        <div class="btn btn-indigo" style="margin-top:6px"><i class="ti ti-calendar-plus" style="font-size:14px"></i> Crear cita</div>
+      </div>
+    </div>
+
+    <div class="cl">
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>event_type = 'medical':</strong> el sistema solo filtra eventos de este tipo en el módulo de citas</div></div>
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>specialist_id:</strong> vincula la cita al perfil del especialista — así aparece en su lista personal</div></div>
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>Atleta vía event_participants:</strong> el atleta queda registrado con <code>attendance_status = 'planned'</code> inicial</div></div>
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>Estado inicial:</strong> la cita inicia en <span class="badge b-sched" style="font-size:10px">Programada</span> — visible en la lista como pendiente de acción</div></div>
+    </div>
+
+    <div class="tip info"><i class="ti ti-info-circle ti"></i>
+      <span>La disponibilidad del especialista se consulta en <code>specialist_availability</code>. Si no hay filas para ese especialista, el sistema asume Lun–Vie 09:00–17:00 con bloques de 30 min como horario por defecto.</span>
+    </div>
+  </div>
+
+  <!-- ══ 3: ATENCIÓN / SHOW ═══════════════════════════════════════════ -->
+  <div class="step" id="s3">
+    <div class="sh"><div class="snum">3</div><div class="stitle">Registrar atención (Show)</div></div>
+    <p class="sdesc">Cuando el atleta asiste a la cita, el especialista registra la atención desde el detalle de la cita. El panel verde aparece mientras la cita esté en estado <em>Programada</em>.</p>
+
+    <div class="mk">
+      <div class="mkbar"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div class="mku">medical/appointments/[id] — cita programada</div></div>
+      <div class="mkb">
+        <!-- Appointment header -->
+        <div style="border:.5px solid var(--border);border-radius:var(--rl);padding:14px;margin-bottom:12px">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:500;margin-bottom:4px">Dr. Martínez — Médico</div>
+          <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px">Ramírez, Daniela</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span class="badge b-sched">Programada</span>
+            <span style="font-size:12px;color:var(--text3)">Jue 19 jun 2026 · 10:00 – 10:30</span>
+            <span style="font-size:12px;color:var(--text3)">· Consulta Médica General</span>
+          </div>
+        </div>
+
+        <!-- Show form -->
+        <div class="action-panel ap-green">
+          <div class="ap-title"><i class="ti ti-stethoscope"></i> Notas de la consulta</div>
+          <div style="position:relative">
+            <div class="fta" style="border-color:var(--green-b);min-height:100px;color:var(--text2);font-size:13px;background:var(--bg)">Atleta presenta buena condición física. Presión arterial 120/80. Revisión rutinaria sin hallazgos relevantes...</div>
+            <div style="position:absolute;bottom:8px;right:10px"><div class="autosave"><div class="pulse"></div> Guardando...</div></div>
+          </div>
+          <div class="btn btn-green" style="margin-top:10px;width:100%;justify-content:center;font-size:14px">
+            ✅ Confirmar asistencia y guardar notas
+          </div>
+        </div>
+
+        <!-- Three action tabs -->
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <div style="flex:1;padding:10px;border-radius:var(--r);border:.5px solid var(--green-b);background:var(--green-bg);text-align:center;font-size:12px;font-weight:500;color:var(--green)">✅ Asistió</div>
+          <div style="flex:1;padding:10px;border-radius:var(--r);border:.5px solid var(--border2);background:var(--bg2);text-align:center;font-size:12px;color:var(--text2)">❌ No asistió</div>
+          <div style="flex:1;padding:10px;border-radius:var(--r);border:.5px solid var(--border2);background:var(--bg2);text-align:center;font-size:12px;color:var(--text2)">🔄 Reagendar</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl">
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>Autoguardado:</strong> las notas se guardan automáticamente 1.5 s después de que el especialista deja de escribir — nunca se pierden aunque cierre accidentalmente</div></div>
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>Al confirmar:</strong> el evento pasa a <span class="badge b-show" style="font-size:10px">Atendida</span>, se registra quién confirmó y a qué hora (<code>confirmed_by</code> + <code>confirmed_at</code>)</div></div>
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>El atleta en event_participants:</strong> su <code>attendance_status</code> cambia a <code>'show'</code></div></div>
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>Vista bloqueada:</strong> después de confirmar, el formulario se convierte en modo lectura — las notas solo se pueden editar con el botón "✎ Editar notas"</div></div>
+    </div>
+
+    <div class="tip ok"><i class="ti ti-circle-check ti"></i>
+      <span>Las notas quedan registradas en el campo <code>description</code> del evento. Son accesibles desde el historial del atleta para consultas futuras.</span>
+    </div>
+  </div>
+
+  <!-- ══ 4: NO-SHOW ═══════════════════════════════════════════════════ -->
+  <div class="step" id="s4">
+    <div class="sh"><div class="snum">4</div><div class="stitle">Registrar inasistencia (No-Show)</div></div>
+    <p class="sdesc">Si el atleta no se presenta, el especialista debe registrar el no-show con el motivo correspondiente. El sistema puede notificar al atleta por push y ofrece la opción de reagendar directamente.</p>
+
+    <div class="mk">
+      <div class="mkbar"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div class="mku">medical/appointments/[id] → tab "No asistió"</div></div>
+      <div class="mkb">
+        <div class="action-panel ap-red">
+          <div class="ap-title">❌ Registro de inasistencia</div>
+
+          <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:8px">Motivo (opcional)</div>
+          <div class="radio-list">
+            <div class="radio-item"><div class="rb sel"></div> Sin aviso previo</div>
+            <div class="radio-item"><div class="rb"></div> Avisó con anticipación</div>
+            <div class="radio-item"><div class="rb"></div> Emergencia personal</div>
+            <div class="radio-item"><div class="rb"></div> Otro motivo</div>
+          </div>
+
+          <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:6px">Notas adicionales</div>
+          <div class="fta" style="border-color:var(--red-b);margin-bottom:12px;background:var(--bg);color:var(--text3);font-size:12px">Observaciones opcionales…</div>
+
+          <div style="border:.5px solid var(--red-b);border-radius:var(--r);background:var(--bg);padding:12px;margin-bottom:12px">
+            <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px">¿Deseas proponer un reagendamiento?</div>
+            <div style="display:flex;gap:8px">
+              <div class="btn btn-amber-out" style="flex:1;justify-content:center;font-size:12px">Sí, abrir calendario →</div>
+              <div class="btn btn-ghost" style="flex:1;justify-content:center;font-size:12px;color:var(--red);border-color:var(--red-b)">No, solo registrar inasistencia</div>
+            </div>
+          </div>
+
+          <div class="btn btn-red" style="width:100%;justify-content:center;font-size:14px">❌ Confirmar No Show</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl">
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>Al confirmar no-show:</strong> el evento pasa a <span class="badge b-noshow" style="font-size:10px">No asistió</span> y el <code>attendance_status</code> del atleta se actualiza a <code>'no_show'</code></div></div>
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>Notificación push automática:</strong> si el atleta tiene la app instalada, recibe "No se registró tu asistencia a la cita de hoy"</div></div>
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>Opción reagendamiento rápido:</strong> el botón "Sí, abrir calendario" pre-carga las notas del no-show en el formulario de reagendamiento</div></div>
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>El motivo</strong> se guarda en <code>no_show_reason</code> y queda visible en el historial del atleta</div></div>
+    </div>
+
+    <div class="tip warn"><i class="ti ti-alert-triangle ti"></i>
+      <span>Una vez confirmado el no-show, el formulario queda en modo lectura. Si fue un error, contacta al administrador para corregirlo directamente en la base de datos.</span>
+    </div>
+  </div>
+
+  <!-- ══ 5: REAGENDAR ══════════════════════════════════════════════════ -->
+  <div class="step" id="s5">
+    <div class="sh"><div class="snum">5</div><div class="stitle">Reagendar una cita</div></div>
+    <p class="sdesc">El reagendamiento crea una <strong>nueva cita</strong> y marca la original como <span class="badge b-resch" style="font-size:10px">Reagendada</span>. Se puede iniciar desde la cita programada o directamente desde el panel de no-show.</p>
+
+    <div class="stabs" id="reschedTabs">
+      <button class="stab active" data-rs="cal">📅 Paso 1: Elegir fecha</button>
+      <button class="stab" data-rs="slot">🕐 Paso 2: Elegir horario</button>
+      <button class="stab" data-rs="confirm">✅ Paso 3: Confirmar</button>
+    </div>
+
+    <div class="subpanel visible" id="rs-cal">
+      <div class="mk">
+        <div class="mkbar"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div class="mku">Reagendamiento → Paso 1 · Elige una fecha</div></div>
+        <div class="mkb">
+          <div class="action-panel ap-amber">
+            <div class="ap-title">🔄 Seleccionar nueva fecha y hora</div>
+            <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Paso 1 · Elige una fecha</div>
+            <div class="cal">
+              <div class="cal-head">
+                <div class="cal-nav">‹</div>
+                <div class="cal-month">Junio 2026</div>
+                <div class="cal-nav">›</div>
+              </div>
+              <div class="cal-grid">
+                <div class="cal-dh">Do</div><div class="cal-dh">Lu</div><div class="cal-dh">Ma</div><div class="cal-dh">Mi</div><div class="cal-dh">Ju</div><div class="cal-dh">Vi</div><div class="cal-dh">Sa</div>
+                <div></div><div class="cal-d past">1</div><div class="cal-d past">2</div><div class="cal-d past">3</div><div class="cal-d past">4</div><div class="cal-d past">5</div><div class="cal-d past">6</div>
+                <div class="cal-d past">7</div><div class="cal-d past">8</div><div class="cal-d past">9</div><div class="cal-d past">10</div><div class="cal-d past">11</div><div class="cal-d past">12</div><div class="cal-d past">13</div>
+                <div class="cal-d past">14</div><div class="cal-d past">15</div><div class="cal-d past">16</div><div class="cal-d past">17</div><div class="cal-d today">18</div><div class="cal-d avail">19</div><div class="cal-d avail">20</div>
+                <div class="cal-d avail">21</div><div class="cal-d sel">24</div><div class="cal-d avail">25</div><div class="cal-d avail">26</div><div class="cal-d avail">27</div><div class="cal-d avail">28</div><div class="cal-d avail">29</div>
+                <div class="cal-d avail">30</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tip info"><i class="ti ti-info-circle ti"></i>
+        <span>Los días en <strong>gris oscuro</strong> ya pasaron y no son seleccionables. El sistema solo permite seleccionar fechas futuras. El borde azul indica hoy.</span>
+      </div>
+    </div>
+
+    <div class="subpanel" id="rs-slot">
+      <div class="mk">
+        <div class="mkbar"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div class="mku">Reagendamiento → Paso 2 · Horario disponible (mié 24 jun)</div></div>
+        <div class="mkb">
+          <div class="action-panel ap-amber">
+            <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Paso 2 · Elige un horario disponible</div>
+            <div class="slots">
+              <div class="slot taken">9:00 AM</div>
+              <div class="slot taken">9:30 AM</div>
+              <div class="slot free">10:00 AM</div>
+              <div class="slot sel">10:30 AM</div>
+              <div class="slot free">11:00 AM</div>
+              <div class="slot free">11:30 AM</div>
+              <div class="slot taken">12:00 PM</div>
+              <div class="slot free">12:30 PM</div>
+              <div class="slot free">2:00 PM</div>
+              <div class="slot free">2:30 PM</div>
+              <div class="slot free">3:00 PM</div>
+              <div class="slot free">3:30 PM</div>
+            </div>
+            <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Paso 3 · Notas del reagendamiento (opcional)</div>
+            <div class="fta" style="border-color:var(--amber-b);height:60px;font-size:12px;background:var(--bg);color:var(--text2)">Motivo del reagendamiento: Sin aviso previo</div>
+          </div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="ci"><i class="ti ti-check ck"></i><div class="ct">Los slots en <strong>tachado</strong> ya están ocupados por otra cita de ese especialista</div></div>
+        <div class="ci"><i class="ti ti-check ck"></i><div class="ct">La duración del nuevo slot es igual a la de la cita original (mínimo 30 min)</div></div>
+        <div class="ci"><i class="ti ti-check ck"></i><div class="ct">Si el no-show tenía notas, se pre-cargan automáticamente en el campo de notas</div></div>
+      </div>
+    </div>
+
+    <div class="subpanel" id="rs-confirm">
+      <div class="mk">
+        <div class="mkbar"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div class="mku">Reagendamiento → Confirmar</div></div>
+        <div class="mkb">
+          <div class="action-panel ap-amber">
+            <div style="border:.5px solid var(--indigo-b);background:var(--indigo-bg);border-radius:var(--r);padding:12px;margin-bottom:12px;font-size:13px;color:var(--indigo)">
+              <strong style="text-transform:capitalize">miércoles 24 de junio de 2026</strong> · <strong>10:30 AM</strong>
+            </div>
+            <div style="display:flex;gap:8px">
+              <div class="btn btn-amber" style="flex:1;justify-content:center;font-size:13px">🔄 Confirmar reagendamiento</div>
+              <div class="btn btn-ghost" style="font-size:13px">Cancelar</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>La cita original</strong> pasa a <span class="badge b-resch" style="font-size:10px">Reagendada</span> con el motivo guardado en <code>reschedule_reason</code></div></div>
+        <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>Nueva cita creada:</strong> estado <span class="badge b-sched" style="font-size:10px">Programada</span>, mismo especialista y atleta, con referencia <code>original_event_id</code> para trazabilidad</div></div>
+        <div class="ci"><i class="ti ti-check ck"></i><div class="ct"><strong>Notificación push</strong> al atleta: "📅 Tu cita fue reagendada — Nueva cita: [fecha y hora completa]"</div></div>
+        <div class="ci"><i class="ti ti-check ck"></i><div class="ct">La nueva cita aparece de inmediato en la lista de citas próximas del especialista</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 6: CANCELAR ══════════════════════════════════════════════════ -->
+  <div class="step" id="s6">
+    <div class="sh"><div class="snum">6</div><div class="stitle">Cancelar una cita</div></div>
+    <p class="sdesc">La cancelación marca la cita como <span class="badge b-cancel" style="font-size:10px">Cancelada</span> sin crear una nueva. Es distinta del reagendamiento — se usa cuando la cita no se realizará y no hay fecha alternativa.</p>
+
+    <div class="mk">
+      <div class="mkbar"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div class="mku">medical/appointments/[id] — vista de cita cancelada</div></div>
+      <div class="mkb">
+        <div class="action-panel ap-gray">
+          <div style="display:flex;align-items:center;gap:12px;color:var(--gray)">
+            <span style="font-size:24px">🚫</span>
+            <div>
+              <div style="font-weight:700;font-size:15px">Esta cita fue marcada como CANCELADA</div>
+              <div style="font-size:13px;opacity:.8;margin-top:2px">Por: Dr. Martínez · 17 jun 2026, 09:45</div>
+            </div>
+          </div>
+          <div style="border:.5px solid var(--gray-b);border-radius:var(--r);background:var(--bg);padding:12px;margin-top:12px">
+            <div style="font-size:11px;font-weight:500;color:var(--text3);margin-bottom:4px">Notas registradas</div>
+            <div style="font-size:13px;color:var(--text2)">Atleta fue dado de alta del programa. Cita cancelada por cierre de temporada.</div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:10px">
+            <div class="btn btn-ghost" style="font-size:12px"><i class="ti ti-edit" style="font-size:12px"></i> Editar notas</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="c2">
+        <div class="c2t" style="color:var(--red)"><i class="ti ti-ban" style="font-size:14px"></i> Cancelar</div>
+        <div class="c2l">
+          La cita no se realizará<br>
+          No se crea nueva cita<br>
+          Estado final: <span class="badge b-cancel" style="font-size:10px">Cancelada</span><br>
+          Útil para: baja del atleta, cierre de temporada, incompatibilidad de agendas
+        </div>
+      </div>
+      <div class="c2">
+        <div class="c2t" style="color:var(--amber)"><i class="ti ti-calendar-repeat" style="font-size:14px"></i> Reagendar</div>
+        <div class="c2l">
+          La cita se pospone a otra fecha<br>
+          Se crea cita nueva automáticamente<br>
+          Estado final: <span class="badge b-resch" style="font-size:10px">Reagendada</span><br>
+          Útil para: conflicto de horario, no-show con nueva oportunidad
+        </div>
+      </div>
+    </div>
+
+    <div class="tip warn"><i class="ti ti-alert-triangle ti"></i>
+      <span>Una cita cancelada <strong>no envía notificación push automática</strong> al atleta. Si necesitas notificarle, hazlo manualmente por correo o desde el sistema de comunicaciones.</span>
+    </div>
+    <div class="tip neutral"><i class="ti ti-info-circle ti"></i>
+      <span>Incluso en citas canceladas, el especialista puede editar las notas con el botón "✎ Editar notas". Esto permite agregar contexto sobre el motivo de cancelación.</span>
+    </div>
+  </div>
+
+  <!-- ══ 7: HISTORIAL ══════════════════════════════════════════════════ -->
+  <div class="step" id="s7">
+    <div class="sh"><div class="snum">7</div><div class="stitle">Historial médico del atleta</div></div>
+    <p class="sdesc">Al abrir el detalle de cualquier cita, aparece el historial de todas las citas previas del atleta. Es una vista colapsable que muestra las últimas 10 citas (excluyendo la actual).</p>
+
+    <div class="mk">
+      <div class="mkbar"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div class="mku">medical/appointments/[id] → sección Historial del atleta</div></div>
+      <div class="mkb">
+        <div style="border:.5px solid var(--border);border-radius:var(--rl);overflow:hidden">
+          <div style="padding:12px 14px;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:default">
+            <div style="font-size:13px;font-weight:500;color:var(--text)">Historial de Ramírez, Daniela <span style="color:var(--text3);font-weight:400">(5 citas)</span></div>
+            <i class="ti ti-chevron-down" style="font-size:14px;color:var(--text3)"></i>
+          </div>
+          <div style="padding:12px 14px">
+            <div class="hist-row">
+              <div class="hdt"><b>15 jun 2026</b> · Nutrición</div>
+              <span class="badge b-show">Atendida</span>
+            </div>
+            <div class="hist-row">
+              <div class="hdt"><b>2 jun 2026</b> · Consulta Médica General</div>
+              <span class="badge b-noshow">No asistió</span>
+            </div>
+            <div class="hist-row">
+              <div class="hdt"><b>2 jun 2026</b> · Consulta Médica General</div>
+              <span class="badge b-resch">Reagendada</span>
+            </div>
+            <div class="hist-row">
+              <div class="hdt"><b>20 may 2026</b> · Fisioterapia</div>
+              <span class="badge b-show">Atendida</span>
+            </div>
+            <div class="hist-row" style="border-bottom:none">
+              <div class="hdt"><b>5 may 2026</b> · Psicología</div>
+              <span class="badge b-cancel">Cancelada</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl">
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct">El historial incluye <strong>todos los tipos de eventos</strong> del atleta — médicos, fisioterapia, nutrición, psicología</div></div>
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct">Se puede ver cómo una cita <em>Reagendada</em> y su <em>No-Show</em> precedente aparecen como entradas separadas el mismo día</div></div>
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct">El historial es de solo lectura — sirve para contexto clínico antes de la consulta actual</div></div>
+      <div class="ci"><i class="ti ti-check ck"></i><div class="ct">Máximo <strong>10 entradas</strong> ordenadas de más reciente a más antigua, excluyendo la cita actual</div></div>
+    </div>
+
+    <div class="tip info"><i class="ti ti-info-circle ti"></i>
+      <span>El historial ayuda a detectar patrones: atletas con múltiples no-shows, frecuencia de reagendamientos o seguimiento post-lesión. Úsalo antes de cada consulta para tener contexto completo.</span>
+    </div>
+  </div>
+
+  <!-- ══ 8: ESTADOS ════════════════════════════════════════════════════ -->
+  <div class="step" id="s8">
+    <div class="sh"><div class="snum">8</div><div class="stitle">Diagrama de estados y reglas</div></div>
+    <p class="sdesc">Las citas médicas siguen un flujo de estados estricto. Una vez que una cita alcanza un estado <em>cerrado</em>, el formulario de acción desaparece y la vista queda en modo lectura.</p>
+
+    <!-- Flow diagram -->
+    <div style="background:var(--bg2);border-radius:var(--rl);padding:20px;margin-bottom:1.25rem">
+      <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+        <span class="badge b-sched" style="font-size:12px;padding:6px 14px">Programada</span>
+        <span style="color:var(--text3);font-size:18px">→</span>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+          <span class="badge b-show" style="font-size:12px;padding:6px 14px">Atendida ✅</span>
+          <span class="badge b-noshow" style="font-size:12px;padding:6px 14px">No asistió ❌</span>
+          <span class="badge b-resch" style="font-size:12px;padding:6px 14px">Reagendada 🔄</span>
+          <span class="badge b-cancel" style="font-size:12px;padding:6px 14px">Cancelada 🚫</span>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text3);text-align:center">Todos los estados destino son <strong style="color:var(--text)">terminales</strong> — no se puede transicionar desde ellos</div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap">
+        <span class="badge b-noshow" style="font-size:12px;padding:5px 12px">No asistió</span>
+        <span style="color:var(--text3);font-size:14px">→</span>
+        <span style="font-size:12px;color:var(--text2)">puede reagendar →</span>
+        <span style="color:var(--text3);font-size:14px">nueva cita en</span>
+        <span class="badge b-sched" style="font-size:12px;padding:5px 12px">Programada</span>
+      </div>
+    </div>
+
+    <table class="rtable">
+      <thead><tr><th>Estado</th><th>Código DB</th><th>¿Vista interactiva?</th><th>¿Se puede editar notas?</th><th>Notificación push</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge b-sched">Programada</span></td><td><code>scheduled</code></td><td>✓ Formularios activos</td><td>Via autosave</td><td>—</td></tr>
+        <tr><td><span class="badge b-show">Atendida</span></td><td><code>show</code></td><td>Solo lectura</td><td>✓ "Editar notas"</td><td>—</td></tr>
+        <tr><td><span class="badge b-noshow">No asistió</span></td><td><code>no_show</code></td><td>Solo lectura</td><td>✓ "Editar notas"</td><td>✓ Automática al atleta</td></tr>
+        <tr><td><span class="badge b-resch">Reagendada</span></td><td><code>rescheduled</code></td><td>Solo lectura</td><td>✓ "Editar notas"</td><td>✓ Nueva cita notificada</td></tr>
+        <tr><td><span class="badge b-cancel">Cancelada</span></td><td><code>cancelled</code></td><td>Solo lectura</td><td>✓ "Editar notas"</td><td>— (manual)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="g2">
+      <div class="c2">
+        <div class="c2t"><i class="ti ti-database" style="font-size:14px"></i> Tablas involucradas</div>
+        <div class="c2l">
+          <code>events</code> — registro principal<br>
+          <code>event_participants</code> — atleta + attendance_status<br>
+          <code>specialist_availability</code> — slots disponibles<br>
+          <code>push_device_tokens</code> — notificaciones push
+        </div>
+      </div>
+      <div class="c2">
+        <div class="c2t"><i class="ti ti-link" style="font-size:14px"></i> Campos clave</div>
+        <div class="c2l">
+          <code>specialist_id</code> — filtra por especialista<br>
+          <code>original_event_id</code> — trazabilidad de reagendamientos<br>
+          <code>confirmed_by / confirmed_at</code> — auditoría<br>
+          <code>no_show_reason / reschedule_reason</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip ok"><i class="ti ti-circle-check ti"></i>
+      <span>Todo cambio de estado queda auditado con <code>confirmed_by</code> (ID del especialista que actuó) y <code>confirmed_at</code> (timestamp exacto). Esto permite trazabilidad completa de cada decisión clínica.</span>
+    </div>
+  </div>
+
+  <!-- ── Nav footer ─────────────────────────────────────────── -->
+  <div class="nf">
+    <button class="nb" id="prevBtn" onclick="go(-1)" style="visibility:hidden"><i class="ti ti-arrow-left"></i> Anterior</button>
+    <span class="nctr" id="ctr">Sección 1 de 9</span>
+    <button class="nb primary" id="nextBtn" onclick="go(1)">Siguiente <i class="ti ti-arrow-right"></i></button>
+  </div>
+</div>
+
+<script>
+var cur=0,tot=9;
+var steps=['s0','s1','s2','s3','s4','s5','s6','s7','s8'];
+
+function show(n){
+  steps.forEach(function(id,i){document.getElementById(id).classList.toggle('visible',i===n)});
+  document.querySelectorAll('.sbtn').forEach(function(b,i){b.classList.toggle('active',i===n)});
+  document.getElementById('prevBtn').style.visibility=n===0?'hidden':'visible';
+  document.getElementById('nextBtn').style.visibility=n===tot-1?'hidden':'visible';
+  document.getElementById('ctr').textContent='Sección '+(n+1)+' de '+tot;
+  document.getElementById('pfill').style.width=Math.round(((n+1)/tot)*100)+'%';
+  cur=n;
+}
+function go(d){var n=cur+d;if(n>=0&&n<tot)show(n);}
+document.getElementById('nav').addEventListener('click',function(e){
+  var b=e.target.closest('.sbtn');if(!b)return;
+  show(parseInt(b.dataset.s));
+});
+
+/* Reschedule subtabs */
+var rtabs=document.getElementById('reschedTabs');
+if(rtabs){
+  rtabs.addEventListener('click',function(e){
+    var b=e.target.closest('.stab');if(!b)return;
+    var rs=b.dataset.rs;
+    document.querySelectorAll('#s5 .stab').forEach(function(x){x.classList.toggle('active',x.dataset.rs===rs)});
+    document.querySelectorAll('#s5 .subpanel').forEach(function(p){p.classList.toggle('visible',p.id==='rs-'+rs)});
+  });
+}
+</script>
+</body>
+</html>

@@ -19,12 +19,18 @@ export const ADMIN_MEDICAL_ROLE_CODES = [
 
 export const AUDITOR_MEDICAL_ROLE_CODES = ['auditor'] as const;
 
+export const MEDICAL_EVENT_TYPES = ['medical', 'nutrition', 'psychology', 'physio'] as const;
+
 const EVENT_TYPES_BY_ROLE: Record<string, string> = {
   medic: 'medical',
   nutritionist: 'nutrition',
   psychologist: 'psychology',
   physio: 'physio',
 };
+
+export function isMedicalEventType(eventType: string): boolean {
+  return (MEDICAL_EVENT_TYPES as readonly string[]).includes(eventType);
+}
 
 export function canAccessAllMedicalAppointments(roleCodes: string[]) {
   return roleCodes.some((role) =>

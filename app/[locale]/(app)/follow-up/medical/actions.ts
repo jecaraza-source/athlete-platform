@@ -2,14 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { assertPermission } from '@/lib/rbac/server';
+import { assertMedicalStaffAccess } from '@/lib/rbac/server';
 
 // ---------------------------------------------------------------------------
 // Medical cases
 // ---------------------------------------------------------------------------
 
 export async function updateMedicalCase(id: string, formData: FormData) {
-  const denied = await assertPermission('edit_athletes');
+  const denied = await assertMedicalStaffAccess();
   if (denied) return denied;
 
   const existingNotes = (formData.get('notes') as string) || null;
@@ -36,7 +36,7 @@ export async function updateMedicalCase(id: string, formData: FormData) {
 }
 
 export async function createMedicalCase(formData: FormData) {
-  const denied = await assertPermission('edit_athletes');
+  const denied = await assertMedicalStaffAccess();
   if (denied) return denied;
 
   const payload = {
@@ -56,7 +56,7 @@ export async function createMedicalCase(formData: FormData) {
 }
 
 export async function updateMedicalCaseStatus(id: string, status: string) {
-  const denied = await assertPermission('edit_athletes');
+  const denied = await assertMedicalStaffAccess();
   if (denied) return denied;
 
   const { error } = await supabaseAdmin
@@ -75,7 +75,7 @@ export async function updateMedicalCaseStatus(id: string, status: string) {
 // ---------------------------------------------------------------------------
 
 export async function createMedicalSession(formData: FormData) {
-  const denied = await assertPermission('edit_athletes');
+  const denied = await assertMedicalStaffAccess();
   if (denied) return denied;
 
   const num = (key: string) => {
@@ -108,7 +108,7 @@ export async function createMedicalSession(formData: FormData) {
 }
 
 export async function updateMedicalSession(id: string, formData: FormData) {
-  const denied = await assertPermission('edit_athletes');
+  const denied = await assertMedicalStaffAccess();
   if (denied) return denied;
 
   const num = (key: string) => {

@@ -150,6 +150,7 @@ export default function AttendanceActions({
         <ShowForm
           eventId={eventId}
           initialNotes=""
+          athleteProfileId={athleteProfileId}
           onSuccess={handleSuccess}
           onError={handleError}
         />

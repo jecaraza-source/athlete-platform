@@ -295,7 +295,7 @@ describe('6. getDiagnosticAccess — auditor sin acceso clínico', () => {
 describe('7. confirmShow — Server Action de escritura bloqueada para auditor', () => {
   it('retorna { error } cuando el usuario es auditor (assertMedicalAccess falla)', async () => {
     setupAuditor();
-    const result = await confirmShow('event-001', 'Notas de prueba');
+    const result = await confirmShow('event-001', 'Notas de prueba', null);
     // assertMedicalAccess() checks MEDICAL_ROLE_CODES which excludes 'auditor'
     expect(result).toMatchObject({ error: expect.any(String) });
     expect((result as { error: string }).error).toMatch(/acceso/i);
@@ -359,7 +359,7 @@ describe('7. confirmShow — Server Action de escritura bloqueada para auditor',
       } as unknown as ReturnType<typeof supabaseAdmin.from>;
     });
 
-    const result = await confirmShow('event-001', '');
+    const result = await confirmShow('event-001', '', null);
     expect((result as { error: string | null }).error).toBeNull();
   });
 });

@@ -29,6 +29,7 @@ import { redirect } from 'next/navigation';
 import { getLocale } from 'next-intl/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { MEDICAL_ROLE_CODES } from '@/lib/medical-appointments';
 import type { CurrentUser, Permission, ProfileSummary, Role } from './types';
 import type { DiagnosticSectionKey } from '@/lib/types/diagnostic';
 
@@ -252,6 +253,24 @@ export async function assertAdminAccess(): Promise<{ error: string } | null> {
     ['super_admin', 'admin', 'program_director'].includes(r.code)
   );
   if (!isAdmin) return { error: 'Admin access required.' };
+  return null;
+}
+
+/**
+ * Server Action guard restricted to medical/specialist staff: medic,
+ * psychologist, nutritionist, physio, plus admin-tier and auditor roles
+ * (see MEDICAL_ROLE_CODES). Used by modules that record clinical notes —
+ * e.g. follow-up/medical — so they require the same role gate as the
+ * medical/appointments module instead of the generic `edit_athletes`
+ * permission, which is not specific to medical staff.
+ */
+export async function assertMedicalStaffAccess(): Promise<{ error: string } | null> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Debes iniciar sesión para realizar esta acción.' };
+  const isMedical = user.roles.some((r) =>
+    (MEDICAL_ROLE_CODES as readonly string[]).includes(r.code),
+  );
+  if (!isMedical) return { error: 'No tienes acceso a esta sección.' };
   return null;
 }
 

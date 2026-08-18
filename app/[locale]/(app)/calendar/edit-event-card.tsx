@@ -3,6 +3,21 @@
 import { useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { updateEvent, deleteEvent } from './actions';
+import { isMedicalEventType } from '@/lib/medical-appointments';
+
+// Statuses used by the specialized /medical/appointments module — a
+// different vocabulary than the general calendar's scheduled/completed/
+// cancelled. Shown read-only here so this form never writes a status value
+// the medical module doesn't recognize (see assertCanMutateMedicalEvent in
+// actions.ts, which already blocks the underlying mutation server-side).
+const MEDICAL_STATUS_LABEL: Record<string, string> = {
+  scheduled:      'Programada',
+  show:           'Atendió',
+  no_show:        'No atendió',
+  no_show_remote: 'Atendido remoto (llamada/mensaje)',
+  rescheduled:    'Reagendada',
+  cancelled:      'Cancelada',
+};
 
 
 const TYPE_COLORS: Record<string, string> = {
@@ -363,16 +378,29 @@ export default function EditEventCard({
             <label className="block text-xs font-medium mb-1" htmlFor={`ee-status-${event.id}`}>
               {t('statusLabel')}
             </label>
-            <select
-              id={`ee-status-${event.id}`}
-              name="status"
-              defaultValue={event.status}
-              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-            >
-              {STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
+            {isMedicalEventType(event.event_type) ? (
+              <>
+                <input type="hidden" name="status" value={event.status} />
+                <div
+                  id={`ee-status-${event.id}`}
+                  className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-500"
+                  title="El estado de citas médicas/nutrición/psicología/fisioterapia se gestiona desde el módulo de Citas Médicas."
+                >
+                  {MEDICAL_STATUS_LABEL[event.status] ?? event.status}
+                </div>
+              </>
+            ) : (
+              <select
+                id={`ee-status-${event.id}`}
+                name="status"
+                defaultValue={event.status}
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              >
+                {STATUSES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Start */}

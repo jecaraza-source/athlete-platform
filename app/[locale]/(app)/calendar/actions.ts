@@ -5,10 +5,32 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { assertPermission, getCurrentUser } from '@/lib/rbac/server';
 import { sendEmailDirect } from '@/lib/notifications/email-service';
 import { oneSignalAdapter } from '@/lib/notifications/providers/onesignal-adapter';
+import { isMedicalEventType, canManageMedicalEventType } from '@/lib/medical-appointments';
+
+/**
+ * Medical/nutrition/psychology/physio events must be managed through the
+ * specialized /medical/appointments module (role- and specialty-scoped),
+ * not the general calendar. `manage_calendar` alone (held broadly by
+ * coach/staff/program_director) is not sufficient for these event types.
+ */
+async function assertCanMutateMedicalEvent(eventType: string): Promise<{ error: string } | null> {
+  if (!isMedicalEventType(eventType)) return null;
+  const user = await getCurrentUser();
+  if (!user) return { error: 'You must be signed in to perform this action.' };
+  const roleCodes = user.roles.map((r) => r.code);
+  if (!canManageMedicalEventType(roleCodes, eventType)) {
+    return { error: 'Las citas médicas, de nutrición, psicología y fisioterapia solo pueden gestionarse desde el módulo de Citas Médicas.' };
+  }
+  return null;
+}
 
 export async function createEvent(formData: FormData) {
   const denied = await assertPermission('manage_calendar');
   if (denied) return denied;
+
+  const requestedEventType = formData.get('event_type') as string;
+  const medicalDenied = await assertCanMutateMedicalEvent(requestedEventType);
+  if (medicalDenied) return medicalDenied;
 
   // Always use the signed-in user's profile — never trust client-supplied value.
   const currentUser = await getCurrentUser();
@@ -117,6 +139,19 @@ export async function updateEvent(id: string, formData: FormData) {
   const denied = await assertPermission('manage_calendar');
   if (denied) return denied;
 
+  const requestedEventType = formData.get('event_type') as string;
+  const { data: existingEvent } = await supabaseAdmin
+    .from('events')
+    .select('event_type')
+    .eq('id', id)
+    .maybeSingle();
+
+  for (const eventType of [existingEvent?.event_type, requestedEventType]) {
+    if (!eventType) continue;
+    const medicalDenied = await assertCanMutateMedicalEvent(eventType);
+    if (medicalDenied) return medicalDenied;
+  }
+
   const payload = {
     title:       formData.get('title')       as string,
     event_type:  formData.get('event_type')  as string,
@@ -215,6 +250,14 @@ export async function deleteEvent(id: string) {
   const denied = await assertPermission('manage_calendar');
   if (denied) return denied;
 
+  const { data: existingEvent } = await supabaseAdmin
+    .from('events')
+    .select('event_type')
+    .eq('id', id)
+    .maybeSingle();
+  const medicalDenied = await assertCanMutateMedicalEvent(existingEvent?.event_type ?? '');
+  if (medicalDenied) return medicalDenied;
+
   const { error } = await supabaseAdmin.from('events').delete().eq('id', id);
   if (error) return { error: error.message };
 
@@ -225,6 +268,14 @@ export async function deleteEvent(id: string) {
 export async function updateEventStatus(id: string, status: string) {
   const denied = await assertPermission('manage_calendar');
   if (denied) return denied;
+
+  const { data: existingEvent } = await supabaseAdmin
+    .from('events')
+    .select('event_type')
+    .eq('id', id)
+    .maybeSingle();
+  const medicalDenied = await assertCanMutateMedicalEvent(existingEvent?.event_type ?? '');
+  if (medicalDenied) return medicalDenied;
 
   const { error } = await supabaseAdmin
     .from('events')

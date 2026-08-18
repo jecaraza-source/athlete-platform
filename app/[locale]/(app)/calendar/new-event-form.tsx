@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { createEvent } from './actions';
+import { isMedicalEventType } from '@/lib/medical-appointments';
 
 
 type Athlete = { id: string; first_name: string; last_name: string };
@@ -37,6 +38,7 @@ export default function NewEventForm({
 
   const [open,    setOpen]    = useState(false);
   const [error,   setError]   = useState<string | null>(null);
+  const [eventType, setEventType] = useState('');
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -69,6 +71,7 @@ export default function NewEventForm({
         setMode('none');
         setAllChecked(false);
         setCheckedIds(new Set());
+        setEventType('');
         formRef.current?.reset();
       }
     });
@@ -141,6 +144,8 @@ export default function NewEventForm({
               id="ev_type"
               name="event_type"
               required
+              value={eventType}
+              onChange={(e) => setEventType(e.target.value)}
               className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
             >
               <option value="">{t('selectType')}</option>
@@ -156,17 +161,30 @@ export default function NewEventForm({
             <label className="block text-xs font-medium mb-1" htmlFor="ev_status">
               {t('statusLabel')}
             </label>
-            <select
-              id="ev_status"
-              name="status"
-              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-            >
-              {STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+            {isMedicalEventType(eventType) ? (
+              <>
+                <input type="hidden" name="status" value="scheduled" />
+                <div
+                  id="ev_status"
+                  className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-500"
+                  title="El estado de citas médicas/nutrición/psicología/fisioterapia se gestiona desde el módulo de Citas Médicas."
+                >
+                  Programada
+                </div>
+              </>
+            ) : (
+              <select
+                id="ev_status"
+                name="status"
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+              >
+                {STATUSES.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>
