@@ -101,25 +101,21 @@ export interface ReportServiceRow {
   attendedPresential: number;
   /** Events attended remotely: status='show_remote' or status='no_show_remote'; null = NO APLICA */
   attendedRemote: number | null;
-  /** Follow-up session notes logged in period */
-  followUpNotes: number;
   /** Events with status='no_show' */
   noShow: number;
 }
 
-export interface ReportCoachRow {
-  coachId: string;
-  coachName: string;
-  discipline: string;
-  /** Distinct athletes with training_sessions in period */
-  totalAthletes: number;
-  /** Plans of type='training' created by this coach in period */
-  totalPlans: number;
-  /** training_sessions logged by this coach in period */
-  totalNotes: number;
-  /** Distinct athletes in this coach's group who have any medical appointment
-   *  (event_participants) in the period — links training group to medical coverage */
-  athletesWithApts: number;
+
+export interface ReportTrainingDisciplineRow {
+  disciplineCode: string;
+  disciplineName: string;
+  disciplineBlock: string;
+  /** Active athletes in this discipline with at least one training plan assignment. */
+  athletesWithPlans: number;
+  /** Distinct training plans assigned to athletes in this discipline, all time. */
+  trainingPlans: number;
+  /** Total athlete-plan assignments for training plans, all time. */
+  planAssignments: number;
 }
 
 export interface ReportStaffMemberRow {
@@ -165,7 +161,7 @@ export interface ReportData {
   from: string;
   to: string;
   services: ReportServiceRow[];
-  coaches: ReportCoachRow[];
+  trainingDisciplines: ReportTrainingDisciplineRow[];
   staffMembers: ReportStaffMemberRow[];
   disciplines: ReportDisciplineRow[];
 }

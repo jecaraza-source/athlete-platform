@@ -8,6 +8,7 @@ import {
   type Plan,
   type DisciplineOption,
 } from '@/lib/plans/actions';
+import { getDisciplineLabel } from '@/lib/types/diagnostic';
 
 type Props = {
   plan:        Plan;
@@ -26,6 +27,16 @@ function formatSize(bytes: number | null): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
+function planDisciplineLabel(plan: Plan): string {
+  if (plan.discipline) return getDisciplineLabel(plan.discipline);
+  const disciplines = new Set(
+    (plan.athlete_plans ?? [])
+      .map((assignment) => assignment.athletes?.discipline)
+      .filter((discipline): discipline is string => Boolean(discipline)),
+  );
+  if (disciplines.size === 1) return getDisciplineLabel([...disciplines][0]);
+  return disciplines.size > 1 ? 'Multidisciplinario' : 'Sin disciplina';
+}
 
 export function PlanCard({ plan, signedUrl, readOnly = false, disciplines }: Props) {
   const [isPending, start] = useTransition();
@@ -42,6 +53,7 @@ export function PlanCard({ plan, signedUrl, readOnly = false, disciplines }: Pro
     year:  'numeric',
   });
   const isNew = Date.now() - new Date(plan.created_at).getTime() < 7 * 24 * 60 * 60 * 1000;
+  const disciplineLabel = planDisciplineLabel(plan);
 
   function handleCleanupByDiscipline() {
     if (!cleanupDisc) return;
@@ -119,6 +131,9 @@ export function PlanCard({ plan, signedUrl, readOnly = false, disciplines }: Pro
           >
             {published ? '📱 En app' : 'Borrador'}
           </span>
+          <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+            {disciplineLabel}
+          </span>
         </div>
       </div>
 
@@ -135,7 +150,7 @@ export function PlanCard({ plan, signedUrl, readOnly = false, disciplines }: Pro
           const isCollective = plan.athlete_plans?.[0]?.assignment_mode === 'collective';
           const names = (plan.athlete_plans ?? [])
             .map((ap) => ap.athletes)
-            .filter((a): a is { first_name: string; last_name: string } => a != null);
+            .filter((a): a is { first_name: string; last_name: string; discipline: string | null } => a != null);
 
           if (isCollective) {
             return (

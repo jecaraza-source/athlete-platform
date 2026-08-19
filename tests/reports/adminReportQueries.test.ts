@@ -94,15 +94,10 @@ const PAST_ISO   = '2020-01-01T00:00:00.000Z';
 /** Minimal no-op data for tables we don't care about in a given test. */
 function emptyQueues(): Record<string, QueryResult[]> {
   return {
-    // Round 1 — 14 parallel queries
+    // Round 1 — independent queries
     athletes:           [{ count: 0 }, { data: [] }],
     events:             [{ data: [] }],
-    medical_sessions:   [{ count: 0 }],
-    nutrition_checkins: [{ count: 0 }],
-    psychology_sessions:[{ count: 0 }],
-    physio_sessions:    [{ count: 0 }],
     roles:              [{ data: [] }],      // empty → coachRoleIds = [], skip user_roles
-    training_sessions:  [{ data: [] }, { data: [] }],
     plans:              [{ data: [] }],
     profiles:           [{ data: [] }, { data: [] }],
     athlete_plans:      [{ data: [] }],
@@ -119,116 +114,34 @@ beforeEach(() => {
 });
 
 // =============================================================================
-// Section 1: Entrenadores — athlete-profile exclusion
+// Section 1: Planes de entrenamiento por disciplina
 // =============================================================================
 
-describe('fetchReportData — Entrenadores section', () => {
-  it('excludes profiles with role="athlete" from the coaches list', async () => {
+describe('fetchReportData — Planes de entrenamiento por disciplina', () => {
+  it('agrega atletas, planes y asignaciones por disciplina', async () => {
     const queues = emptyQueues();
-
-    // All-time training sessions — athlete P-athlete appears as coach (bad data)
-    queues.training_sessions = [
-      {
-        data: [
-          { athlete_id: 'A1', coach_profile_id: 'P-coach' },
-          { athlete_id: 'A2', coach_profile_id: 'P-athlete' }, // ← athlete acting as coach
-        ],
-      },
-      { data: [] }, // period sessions (call 2)
-    ];
-
-    // profiles call 1 (legacy .in('role', ['coach','trainer'])): empty
-    // profiles call 2 (medical staff): empty
-    // profiles call 3 (coach details): both coach and athlete profiles
-    queues.profiles = [
-      { data: [] },  // call 1: legacy coaches
-      { data: [] },  // call 2: medical staff
-      {
-        data: [
-          { id: 'P-coach',   first_name: 'Carlos', last_name: 'Ruiz',  specialty: 'Atletismo', role: 'coach' },
-          { id: 'P-athlete', first_name: 'Pedro',  last_name: 'Pérez', specialty: null,        role: 'athlete' },
-        ],
-      }, // call 3: coach resolution
-    ];
-
-    installFromMock(queues);
-
-    const result = await fetchReportData('2024-01-01', '2024-01-31');
-
-    const coachIds = result.coaches.map((c) => c.coachId);
-    expect(coachIds).toContain('P-coach');
-    expect(coachIds).not.toContain('P-athlete');
-  });
-
-  it('includes only the valid coach and shows correct session counts', async () => {
-    const queues = emptyQueues();
-
-    // All-time sessions
-    queues.training_sessions = [
-      {
-        data: [
-          { athlete_id: 'A1', coach_profile_id: 'P-coach' },
-          { athlete_id: 'A2', coach_profile_id: 'P-coach' },
-          { athlete_id: 'A3', coach_profile_id: 'P-athlete' }, // bad data
-        ],
-      },
-      // Period sessions (call 2) — P-coach logged 2 notes
+    queues.athletes = [
+      { count: 2 },
       { data: [
-        { coach_profile_id: 'P-coach' },
-        { coach_profile_id: 'P-coach' },
+        { id: 'A1', first_name: 'Ana', last_name: 'López', discipline: 'atletismo' },
+        { id: 'A2', first_name: 'Luis', last_name: 'Pérez', discipline: 'atletismo' },
       ]},
     ];
-
-    queues.profiles = [
-      { data: [] },  // call 1: legacy coaches
-      { data: [] },  // call 2: medical staff
-      {
-        data: [
-          { id: 'P-coach',   first_name: 'Luis', last_name: 'Torres', specialty: 'Boxeo', role: 'coach' },
-          { id: 'P-athlete', first_name: 'Ana',  last_name: 'Vega',   specialty: null,    role: 'athlete' },
-        ],
-      },
-    ];
+    queues.plans = [{ data: [{ id: 'P1' }, { id: 'P2' }] }];
+    queues.athlete_plans = [{ data: [
+      { plan_id: 'P1', athlete_id: 'A1' },
+      { plan_id: 'P1', athlete_id: 'A2' },
+      { plan_id: 'P2', athlete_id: 'A1' },
+    ]}];
 
     installFromMock(queues);
-
     const result = await fetchReportData('2024-01-01', '2024-01-31');
+    const atletismo = result.trainingDisciplines.find((d) => d.disciplineCode === 'atletismo');
 
-    expect(result.coaches).toHaveLength(1);
-    const coach = result.coaches[0];
-    expect(coach.coachId).toBe('P-coach');
-    expect(coach.totalAthletes).toBe(2);  // distinct athletes from all-time sessions
-    expect(coach.totalNotes).toBe(2);     // period sessions
-  });
-
-  it('returns an empty coaches list when all session participants are athletes', async () => {
-    const queues = emptyQueues();
-
-    queues.training_sessions = [
-      // All coach_profile_ids are athlete profiles (completely bad data)
-      { data: [
-        { athlete_id: 'A1', coach_profile_id: 'P-athlete-1' },
-        { athlete_id: 'A2', coach_profile_id: 'P-athlete-2' },
-      ]},
-      { data: [] },
-    ];
-
-    queues.profiles = [
-      { data: [] },
-      { data: [] },
-      {
-        data: [
-          { id: 'P-athlete-1', first_name: 'X', last_name: 'Y', specialty: null, role: 'athlete' },
-          { id: 'P-athlete-2', first_name: 'X', last_name: 'Z', specialty: null, role: 'athlete' },
-        ],
-      },
-    ];
-
-    installFromMock(queues);
-
-    const result = await fetchReportData('2024-01-01', '2024-01-31');
-
-    expect(result.coaches).toHaveLength(0);
+    expect(atletismo).toBeDefined();
+    expect(atletismo!.athletesWithPlans).toBe(2);
+    expect(atletismo!.trainingPlans).toBe(2);
+    expect(atletismo!.planAssignments).toBe(3);
   });
 });
 
@@ -255,15 +168,12 @@ describe('fetchReportData — Staff Médico section', () => {
       ],
     }];
 
-    queues.profiles = [
-      { data: [] }, // call 1: legacy coaches
-      {             // call 2: medical staff profiles
-        data: [
-          { id: MEDIC_ID, first_name: 'María',  last_name: 'Doctora',       role: 'medic' },
-          { id: NUTRI_ID, first_name: 'Carlos', last_name: 'Nutricionista', role: 'nutritionist' },
-        ],
-      },
-    ];
+    queues.profiles = [{
+      data: [
+        { id: MEDIC_ID, first_name: 'María',  last_name: 'Doctora',       role: 'medic' },
+        { id: NUTRI_ID, first_name: 'Carlos', last_name: 'Nutricionista', role: 'nutritionist' },
+      ],
+    }];
 
     installFromMock(queues);
 
@@ -305,10 +215,7 @@ describe('fetchReportData — Staff Médico section', () => {
       ],
     }];
 
-    queues.profiles = [
-      { data: [] },
-      { data: [{ id: MEDIC_ID, first_name: 'Dr', last_name: 'Test', role: 'medic' }] },
-    ];
+    queues.profiles = [{ data: [{ id: MEDIC_ID, first_name: 'Dr', last_name: 'Test', role: 'medic' }] }];
 
     installFromMock(queues);
     const result = await fetchReportData('2024-01-01', '2024-01-31');
@@ -331,10 +238,7 @@ describe('fetchReportData — Staff Médico section', () => {
         { id: 'e2', title: 'FISIO', status: 'scheduled', created_by_profile_id: PHYSIO_ID, start_at: FUTURE_ISO },
       ],
     }];
-    queues.profiles = [
-      { data: [] },
-      { data: [{ id: PHYSIO_ID, first_name: 'Ana', last_name: 'Fisio', role: 'physio' }] },
-    ];
+    queues.profiles = [{ data: [{ id: PHYSIO_ID, first_name: 'Ana', last_name: 'Fisio', role: 'physio' }] }];
 
     installFromMock(queues);
     const result = await fetchReportData('2024-01-01', '2024-01-31');
@@ -350,14 +254,11 @@ describe('fetchReportData — Staff Médico section', () => {
 
     queues.events = [{ data: [] }]; // no events
 
-    queues.profiles = [
-      { data: [] },
-      {
-        data: [
-          { id: 'staff-physio', first_name: 'Ana', last_name: 'Fisio', role: 'physio' },
-        ],
-      },
-    ];
+    queues.profiles = [{
+      data: [
+        { id: 'staff-physio', first_name: 'Ana', last_name: 'Fisio', role: 'physio' },
+      ],
+    }];
 
     installFromMock(queues);
 
@@ -386,7 +287,7 @@ describe('fetchReportData — Staff Médico section', () => {
       })),
     }];
 
-    queues.profiles = [{ data: [] }, { data: staffProfiles }];
+    queues.profiles = [{ data: staffProfiles }];
 
     installFromMock(queues);
 
@@ -408,10 +309,7 @@ describe('fetchReportData — Staff Médico section', () => {
     }];
 
     // Medical staff profiles only contain medic-profile (not coach/athlete)
-    queues.profiles = [
-      { data: [] },
-      { data: [{ id: 'medic-profile', first_name: 'Dr', last_name: 'García', role: 'medic' }] },
-    ];
+    queues.profiles = [{ data: [{ id: 'medic-profile', first_name: 'Dr', last_name: 'García', role: 'medic' }] }];
 
     installFromMock(queues);
 
@@ -592,42 +490,6 @@ describe('fetchReportData — Por Disciplina section', () => {
       (d) => !d.disciplineCode || d.disciplineCode === ''
     );
     expect(nullEntry).toBeUndefined();
-  });
-
-  it('athletesWithApts in coaches: only athletes with period appointments count', async () => {
-    const queues = emptyQueues();
-
-    // Coach P-coach has two athletes: A1 has a period appointment, A2 does not
-    queues.training_sessions = [
-      { data: [
-        { athlete_id: 'A1', coach_profile_id: 'P-coach' },
-        { athlete_id: 'A2', coach_profile_id: 'P-coach' },
-      ]},
-      { data: [] },
-    ];
-
-    // Period events: A1 has one appointment, A2 has none
-    queues.events = [{
-      data: [{ id: 'e1', title: 'MÉDICO', status: 'show', created_by_profile_id: null, start_at: PAST_ISO }],
-    }];
-
-    queues.event_participants = [{
-      data: [{ event_id: 'e1', participant_id: 'A1' }],
-    }];
-
-    queues.profiles = [
-      { data: [] },                 // call 1: legacy coaches
-      { data: [] },                 // call 2: medical staff
-      { data: [{ id: 'P-coach', first_name: 'Carlos', last_name: 'Ruiz', specialty: 'Boxeo', role: 'coach' }] },
-    ];
-
-    installFromMock(queues);
-    const result = await fetchReportData('2024-01-01', '2024-01-31');
-
-    expect(result.coaches).toHaveLength(1);
-    const coach = result.coaches[0];
-    expect(coach.totalAthletes).toBe(2);    // A1 + A2 in all-time sessions
-    expect(coach.athletesWithApts).toBe(1); // only A1 had an appointment in period
   });
 
   it('correctly uses all-time plans (not period-filtered) for athletesWithPlans', async () => {

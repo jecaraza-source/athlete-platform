@@ -19,7 +19,7 @@ import Link                           from 'next/link';
 import { getReportPeriodRange }       from '@/lib/periods';
 import { fetchReportData }            from '@/lib/adminReportQueries';
 import type {
-  ReportData, ReportPeriodKey, ReportServiceRow, ReportCoachRow,
+  ReportData, ReportPeriodKey, ReportServiceRow, ReportTrainingDisciplineRow,
   ReportStaffMemberRow, ReportDisciplineRow,
 } from '@/lib/types/admin';
 import type { ReportPeriodMeta }      from '@/lib/periods';
@@ -183,20 +183,19 @@ function buildPrintDocument(
       <td style="text-align:center">${r.scheduled}</td>
       <td style="text-align:center">${r.attendedPresential}</td>
       <td style="text-align:center">${r.attendedRemote === null ? 'NO APLICA' : r.attendedRemote}</td>
-      <td style="text-align:center">${r.followUpNotes}</td>
       <td style="text-align:center">${r.noShow}</td>
     </tr>`).join('');
 
-  const coachRows = data.coaches.length > 0
-    ? data.coaches.map((c: ReportCoachRow) => `
+
+  const trainingDisciplineRows = data.trainingDisciplines.length > 0
+    ? data.trainingDisciplines.map((d: ReportTrainingDisciplineRow) => `
     <tr>
-      <td style="font-weight:700">ENTRENADOR ${c.discipline.toUpperCase()}</td>
-      <td style="text-align:center">${c.totalAthletes}</td>
-      <td style="text-align:center">${c.athletesWithApts}</td>
-      <td style="text-align:center">${c.totalPlans}</td>
-      <td style="text-align:center">${c.totalNotes}</td>
+      <td style="font-weight:700">${d.disciplineName}</td>
+      <td style="text-align:center">${d.athletesWithPlans}</td>
+      <td style="text-align:center">${d.trainingPlans}</td>
+      <td style="text-align:center">${d.planAssignments}</td>
     </tr>`).join('')
-    : '<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:12px">Sin datos de entrenadores para este período</td></tr>';
+    : '<tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:12px">Sin datos de planes de entrenamiento para este período</td></tr>';
 
   const staffRows = data.staffMembers.length > 0
     ? data.staffMembers.map((s: ReportStaffMemberRow) => `
@@ -294,26 +293,24 @@ function buildPrintDocument(
         <th style="width:16.4%;text-align:center">TOTAL CITAS PROGRAMADAS</th>
         <th style="width:16.4%;text-align:center">CITAS ATENDIDAS PRESENCIAL</th>
         <th style="width:16.4%;text-align:center">CITAS ATENDIDAS VÍA REMOTA</th>
-        <th style="width:16.4%;text-align:center">NOTAS DE SEGUIMIENTO</th>
-        <th style="width:16.4%;text-align:center">CITAS NO ATENDIDAS</th>
+        <th style="width:18%;text-align:center">CITAS NO ATENDIDAS</th>
       </tr>
     </thead>
     <tbody>${serviceRows}</tbody>
   </table>
 
-  <div class="section-title" style="margin-top:20px">Entrenadores</div>
-  ${chartBlock('chart-coaches-bar')}
+  <div class="section-title" style="margin-top:20px">Planes de Entrenamiento por Disciplina</div>
+  ${chartBlock('chart-training-disciplines-bar')}
   <table>
     <thead>
       <tr>
-        <th style="width:26%">ENTRENADOR / DISCIPLINA</th>
-        <th style="width:18.5%;text-align:center">ATLETAS CON PLAN<br><span style="font-size:9px;font-weight:400">(acumulado)</span></th>
-        <th style="width:18.5%;text-align:center">ATLETAS CON CITAS<br><span style="font-size:9px;font-weight:400">(en el período)</span></th>
-        <th style="width:18.5%;text-align:center">PLANES ASIGNADOS<br><span style="font-size:9px;font-weight:400">(acumulado)</span></th>
-        <th style="width:18.5%;text-align:center">NOTAS SEGUIMIENTO<br><span style="font-size:9px;font-weight:400">(en el período)</span></th>
+        <th style="width:28%">DISCIPLINA</th>
+        <th style="width:18%;text-align:center">ATLETAS CON PLAN<br><span style="font-size:9px;font-weight:400">(acumulado)</span></th>
+        <th style="width:18%;text-align:center">PLANES DISTINTOS<br><span style="font-size:9px;font-weight:400">(acumulado)</span></th>
+        <th style="width:26%;text-align:center">ASIGNACIONES<br><span style="font-size:9px;font-weight:400">(acumulado)</span></th>
       </tr>
     </thead>
-    <tbody>${coachRows}</tbody>
+    <tbody>${trainingDisciplineRows}</tbody>
   </table>
 
   <div class="section-title" style="margin-top:20px">Staff Médico (por miembro)</div>
@@ -373,7 +370,7 @@ async function captureCharts(): Promise<Record<string, string>> {
   const ids = [
     'chart-attendance-pie',
     'chart-services-bar',
-    'chart-coaches-bar',
+    'chart-training-disciplines-bar',
     'chart-disciplines-bar',
   ];
   const result: Record<string, string> = {};
@@ -470,7 +467,6 @@ function ServiceTable({ rows, loading }: { rows: ReportServiceRow[]; loading: bo
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Citas Programadas</th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Atendidas Presencial</th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Atendidas Remoto</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Notas Seguimiento</th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">No Atendidas</th>
           </tr>
         </thead>
@@ -495,9 +491,6 @@ function ServiceTable({ rows, loading }: { rows: ReportServiceRow[]; loading: bo
                 ) : (
                   <span className="rounded bg-blue-900/30 px-2 py-0.5 text-blue-300 font-medium">{r.attendedRemote}</span>
                 )}
-              </td>
-              <td className="px-4 py-3 text-center">
-                <span className="rounded bg-indigo-900/30 px-2 py-0.5 text-indigo-300 font-medium">{r.followUpNotes}</span>
               </td>
               <td className="px-4 py-3 text-center">
                 {r.noShow > 0 ? (
@@ -687,78 +680,58 @@ function DisciplineTable({ rows, loading }: { rows: ReportDisciplineRow[]; loadi
   );
 }
 
-function CoachTable({ rows, loading }: { rows: ReportCoachRow[]; loading: boolean }) {
+function TrainingDisciplineTable({ rows, loading }: { rows: ReportTrainingDisciplineRow[]; loading: boolean }) {
   if (loading) {
     return <div className="rounded-xl border border-[#2A2D3A] h-32 animate-pulse bg-[#1A1D27]" />;
   }
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-[#2A2D3A] py-10 text-center">
-        <p className="text-[#94A3B8] text-sm">Sin planes de entrenamiento asignados ni sesiones registradas</p>
+        <p className="text-[#94A3B8] text-sm">Sin planes de entrenamiento</p>
       </div>
     );
   }
   return (
-    <div className="overflow-x-auto rounded-xl border border-[#2A2D3A]">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-[#2A2D3A] bg-[#1A1D27]">
-            <th className="px-4 py-3 text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Disciplina / Entrenador</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
-              <div>Atletas c/Plan</div>
-              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">acumulado</div>
-            </th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
-              <div>Atletas c/Citas Méd.</div>
-              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">en el período</div>
-            </th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
-              <div>Planes Asignados</div>
-              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">acumulado</div>
-            </th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
-              <div>Notas Seguimiento</div>
-              <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">en el período</div>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((c, i) => (
-            <tr
-              key={c.coachId}
-              className={`border-b border-[#2A2D3A]/50 last:border-0 ${
-                i % 2 === 0 ? 'bg-[#0F1117]' : 'bg-[#1A1D27]/40'
-              }`}
-            >
-              <td className="px-4 py-3">
-                <div className="font-semibold text-[#F1F5F9]">{c.discipline.toUpperCase()}</div>
-                <div className="text-xs text-[#94A3B8] mt-0.5">{c.coachName}</div>
-              </td>
-              <td className="px-4 py-3 text-center">
-                <span className="rounded bg-teal-900/30 px-2 py-0.5 text-teal-300 font-medium">{c.totalAthletes}</span>
-              </td>
-              <td className="px-4 py-3 text-center">
-                {c.athletesWithApts > 0 ? (
-                  <span className="rounded bg-sky-900/30 px-2 py-0.5 text-sky-300 font-medium">
-                    {c.athletesWithApts}
-                    {c.totalAthletes > 0 && (
-                      <span className="text-[#64748B] font-normal"> / {c.totalAthletes}</span>
-                    )}
-                  </span>
-                ) : (
-                  <span className="text-[#94A3B8]">—</span>
-                )}
-              </td>
-              <td className="px-4 py-3 text-center">
-                <span className="rounded bg-indigo-900/30 px-2 py-0.5 text-indigo-300 font-medium">{c.totalPlans}</span>
-              </td>
-              <td className="px-4 py-3 text-center">
-                <span className="rounded bg-[#2A2D3A] px-2 py-0.5 text-[#F1F5F9] font-medium">{c.totalNotes}</span>
-              </td>
+    <div className="space-y-3">
+      <div className="overflow-x-auto rounded-xl border border-[#2A2D3A]">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#2A2D3A] bg-[#1A1D27]">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Disciplina</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+                <div>Atletas c/Plan</div>
+                <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">acumulado</div>
+              </th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+                <div>Planes distintos</div>
+                <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">acumulado</div>
+              </th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">
+                <div>Asignaciones</div>
+                <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">acumulado</div>
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((discipline, i) => (
+              <tr
+                key={discipline.disciplineCode}
+                className={`border-b border-[#2A2D3A]/50 last:border-0 ${
+                  i % 2 === 0 ? 'bg-[#0F1117]' : 'bg-[#1A1D27]/40'
+                }`}
+              >
+                <td className="px-4 py-3">
+                  <div className="font-semibold text-[#F1F5F9]">{discipline.disciplineName}</div>
+                  <div className="text-xs text-[#94A3B8] mt-0.5">{discipline.disciplineBlock}</div>
+                </td>
+                <td className="px-4 py-3 text-center"><span className="rounded bg-teal-900/30 px-2 py-0.5 text-teal-300 font-medium">{discipline.athletesWithPlans}</span></td>
+                <td className="px-4 py-3 text-center"><span className="rounded bg-sky-900/30 px-2 py-0.5 text-sky-300 font-medium">{discipline.trainingPlans}</span></td>
+                <td className="px-4 py-3 text-center"><span className="rounded bg-indigo-900/30 px-2 py-0.5 text-indigo-300 font-medium">{discipline.planAssignments}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -771,7 +744,6 @@ const CHT = {
   remote:     '#60a5fa',
   noShow:     '#f87171',
   plans:      '#a78bfa',
-  notes:      '#94a3b8',
   athletes:   '#2dd4bf',
 };
 
@@ -837,7 +809,6 @@ function ServicesBarChart({ rows, id }: { rows: ReportServiceRow[]; id?: string 
     Programadas:       r.scheduled,
     Presencial:        r.attendedPresential,
     Remoto:            r.attendedRemote ?? 0,
-    'Notas Seguim.':   r.followUpNotes,
     'No Atendidas':    r.noShow,
   }));
   return (
@@ -855,7 +826,6 @@ function ServicesBarChart({ rows, id }: { rows: ReportServiceRow[]; id?: string 
           <Bar dataKey="Programadas"     fill={CHT.scheduled}  radius={[3,3,0,0]} />
           <Bar dataKey="Presencial"      fill={CHT.presential} radius={[3,3,0,0]} />
           <Bar dataKey="Remoto"          fill={CHT.remote}     radius={[3,3,0,0]} />
-          <Bar dataKey="Notas Seguim."  fill={CHT.notes}      radius={[3,3,0,0]} />
           <Bar dataKey="No Atendidas"    fill={CHT.noShow}     radius={[3,3,0,0]} />
         </BarChart>
       </ResponsiveContainer>
@@ -863,52 +833,31 @@ function ServicesBarChart({ rows, id }: { rows: ReportServiceRow[]; id?: string 
   );
 }
 
-// ─── Chart: entrenadores (grouped bar) ───────────────────────────────────────
+// ─── Chart: planes de entrenamiento por disciplina ───────────────────────────
 
-/** Returns the initials of a full name, e.g. "Carlos Ruiz Torres" → "C.R.T." */
-function initials(fullName: string): string {
-  return fullName
-    .split(' ')
-    .filter(Boolean)
-    .map((w) => w[0].toUpperCase())
-    .join('.')  + '.';
-}
-
-function CoachesBarChart({ rows, id }: { rows: ReportCoachRow[]; id?: string }) {
+function TrainingDisciplinesBarChart({ rows, id }: { rows: ReportTrainingDisciplineRow[]; id?: string }) {
   if (rows.length === 0) return null;
-  const chartData = rows.map(c => ({
-    name:              initials(c.coachName),
-    // Keep full name in a separate field so the Tooltip can display it
-    fullName:          c.coachName,
-    discipline:        c.discipline,
-    'Atletas c/Plan':  c.totalAthletes,
-    'c/Citas Méd.':   c.athletesWithApts,
-    Planes:            c.totalPlans,
-    Seguimientos:      c.totalNotes,
+  const chartData = rows.map((discipline) => ({
+    name: discipline.disciplineName,
+    'Atletas c/Plan': discipline.athletesWithPlans,
+    'Planes distintos': discipline.trainingPlans,
+    Asignaciones: discipline.planAssignments,
   }));
   return (
     <div id={id} className="rounded-xl border border-[#2A2D3A] bg-[#0F1117] p-4 mb-4">
       <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide mb-3">
-        Resumen por Entrenador
+        Planes de Entrenamiento por Disciplina
       </p>
-      <ResponsiveContainer width="100%" height={190}>
+      <ResponsiveContainer width="100%" height={220}>
         <BarChart data={chartData} barCategoryGap="30%" barGap={3}>
           <CartesianGrid strokeDasharray="3 3" stroke="#2A2D3A" vertical={false} />
           <XAxis dataKey="name" tick={A_TICK} axisLine={false} tickLine={false} />
           <YAxis tick={A_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
-          <Tooltip
-            contentStyle={TOOLTIP_STYLE}
-            formatter={(value, key) => [value, key]}
-            labelFormatter={(label, payload) => {
-              const row = payload?.[0]?.payload as { fullName?: string; discipline?: string } | undefined;
-              return row ? `${row.fullName} (${row.discipline})` : label;
-            }}
-          />
+          <Tooltip contentStyle={TOOLTIP_STYLE} />
           <Legend iconType="square" wrapperStyle={LEG_STY} />
-          <Bar dataKey="Atletas c/Plan" fill={CHT.athletes}  radius={[3,3,0,0]} />
-          <Bar dataKey="c/Citas Méd."  fill='#38bdf8'       radius={[3,3,0,0]} />
-          <Bar dataKey="Planes"         fill={CHT.plans}     radius={[3,3,0,0]} />
-          <Bar dataKey="Seguimientos"   fill={CHT.notes}     radius={[3,3,0,0]} />
+          <Bar dataKey="Atletas c/Plan" fill={CHT.athletes} radius={[3,3,0,0]} />
+          <Bar dataKey="Planes distintos" fill={CHT.plans} radius={[3,3,0,0]} />
+          <Bar dataKey="Asignaciones" fill="#38bdf8" radius={[3,3,0,0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -1049,7 +998,6 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
   const totalScheduled  = data.services.reduce((s, r) => s + r.scheduled,          0);
   const totalAttended   = data.services.reduce((s, r) => s + r.attendedPresential,  0);
   const totalNoShow     = data.services.reduce((s, r) => s + r.noShow,              0);
-  const totalNotes      = data.services.reduce((s, r) => s + r.followUpNotes,       0);
   const totalRemote     = data.services.reduce((s, r) => s + (r.attendedRemote ?? 0), 0);
 
   return (
@@ -1356,11 +1304,10 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
 
           {/* Summary KPI cards */}
           {!loading && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <StatCard label="Citas Programadas"    value={totalScheduled} />
               <StatCard label="Atendidas Presencial" value={totalAttended}  accent />
               <StatCard label="Atendidas Remoto"     value={totalRemote}    accent />
-              <StatCard label="Notas de Seguimiento" value={totalNotes} />
               <StatCard label="No Atendidas"         value={totalNoShow} />
             </div>
           )}
@@ -1381,19 +1328,19 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
           <ServiceTable rows={data.services} loading={loading} />
         </section>
 
-        {/* ── Section 2: Coaches ── */}
+        {/* ── Section 2: Training plans by discipline ── */}
         <section>
           <div className="flex items-center gap-3 mb-3">
             <h2 className="text-sm font-semibold text-[#F1F5F9] uppercase tracking-wide">
-              Entrenadores
+              Planes de Entrenamiento por Disciplina
             </h2>
             <div className="flex-1 h-px bg-[#2A2D3A]" />
             <span className="text-xs text-[#94A3B8] shrink-0">
-              Atletas/planes: acumulado &nbsp;·&nbsp; Citas méd. y seguimientos: {meta.label}
+              Planes: acumulado
             </span>
           </div>
-          {!loading && <CoachesBarChart rows={data.coaches} id="chart-coaches-bar" />}
-          <CoachTable rows={data.coaches} loading={loading} />
+          {!loading && <TrainingDisciplinesBarChart rows={data.trainingDisciplines} id="chart-training-disciplines-bar" />}
+          <TrainingDisciplineTable rows={data.trainingDisciplines} loading={loading} />
         </section>
 
         {/* ── Section 3: Staff Médico (por miembro) ── */}

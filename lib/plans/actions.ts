@@ -23,6 +23,7 @@ export type AthleteSummary = {
   last_name:  string;
   email:      string | null;
   status:     string;
+  discipline: string | null;
 };
 
 export type AthletePlanRow = {
@@ -31,12 +32,14 @@ export type AthletePlanRow = {
   athletes: {
     first_name: string;
     last_name:  string;
+    discipline: string | null;
   } | null;
 };
 
 export type Plan = {
   id:            string;
   type:          PlanType;
+  discipline:    string | null;
   title:         string;
   description:   string | null;
   notes:         string | null;
@@ -75,7 +78,7 @@ export async function getPlansByType(type: PlanType): Promise<Plan[]> {
       athlete_plans (
         athlete_id,
         assignment_mode,
-        athletes ( first_name, last_name )
+        athletes ( first_name, last_name, discipline )
       )
     `)
     .eq('type', type)
@@ -137,7 +140,7 @@ export async function getMyPlansForAthlete(type: PlanType): Promise<Plan[]> {
       athlete_plans (
         athlete_id,
         assignment_mode,
-        athletes ( first_name, last_name )
+        athletes ( first_name, last_name, discipline )
       )
     `)
     .in('id', planIds)
@@ -212,7 +215,7 @@ export async function getTrainingPlansForAthlete(athleteId: string): Promise<Pla
 export async function getActiveAthletes(): Promise<AthleteSummary[]> {
   const { data, error } = await supabaseAdmin
     .from('athletes')
-    .select('id, first_name, last_name, email, status')
+    .select('id, first_name, last_name, email, status, discipline')
     .eq('status', 'active')
     .order('last_name');
 
@@ -243,6 +246,7 @@ export async function createPlan(
   // ── Validate required fields ─────────────────────────────────────────────
   const title = (formData.get('title') as string | null)?.trim();
   if (!title) return { error: 'El título es requerido.', planId: null };
+  const discipline      = (formData.get('discipline')       as string | null)?.trim();
 
   const description     = (formData.get('description')      as string | null)?.trim() || null;
   const notes           = (formData.get('notes')            as string | null)?.trim() || null;
@@ -251,6 +255,39 @@ export async function createPlan(
   const athleteIds      = (formData.getAll('athlete_ids')  as string[]).filter(Boolean);
   const notifyEmail     = formData.get('notify_email')     === 'true';
   const notifyPush      = formData.get('notify_push')      === 'true';
+  if (!discipline) return { error: 'Selecciona una disciplina.', planId: null };
+
+  // Resolve and validate assignments before uploading a file or creating a
+  // plan: every athlete must be active and belong to the selected discipline.
+  let resolvedIds: string[];
+  if (assignmentMode === 'collective') {
+    const { data: disciplineAthletes, error: athleteErr } = await supabaseAdmin
+      .from('athletes')
+      .select('id')
+      .eq('status', 'active')
+      .eq('discipline', discipline);
+    if (athleteErr) return { error: athleteErr.message, planId: null };
+    resolvedIds = (disciplineAthletes ?? []).map((a: { id: string }) => a.id);
+  } else {
+    const uniqueIds = [...new Set(athleteIds)];
+    if (uniqueIds.length === 0) {
+      return { error: 'Selecciona al menos un atleta.', planId: null };
+    }
+    const { data: selectedAthletes, error: athleteErr } = await supabaseAdmin
+      .from('athletes')
+      .select('id')
+      .in('id', uniqueIds)
+      .eq('status', 'active')
+      .eq('discipline', discipline);
+    if (athleteErr) return { error: athleteErr.message, planId: null };
+    if ((selectedAthletes ?? []).length !== uniqueIds.length) {
+      return { error: 'Todos los atletas deben pertenecer a la disciplina seleccionada.', planId: null };
+    }
+    resolvedIds = uniqueIds;
+  }
+  if (resolvedIds.length === 0) {
+    return { error: 'No hay atletas activos en la disciplina seleccionada.', planId: null };
+  }
 
   // ── Optional PDF upload ───────────────────────────────────────────────────
   const file = formData.get('file') as File | null;
@@ -285,6 +322,7 @@ export async function createPlan(
     .from('plans')
     .insert({
       type,
+      discipline,
       title,
       description,
       notes,
@@ -306,15 +344,6 @@ export async function createPlan(
 
   const planId = plan.id as string;
 
-  // ── Resolve final athlete list ────────────────────────────────────────────
-  let resolvedIds = athleteIds;
-  if (assignmentMode === 'collective') {
-    const { data: allAthletes } = await supabaseAdmin
-      .from('athletes')
-      .select('id')
-      .eq('status', 'active');
-    resolvedIds = (allAthletes ?? []).map((a: { id: string }) => a.id);
-  }
 
   // ── Assign athletes ───────────────────────────────────────────────────────
   if (resolvedIds.length > 0) {

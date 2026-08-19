@@ -22,8 +22,8 @@ Reglas estrictas:
 - Extensión: exactamente 3 párrafos de prosa corrida. Separa cada párrafo con una línea en blanco.
 - Idioma: español formal.
 - Tono: profesional, directo y orientado a resultados. Sin lenguaje de marketing ni clichés.
-- Párrafo 1: Resumen de servicios de salud. Incluye citas programadas, atendidas (presencial y remoto), inasistencias y notas de seguimiento. Señala tendencias relevantes si existen.
-- Párrafo 2: Desempeño de entrenadores y cobertura por disciplina. Menciona atletas con plan, planes asignados, seguimientos y la distribución de atletas por disciplina.
+- Párrafo 1: Resumen de servicios de salud. Incluye citas programadas, atendidas (presencial y remoto) e inasistencias. Señala tendencias relevantes si existen.
+- Párrafo 2: Planes de entrenamiento y cobertura por disciplina. Menciona atletas con plan, planes distintos y asignaciones.
 - Párrafo 3: Conclusión ejecutiva. Señala los logros del período, áreas de oportunidad concretas y una recomendación accionable para el equipo directivo.
 - Usa los datos exactos del contexto proporcionado. No inventes ni infiera información adicional.
 - No incluyas encabezados, listas, bullets ni formato especial. Solo prosa.`;
@@ -48,7 +48,6 @@ export async function POST(req: NextRequest) {
     const totalPresential = data.services.reduce((s, r) => s + r.attendedPresential, 0);
     const totalRemote     = data.services.reduce((s, r) => s + (r.attendedRemote ?? 0), 0);
     const totalNoShow     = data.services.reduce((s, r) => s + r.noShow, 0);
-    const totalNotes      = data.services.reduce((s, r) => s + r.followUpNotes, 0);
 
     const servicesDetail = data.services
       .map(
@@ -56,20 +55,22 @@ export async function POST(req: NextRequest) {
           `  - ${r.service}: ${r.scheduled} programadas, ` +
           `${r.attendedPresential} presencial, ` +
           `${r.attendedRemote !== null ? r.attendedRemote + ' remoto' : 'NO APLICA remoto'}, ` +
-          `${r.noShow} inasistencias, ${r.followUpNotes} notas`,
+          `${r.noShow} inasistencias`,
       )
       .join('\n');
 
-    const coachesDetail =
-      data.coaches.length > 0
-        ? data.coaches
+    const trainingDisciplinesDetail =
+      data.trainingDisciplines.length > 0
+        ? data.trainingDisciplines
             .map(
-              (c) =>
-                `  - ${c.discipline.toUpperCase()} (${c.coachName}): ` +
-                `${c.totalAthletes} atletas c/plan, ${c.totalPlans} planes, ${c.totalNotes} notas`,
+              (discipline) =>
+                `  - ${discipline.disciplineName}: ` +
+                `${discipline.athletesWithPlans} atletas c/plan, ` +
+                `${discipline.trainingPlans} planes distintos, ` +
+                `${discipline.planAssignments} asignaciones`,
             )
             .join('\n')
-        : '  Sin datos de entrenadores en este período.';
+        : '  Sin datos de planes de entrenamiento en este período.';
 
     const disciplinesDetail =
       data.disciplines.length > 0
@@ -94,13 +95,12 @@ Total citas programadas: ${totalScheduled}
 Total atendidas presencial: ${totalPresential}
 Total atendidas remoto: ${totalRemote}
 Total inasistencias: ${totalNoShow}
-Total notas de seguimiento: ${totalNotes}
 
 Detalle por servicio:
 ${servicesDetail}
 
-== ENTRENADORES ==
-${coachesDetail}
+== PLANES DE ENTRENAMIENTO POR DISCIPLINA ==
+${trainingDisciplinesDetail}
 
 == DISCIPLINAS ==
 ${disciplinesDetail}

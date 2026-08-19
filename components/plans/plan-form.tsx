@@ -1,11 +1,17 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { createPlan, type PlanType, type AthleteSummary } from '@/lib/plans/actions';
+import {
+  createPlan,
+  type PlanType,
+  type AthleteSummary,
+  type DisciplineOption,
+} from '@/lib/plans/actions';
 
 type Props = {
   type:     PlanType;
   athletes: AthleteSummary[];
+  disciplines: DisciplineOption[];
   onSuccess?: () => void;
 };
 
@@ -17,13 +23,14 @@ const TYPE_COLOR: Record<PlanType, { btn: string; focus: string }> = {
   rehabilitation: { btn: 'bg-orange-600 hover:bg-orange-700', focus: 'focus:ring-orange-500' },
 };
 
-export function PlanForm({ type, athletes, onSuccess }: Props) {
+export function PlanForm({ type, athletes, disciplines, onSuccess }: Props) {
   const formRef     = useRef<HTMLFormElement>(null);
   const [error, setError]     = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isPending, start]    = useTransition();
 
   const [assignMode, setAssignMode]     = useState<'collective' | 'individual'>('collective');
+  const [selectedDiscipline, setSelectedDiscipline] = useState('');
   const [selectedIds, setSelectedIds]   = useState<string[]>([]);
   const [searchQ, setSearchQ]           = useState('');
   const [isPublished, setIsPublished]   = useState(false);
@@ -32,7 +39,8 @@ export function PlanForm({ type, athletes, onSuccess }: Props) {
 
   const colors = TYPE_COLOR[type];
 
-  const filtered = athletes.filter((a) =>
+  const athletesInDiscipline = athletes.filter((a) => a.discipline === selectedDiscipline);
+  const filtered = athletesInDiscipline.filter((a) =>
     `${a.first_name} ${a.last_name}`.toLowerCase().includes(searchQ.toLowerCase())
   );
 
@@ -67,6 +75,8 @@ export function PlanForm({ type, athletes, onSuccess }: Props) {
           setSuccess(true);
           setSelectedIds([]);
           setAssignMode('collective');
+          setSelectedDiscipline('');
+          setSearchQ('');
           setIsPublished(false);
           setNotifyEmail(false);
           setNotifyPush(false);
@@ -167,6 +177,35 @@ export function PlanForm({ type, athletes, onSuccess }: Props) {
           Asignación de atletas
         </legend>
 
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
+            Disciplina <span className="text-red-500">*</span>
+          </label>
+          <select
+            name="discipline"
+            required
+            value={selectedDiscipline}
+            onChange={(e) => {
+              setSelectedDiscipline(e.target.value);
+              setSelectedIds([]);
+              setSearchQ('');
+            }}
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            <option value="">— Selecciona disciplina —</option>
+            {disciplines.map((discipline) => (
+              <option key={discipline.code} value={discipline.code}>
+                {discipline.name}
+              </option>
+            ))}
+          </select>
+          {selectedDiscipline && (
+            <p className="mt-1 text-xs text-gray-400">
+              {athletesInDiscipline.length} atleta{athletesInDiscipline.length !== 1 ? 's' : ''} activo{athletesInDiscipline.length !== 1 ? 's' : ''} en esta disciplina.
+            </p>
+          )}
+        </div>
+
         {/* Mode toggle */}
         <div className="flex gap-3">
           {(['collective', 'individual'] as const).map((mode) => (
@@ -180,13 +219,13 @@ export function PlanForm({ type, athletes, onSuccess }: Props) {
                   : 'border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
             >
-              {mode === 'collective' ? '👥 Todos los atletas activos' : '🎯 Atletas específicos'}
+              {mode === 'collective' ? '👥 Todos los atletas de la disciplina' : '🎯 Atletas específicos'}
             </button>
           ))}
         </div>
 
         {/* Individual selector */}
-        {assignMode === 'individual' && (
+        {assignMode === 'individual' && selectedDiscipline && (
           <div className="space-y-2">
             <input
               type="text"
@@ -195,8 +234,8 @@ export function PlanForm({ type, athletes, onSuccess }: Props) {
               placeholder="Buscar atleta…"
               className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
-            {athletes.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-3">No hay atletas activos.</p>
+            {athletesInDiscipline.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-3">No hay atletas activos en esta disciplina.</p>
             ) : (
               <div className="max-h-44 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
                 {filtered.map((a) => (
@@ -277,7 +316,7 @@ export function PlanForm({ type, athletes, onSuccess }: Props) {
       {/* ── Submit ──────────────────────────────────────────────────────── */}
       <button
         type="submit"
-        disabled={isPending || (assignMode === 'individual' && selectedIds.length === 0)}
+        disabled={isPending || !selectedDiscipline || (assignMode === 'individual' && selectedIds.length === 0)}
         className={`w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50 ${colors.btn}`}
       >
         {isPending ? 'Creando plan…' : '+ Crear plan'}

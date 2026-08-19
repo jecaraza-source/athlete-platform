@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guía de Tickets — Entrenador</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --bg-tertiary: #efefef;
+    --text-primary: #1a1a1a;
+    --text-secondary: #555;
+    --text-tertiary: #888;
+    --border: rgba(0,0,0,0.12);
+    --border-strong: rgba(0,0,0,0.25);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --info-bg: #E6F1FB;
+    --info-text: #0C447C;
+    --info-border: #B5D4F4;
+    --warn-bg: #FAEEDA;
+    --warn-text: #633806;
+    --warn-border: #FAC775;
+    --success-bg: #EAF3DE;
+    --success-text: #27500A;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1c1c1e;
+      --bg-secondary: #2c2c2e;
+      --bg-tertiary: #3a3a3c;
+      --text-primary: #f0f0f0;
+      --text-secondary: #aaa;
+      --text-tertiary: #666;
+      --border: rgba(255,255,255,0.1);
+      --border-strong: rgba(255,255,255,0.22);
+      --info-bg: #042C53;
+      --info-text: #85B7EB;
+      --info-border: #185FA5;
+      --warn-bg: #412402;
+      --warn-text: #FAC775;
+      --warn-border: #633806;
+      --success-bg: #173404;
+      --success-text: #C0DD97;
+    }
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  .page-header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  .page-header h1 {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+  .page-header p {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border);
+    padding: 2rem;
+  }
+  /* Nav pills */
+  .step-nav {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 1.75rem;
+  }
+  .step-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 0.5px solid var(--border-strong);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.12s;
+    font-family: inherit;
+    line-height: 1.4;
+  }
+  .step-btn.active {
+    background: var(--info-bg);
+    color: var(--info-text);
+    border-color: var(--info-border);
+    font-weight: 500;
+  }
+  .step-btn:hover:not(.active) {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+  /* Step content */
+  .step-content { display: none; }
+  .step-content.visible { display: block; }
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+  }
+  .step-num {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--info-bg);
+    color: var(--info-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .step-title {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .step-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    margin-bottom: 1.25rem;
+  }
+  /* Mockup */
+  .mockup {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+  }
+  .mockup-bar {
+    background: var(--bg-secondary);
+    border-bottom: 0.5px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mockup-bar-dots { display: flex; gap: 5px; }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border-strong);
+  }
+  .mockup-url {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    padding: 3px 10px;
+    flex: 1;
+    font-family: 'Menlo', 'Courier New', monospace;
+  }
+  .mockup-body { padding: 20px; }
+  /* Badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .badge-open    { background: #E6F1FB; color: #0C447C; }
+  .badge-progress{ background: #FAEEDA; color: #633806; }
+  .badge-resolved{ background: #EAF3DE; color: #27500A; }
+  .badge-closed  { background: #F1EFE8; color: #444441; }
+  .badge-low     { background: #F1EFE8; color: #5F5E5A; }
+  .badge-medium  { background: #FAEEDA; color: #633806; }
+  .badge-high    { background: #FAECE7; color: #712B13; }
+  .badge-urgent  { background: #FCEBEB; color: #791F1F; }
+  /* Buttons (static mockup) */
+  .btn-primary {
+    background: #185FA5;
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: default;
+    font-family: inherit;
+  }
+  .btn-secondary {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border-strong);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+    padding: 8px 18px;
+    font-size: 14px;
+    cursor: default;
+    font-family: inherit;
+  }
+  /* Form elements (display-only) */
+  .form-group { margin-bottom: 14px; }
+  .form-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+    display: block;
+  }
+  .form-input, .form-textarea, .form-select {
+    width: 100%;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--text-tertiary);
+    background: var(--bg-primary);
+    font-family: inherit;
+  }
+  .form-textarea { resize: none; height: 80px; }
+  .form-select   { width: auto; }
+  /* Cards / checklist */
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 1.25rem;
+  }
+  @media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } }
+  .perm-card {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    font-size: 13px;
+  }
+  .perm-card-title {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .perm-list { color: var(--text-secondary); line-height: 1.85; }
+  .checklist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.25rem; }
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    border: 0.5px solid var(--border);
+    background: var(--bg-primary);
+  }
+  .check-icon { font-size: 16px; margin-top: 1px; flex-shrink: 0; color: #1D9E75; }
+  .check-text { font-size: 14px; color: var(--text-primary); line-height: 1.5; }
+  .check-text strong { font-weight: 500; }
+  /* Tip boxes */
+  .tip-box {
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 13px;
+    line-height: 1.55;
+    margin-bottom: 10px;
+  }
+  .tip-box.info    { background: var(--info-bg);  color: var(--info-text);  border: 0.5px solid var(--info-border); }
+  .tip-box.warning { background: var(--warn-bg);  color: var(--warn-text);  border: 0.5px solid var(--warn-border); }
+  .tip-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  /* Status flow */
+  .status-flow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+  }
+  .sf-badge { padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+  .sf-arrow { color: var(--text-tertiary); font-size: 14px; }
+  /* Activity log */
+  .activity-item {
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .activity-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .activity-text b { color: var(--text-primary); font-weight: 500; }
+  /* Sidebar layout */
+  .ticket-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    gap: 20px;
+  }
+  @media (max-width: 520px) { .ticket-detail-grid { grid-template-columns: 1fr; } }
+  .sidebar-section {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .sidebar-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .sidebar-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 5px;
+  }
+  .sidebar-value { font-size: 13px; color: var(--text-primary); }
+  /* Avatar */
+  .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  /* Comment */
+  .comment-card {
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .comment-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .comment-author { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .comment-time   { font-size: 11px; color: var(--text-tertiary); }
+  .comment-body   { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  /* Nav footer */
+  .nav-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+    gap: 8px;
+    border-top: 0.5px solid var(--border);
+    padding-top: 1.25rem;
+  }
+  .nav-btn {
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-strong);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    transition: background 0.12s;
+  }
+  .nav-btn:hover { background: var(--bg-tertiary); }
+  .nav-btn.primary {
+    background: var(--info-bg);
+    color: var(--info-text);
+    border-color: var(--info-border);
+  }
+  .nav-btn.primary:hover { filter: brightness(0.96); }
+  code {
+    font-family: 'Menlo', 'Courier New', monospace;
+    font-size: 12px;
+    background: var(--bg-secondary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--text-primary);
+  }
+  /* Step progress indicator */
+  .progress-bar {
+    height: 3px;
+    background: var(--bg-secondary);
+    border-radius: 2px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: #185FA5;
+    border-radius: 2px;
+    transition: width 0.2s ease;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1><i class="ti ti-ticket" style="vertical-align:-2px"></i> Sistema de Tickets — Guía del Entrenador</h1>
+  <p>Plataforma de Atletismo · Versión junio 2026</p>
+</div>
+
+<div class="container">
+  <div class="step-nav" id="stepNav">
+    <button class="step-btn active" data-step="0"><i class="ti ti-shield-check"></i> Permisos</button>
+    <button class="step-btn" data-step="1"><i class="ti ti-plus"></i> Crear ticket</button>
+    <button class="step-btn" data-step="2"><i class="ti ti-users"></i> Asignar</button>
+    <button class="step-btn" data-step="3"><i class="ti ti-refresh"></i> Estado</button>
+    <button class="step-btn" data-step="4"><i class="ti ti-message"></i> Comentar</button>
+    <button class="step-btn" data-step="5"><i class="ti ti-activity"></i> Seguimiento</button>
+    <button class="step-btn" data-step="6"><i class="ti ti-mail"></i> Notificar</button>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:14%"></div></div>
+
+  <!-- ══ PASO 0: Permisos ══════════════════════════════════════════════════ -->
+  <div class="step-content visible" id="step-0">
+    <div class="step-header">
+      <div class="step-num"><i class="ti ti-shield-check"></i></div>
+      <div class="step-title">Qué puede hacer el entrenador</div>
+    </div>
+    <p class="step-desc">El rol <code>coach</code> tiene acceso operativo completo al sistema de tickets, excepto asignar tickets a otros miembros del equipo (esa acción es exclusiva de admins y personal médico especialista).</p>
+    <div class="grid2">
+      <div class="perm-card">
+        <div class="perm-card-title"><i class="ti ti-circle-check" style="color:#1D9E75"></i> Permitido</div>
+        <div class="perm-list">
+          Ver todos los tickets<br>
+          Crear tickets nuevos<br>
+          Editar campos y título<br>
+          Agregar comentarios<br>
+          Resolver y cerrar tickets
+        </div>
+      </div>
+      <div class="perm-card">
+        <div class="perm-card-title"><i class="ti ti-circle-x" style="color:#A32D2D"></i> No permitido</div>
+        <div class="perm-list">
+          Asignar tickets a otros<br>
+          Eliminar tickets<br><br>
+          <span style="font-size:12px;color:var(--text-tertiary)">Requiere rol <code>admin</code>, <code>program_director</code> o especialista médico.</span>
+        </div>
+      </div>
+    </div>
+    <div class="tip-box info">
+      <i class="ti ti-info-circle tip-icon"></i>
+      <span>El entrenador accede a los tickets desde <strong>/admin/tickets</strong> en la plataforma web, o desde la pestaña <strong>Tickets</strong> en la app móvil.</span>
+    </div>
+  </div>
+
+  <!-- ══ PASO 1: Crear ticket ══════════════════════════════════════════════ -->
+  <div class="step-content" id="step-1">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">Crear un ticket nuevo</div>
+    </div>
+    <p class="step-desc">Ve a <strong>Admin → Tickets → Nuevo ticket</strong>. Completa los tres campos del formulario.</p>
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-bar-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <div class="mockup-url">plataforma.com/admin/tickets/new</div>
+      </div>
+      <div class="mockup-body">
+        <div style="font-size:15px;font-weight:500;color:var(--text-primary);margin-bottom:16px">Nuevo ticket</div>
+        <div class="form-group">
+          <label class="form-label">Título <span style="color:#A32D2D">*</span></label>
+          <div class="form-input">ej. Lesión de rodilla — Atleta #47</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción <span style="color:var(--text-tertiary);font-weight:400">(opcional)</span></label>
+          <div class="form-textarea" style="padding-top:10px;font-size:13px">Describe el problema con detalle: síntomas, cuándo ocurrió, qué atletas están involucrados...</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Prioridad</label>
+          <select class="form-select" disabled>
+            <option>Media</option>
+            <option>Baja</option>
+            <option>Alta</option>
+            <option>Urgente</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:18px">
+          <div class="btn-primary">Enviar ticket</div>
+          <div class="btn-secondary">Cancelar</div>
+        </div>
+      </div>
+    </div>
+    <div class="checklist">
+      <div class="check-item">
+        <i class="ti ti-check check-icon"></i>
+        <div class="check-text"><strong>Título claro:</strong> incluye el atleta o contexto para que el equipo identifique el ticket rápido</div>
+      </div>
+      <div class="check-item">
+        <i class="ti ti-check check-icon"></i>
+        <div class="check-text"><strong>Prioridad correcta:</strong> Baja · Media · Alta · Urgente — los tickets urgentes generan notificaciones push inmediatas</div>
+      </div>
+      <div class="check-item">
+        <i class="ti ti-check check-icon"></i>
+        <div class="check-text"><strong>Descripción detallada:</strong> aunque es opcional, ayuda al equipo médico a prepararse antes de responder</div>
+      </div>
+    </div>
+    <div class="tip-box warning">
+      <i class="ti ti-alert-triangle tip-icon"></i>
+      <span>Al crear el ticket, su estado inicial es <strong>Abierto</strong>. No se asigna automáticamente — requiere que un admin o médico lo asigne manualmente.</span>
+    </div>
+  </div>
+
+  <!-- ══ PASO 2: Asignar ═══════════════════════════════════════════════════ -->
+  <div class="step-content" id="step-2">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">Asignación de tickets</div>
+    </div>
+    <p class="step-desc">El entrenador <strong>no puede asignar</strong> tickets directamente — esto lo hace un administrador, director del programa o personal médico (medic, physio, nutritionist, psychologist). Sin embargo, el entrenador puede ver quién está asignado en el detalle del ticket.</p>
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-bar-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <div class="mockup-url">plataforma.com/admin/tickets/[id] — vista del entrenador</div>
+      </div>
+      <div class="mockup-body">
+        <div class="ticket-detail-grid">
+          <div>
+            <div style="font-size:15px;font-weight:500;color:var(--text-primary);margin-bottom:8px">Lesión de rodilla — Atleta #47</div>
+            <div style="display:flex;gap:6px;margin-bottom:12px"><span class="badge badge-open">Abierto</span><span class="badge badge-high">Alta</span></div>
+            <div style="font-size:13px;color:var(--text-secondary);line-height:1.6">Descripción del problema reportado. El atleta reporta dolor en la rodilla izquierda tras el entrenamiento del martes.</div>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:14px">
+            <div class="sidebar-section">
+              <div class="sidebar-label">Asignado a</div>
+              <div class="sidebar-value" style="color:var(--text-tertiary);font-style:italic">Sin asignar</div>
+            </div>
+            <div class="sidebar-section">
+              <div class="sidebar-label">Creado por</div>
+              <div class="sidebar-value">Carlos Entrenador</div>
+            </div>
+            <div class="sidebar-section">
+              <div class="sidebar-label">Abierto el</div>
+              <div class="sidebar-value">17 jun 2026</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tip-box info">
+      <i class="ti ti-info-circle tip-icon"></i>
+      <span>Si necesitas que un ticket se asigne rápido, agrega un <strong>comentario</strong> indicando a quién debe ir — esto agiliza la comunicación con el equipo admin.</span>
+    </div>
+  </div>
+
+  <!-- ══ PASO 3: Estado ════════════════════════════════════════════════════ -->
+  <div class="step-content" id="step-3">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">Cambiar el estado del ticket</div>
+    </div>
+    <p class="step-desc">El entrenador puede mover el ticket entre cualquier estado. El flujo típico es:</p>
+    <div class="status-flow">
+      <span class="sf-badge badge-open">Abierto</span>
+      <span class="sf-arrow"><i class="ti ti-arrow-right"></i></span>
+      <span class="sf-badge badge-progress">En progreso</span>
+      <span class="sf-arrow"><i class="ti ti-arrow-right"></i></span>
+      <span class="sf-badge badge-resolved">Resuelto</span>
+      <span class="sf-arrow"><i class="ti ti-arrow-right"></i></span>
+      <span class="sf-badge badge-closed">Cerrado</span>
+    </div>
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-bar-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <div class="mockup-url">admin/tickets/[id] — barra lateral de acciones</div>
+      </div>
+      <div class="mockup-body">
+        <div style="max-width:240px">
+          <div style="font-size:11px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">Cambiar estado</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-md);border:0.5px solid var(--border-strong);font-size:13px">
+              <span class="badge badge-open" style="font-size:11px">Abierto</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-md);border:1.5px solid #378ADD;background:#E6F1FB;font-size:13px;font-weight:500;color:#0C447C">
+              <span class="badge badge-progress" style="font-size:11px">En progreso</span>
+              <i class="ti ti-check" style="margin-left:auto;font-size:14px"></i>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-md);border:0.5px solid var(--border-strong);font-size:13px">
+              <span class="badge badge-resolved" style="font-size:11px">Resuelto</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-md);border:0.5px solid var(--border-strong);font-size:13px">
+              <span class="badge badge-closed" style="font-size:11px">Cerrado</span>
+            </div>
+          </div>
+          <div class="btn-primary" style="margin-top:12px;font-size:13px;padding:7px 16px">Guardar estado</div>
+        </div>
+      </div>
+    </div>
+    <div class="checklist">
+      <div class="check-item">
+        <i class="ti ti-check check-icon"></i>
+        <div class="check-text"><strong>Abierto:</strong> recién creado, esperando atención del equipo</div>
+      </div>
+      <div class="check-item">
+        <i class="ti ti-check check-icon"></i>
+        <div class="check-text"><strong>En progreso:</strong> el equipo ya está atendiendo al atleta — márcalo para que todos sepan que hay acción</div>
+      </div>
+      <div class="check-item">
+        <i class="ti ti-check check-icon"></i>
+        <div class="check-text"><strong>Resuelto:</strong> el problema fue atendido pero queda en período de monitoreo</div>
+      </div>
+      <div class="check-item">
+        <i class="ti ti-check check-icon"></i>
+        <div class="check-text"><strong>Cerrado:</strong> ticket finalizado, sin ninguna acción pendiente</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PASO 4: Comentar ══════════════════════════════════════════════════ -->
+  <div class="step-content" id="step-4">
+    <div class="step-header">
+      <div class="step-num">4</div>
+      <div class="step-title">Agregar comentarios</div>
+    </div>
+    <p class="step-desc">Los comentarios son el canal de comunicación interno del ticket. El entrenador puede agregar actualizaciones, hacer preguntas al equipo médico o dejar notas de seguimiento.</p>
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-bar-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <div class="mockup-url">admin/tickets/[id] — sección comentarios</div>
+      </div>
+      <div class="mockup-body">
+        <div style="font-size:13px;font-weight:500;color:var(--text-primary);margin-bottom:14px">
+          Comentarios <span style="color:var(--text-tertiary);font-weight:400">(2)</span>
+        </div>
+        <div class="comment-card">
+          <div class="comment-header">
+            <div class="avatar" style="background:#E1F5EE;color:#085041">CE</div>
+            <span class="comment-author">Carlos Entrenador</span>
+            <span class="comment-time">hace 2 horas</span>
+          </div>
+          <p class="comment-body">El atleta presenta inflamación moderada. ¿Puede revisarlo el fisioterapeuta hoy?</p>
+        </div>
+        <div class="comment-card">
+          <div class="comment-header">
+            <div class="avatar" style="background:#EEEDFE;color:#3C3489">DR</div>
+            <span class="comment-author">Dr. Ramírez</span>
+            <span class="comment-time">hace 1 hora</span>
+          </div>
+          <p class="comment-body">Pasaré a verlo a las 4pm. Mientras tanto, aplicar hielo 15 min cada hora.</p>
+        </div>
+        <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;margin-top:10px">
+          <div class="form-textarea" style="height:64px;font-size:13px;padding-top:8px">Escribe una actualización o pregunta...</div>
+          <div class="btn-primary" style="margin-top:10px;font-size:13px;padding:7px 16px">Enviar comentario</div>
+        </div>
+      </div>
+    </div>
+    <div class="tip-box info">
+      <i class="ti ti-info-circle tip-icon"></i>
+      <span>Todos los miembros del equipo con acceso al ticket pueden leer y responder comentarios. Úsalos para mantener el hilo de comunicación en un solo lugar.</span>
+    </div>
+  </div>
+
+  <!-- ══ PASO 5: Seguimiento ═══════════════════════════════════════════════ -->
+  <div class="step-content" id="step-5">
+    <div class="step-header">
+      <div class="step-num">5</div>
+      <div class="step-title">Seguimiento y bitácora de actividad</div>
+    </div>
+    <p class="step-desc">Cada ticket registra automáticamente un historial de actividad con cada acción realizada. El entrenador puede usar la lista de tickets con filtros para hacer seguimiento de casos activos.</p>
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-bar-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <div class="mockup-url">admin/tickets/[id] — actividad reciente</div>
+      </div>
+      <div class="mockup-body">
+        <div style="font-size:12px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px">Actividad</div>
+        <div class="activity-item">
+          <div class="activity-dot" style="background:#1D9E75"></div>
+          <div class="activity-text"><b>Carlos Entrenador</b> abrió este ticket · 17 jun</div>
+        </div>
+        <div class="activity-item">
+          <div class="activity-dot" style="background:#185FA5"></div>
+          <div class="activity-text"><b>Admin</b> asignó el ticket a Dr. Ramírez · 17 jun</div>
+        </div>
+        <div class="activity-item">
+          <div class="activity-dot" style="background:#BA7517"></div>
+          <div class="activity-text"><b>Dr. Ramírez</b> cambió estado de "abierto" a "en progreso" · 17 jun</div>
+        </div>
+        <div class="activity-item">
+          <div class="activity-dot" style="background:#534AB7"></div>
+          <div class="activity-text"><b>Carlos Entrenador</b> añadió un comentario · 17 jun</div>
+        </div>
+      </div>
+    </div>
+    <p class="step-desc" style="margin-top:1rem">Para hacer seguimiento de múltiples tickets, usa los filtros en la lista principal:</p>
+    <div class="checklist">
+      <div class="check-item">
+        <i class="ti ti-filter check-icon" style="color:#185FA5"></i>
+        <div class="check-text"><strong>Filtro por estado:</strong> selecciona "Abierto" o "En progreso" para ver tickets activos que requieren atención</div>
+      </div>
+      <div class="check-item">
+        <i class="ti ti-filter check-icon" style="color:#185FA5"></i>
+        <div class="check-text"><strong>Filtro por prioridad:</strong> revisa primero los "Urgentes" y "Altos" para priorizar la carga del equipo</div>
+      </div>
+      <div class="check-item">
+        <i class="ti ti-search check-icon" style="color:#185FA5"></i>
+        <div class="check-text"><strong>Búsqueda:</strong> busca por nombre del atleta o cualquier palabra clave en el título del ticket</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PASO 6: Notificar ═════════════════════════════════════════════════ -->
+  <div class="step-content" id="step-6">
+    <div class="step-header">
+      <div class="step-num">6</div>
+      <div class="step-title">Enviar notificaciones desde el ticket</div>
+    </div>
+    <p class="step-desc">Desde el detalle del ticket, los usuarios con permiso <code>manage_ticket_emails</code> pueden enviar emails manuales al creador del ticket o a los miembros asignados. El sistema también registra el historial de envíos.</p>
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-bar-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <div class="mockup-url">admin/tickets/[id] — panel de comunicaciones</div>
+      </div>
+      <div class="mockup-body">
+        <div style="font-size:13px;font-weight:500;color:var(--text-primary);margin-bottom:12px">Comunicaciones del ticket</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <div style="padding:6px 14px;border-radius:20px;background:#E6F1FB;color:#0C447C;font-size:12px;font-weight:500">Recordatorio</div>
+          <div style="padding:6px 14px;border-radius:20px;background:var(--bg-secondary);color:var(--text-secondary);font-size:12px">Seguimiento</div>
+          <div style="padding:6px 14px;border-radius:20px;background:var(--bg-secondary);color:var(--text-secondary);font-size:12px">Alerta de vencimiento</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Destinatario</label>
+          <select class="form-select" style="width:100%" disabled>
+            <option>Carlos Entrenador (creador)</option>
+          </select>
+        </div>
+        <div class="btn-primary" style="font-size:13px;padding:7px 16px">
+          <i class="ti ti-send"></i> Enviar email
+        </div>
+        <div style="margin-top:16px;border-top:0.5px solid var(--border);padding-top:12px">
+          <div style="font-size:11px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Historial de envíos</div>
+          <div class="activity-item">
+            <div class="activity-dot" style="background:#185FA5"></div>
+            <div class="activity-text"><b>Admin</b> envió recordatorio a carlos@equipo.mx · 16 jun</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tip-box warning">
+      <i class="ti ti-alert-triangle tip-icon"></i>
+      <span>Este panel solo aparece si el usuario tiene el permiso <strong>manage_ticket_emails</strong>. Por defecto el rol <code>coach</code> no lo tiene — lo tienen admins y el personal médico especialista (<code>medic</code>, <code>physio</code>, <code>nutritionist</code>, <code>psychologist</code>).</span>
+    </div>
+    <div class="tip-box info">
+      <i class="ti ti-info-circle tip-icon"></i>
+      <span>Las push notifications se envían <strong>automáticamente</strong> al crear tickets urgentes y al cambiar el estado del ticket. No requieren acción manual del entrenador.</span>
+    </div>
+  </div>
+
+  <!-- Navegación -->
+  <div class="nav-footer">
+    <button class="nav-btn" id="prevBtn" onclick="navigate(-1)" style="visibility:hidden">
+      <i class="ti ti-arrow-left"></i> Anterior
+    </button>
+    <span id="stepIndicator" style="font-size:13px;color:var(--text-tertiary);align-self:center">Paso 1 de 7</span>
+    <button class="nav-btn primary" id="nextBtn" onclick="navigate(1)">
+      Siguiente <i class="ti ti-arrow-right"></i>
+    </button>
+  </div>
+</div>
+
+<script>
+  var current = 0;
+  var total = 7;
+
+  function showStep(n) {
+    document.querySelectorAll('.step-content').forEach(function(el, i) {
+      el.classList.toggle('visible', i === n);
+    });
+    document.querySelectorAll('.step-btn').forEach(function(el, i) {
+      el.classList.toggle('active', i === n);
+    });
+    document.getElementById('prevBtn').style.visibility = n === 0 ? 'hidden' : 'visible';
+    document.getElementById('nextBtn').style.visibility = n === total - 1 ? 'hidden' : 'visible';
+    document.getElementById('stepIndicator').textContent = 'Paso ' + (n + 1) + ' de ' + total;
+    document.getElementById('progressFill').style.width = Math.round(((n + 1) / total) * 100) + '%';
+    current = n;
+  }
+
+  function navigate(dir) {
+    var next = current + dir;
+    if (next >= 0 && next < total) showStep(next);
+  }
+
+  document.getElementById('stepNav').addEventListener('click', function(e) {
+    var btn = e.target.closest('.step-btn');
+    if (!btn) return;
+    showStep(parseInt(btn.dataset.step));
+  });
+</script>
+</body>
+</html>

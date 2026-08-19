@@ -4,8 +4,8 @@
 // Data queries for the "Resumen Metas Plataforma" report.
 //
 // Sections:
-//   1. Health services — event counts by service type + status + follow-up notes.
-//   2. Coaches — training_sessions + plans per coach grouped by discipline.
+//   1. Health services — event counts by service type + status.
+//   2. Training plans — plans per discipline.
 //   3. Staff Médico — event counts per individual medical staff member.
 //   4. Por Disciplina — athlete attendance and plan assignment per discipline.
 // =============================================================================
@@ -14,7 +14,7 @@ import { supabaseAdmin }       from '@/lib/supabase-admin';
 import { requireReportAccess }  from '@/lib/rbac/server';
 import { DISCIPLINES }          from '@/lib/types/diagnostic';
 import type {
-  ReportData, ReportServiceRow, ReportCoachRow, ServiceType,
+  ReportData, ReportServiceRow, ReportTrainingDisciplineRow, ServiceType,
   ReportStaffMemberRow, ReportDisciplineRow,
 } from '@/lib/types/admin';
 
@@ -60,15 +60,7 @@ export async function fetchReportData(
   const [
     { count: activeAthletes },
     { data: events },
-    { count: medNotes },
-    { count: nutrNotes },
-    { count: psychNotes },
-    { count: physioNotes },
-    { data: coachRoleRows },
-    { data: allTimeSessions },
     { data: trainingPlans },
-    { data: periodSessions },
-    { data: legacyProfs },
     { data: medStaffProfiles },
     { data: allActiveAthletes },
     { data: allAthletePlans },
@@ -80,36 +72,15 @@ export async function fetchReportData(
     supabaseAdmin.from('events')
       .select('id, title, status, created_by_profile_id, start_at')
       .gte('start_at', fromISO(from)).lte('start_at', toISO(to)),
-    // 2-5. Follow-up session notes per service
-    supabaseAdmin.from('medical_sessions')
-      .select('*', { count: 'exact', head: true })
-      .gte('session_date', from).lte('session_date', to),
-    supabaseAdmin.from('nutrition_checkins')
-      .select('*', { count: 'exact', head: true })
-      .gte('checkin_date', from).lte('checkin_date', to),
-    supabaseAdmin.from('psychology_sessions')
-      .select('*', { count: 'exact', head: true })
-      .gte('session_date', from).lte('session_date', to),
-    supabaseAdmin.from('physio_sessions')
-      .select('*', { count: 'exact', head: true })
-      .gte('session_date', from).lte('session_date', to),
-    // 6-8. Coach detection sources
-    supabaseAdmin.from('roles').select('id').eq('code', 'coach'),
-    supabaseAdmin.from('training_sessions').select('athlete_id, coach_profile_id'),
+    // 2. All training plans (accumulated)
     supabaseAdmin.from('plans').select('id, uploaded_by').eq('type', 'training'),
-    // 9. Period training sessions (coach notes count)
-    supabaseAdmin.from('training_sessions')
-      .select('coach_profile_id')
-      .gte('session_date', from).lte('session_date', to),
-    // 10. Legacy coach profiles
-    supabaseAdmin.from('profiles').select('id').in('role', ['coach', 'trainer']),
-    // 11. Medical staff profiles (for staff section)
+    // 3. Medical staff profiles (for staff section)
     supabaseAdmin.from('profiles')
       .select('id, first_name, last_name, role')
       .in('role', MEDICAL_STAFF_ROLES),
-    // 12. Active athletes with discipline (for disciplines section)
-    supabaseAdmin.from('athletes').select('id, discipline').eq('status', 'active'),
-    // 13. All athlete plan assignments — used for both coaches and disciplines
+    // 4. Active athletes with discipline and name
+    supabaseAdmin.from('athletes').select('id, first_name, last_name, discipline').eq('status', 'active'),
+    // 5. All athlete plan assignments — used for plans and disciplines
     supabaseAdmin.from('athlete_plans').select('plan_id, athlete_id'),
   ]);
 
@@ -142,10 +113,10 @@ export async function fetchReportData(
   });
 
   const services: ReportServiceRow[] = [
-    { service: 'MÉDICO',       scheduled: tally.medico.scheduled,       attendedPresential: tally.medico.show,       attendedRemote: tally.medico.show_remote,       followUpNotes: medNotes   ?? 0, noShow: tally.medico.no_show },
-    { service: 'NUTRICIÓN',    scheduled: tally.nutricion.scheduled,    attendedPresential: tally.nutricion.show,    attendedRemote: tally.nutricion.show_remote,    followUpNotes: nutrNotes  ?? 0, noShow: tally.nutricion.no_show },
-    { service: 'PSICOLOGÍA',   scheduled: tally.psicologia.scheduled,   attendedPresential: tally.psicologia.show,   attendedRemote: tally.psicologia.show_remote,   followUpNotes: psychNotes ?? 0, noShow: tally.psicologia.no_show },
-    { service: 'FISIOTERAPIA', scheduled: tally.fisioterapia.scheduled, attendedPresential: tally.fisioterapia.show, attendedRemote: null, followUpNotes: physioNotes ?? 0, noShow: tally.fisioterapia.no_show },
+    { service: 'MÉDICO',       scheduled: tally.medico.scheduled,       attendedPresential: tally.medico.show,       attendedRemote: tally.medico.show_remote,       noShow: tally.medico.no_show },
+    { service: 'NUTRICIÓN',    scheduled: tally.nutricion.scheduled,    attendedPresential: tally.nutricion.show,    attendedRemote: tally.nutricion.show_remote,    noShow: tally.nutricion.no_show },
+    { service: 'PSICOLOGÍA',   scheduled: tally.psicologia.scheduled,   attendedPresential: tally.psicologia.show,   attendedRemote: tally.psicologia.show_remote,   noShow: tally.psicologia.no_show },
+    { service: 'FISIOTERAPIA', scheduled: tally.fisioterapia.scheduled, attendedPresential: tally.fisioterapia.show, attendedRemote: null, noShow: tally.fisioterapia.no_show },
   ];
 
   // ── 2. Staff Médico section ────────────────────────────────────────────────
@@ -200,9 +171,7 @@ export async function fetchReportData(
     })
     .sort((a, b) => a.roleLabel.localeCompare(b.roleLabel, 'es') || a.staffName.localeCompare(b.staffName, 'es'));
 
-  // ── Round 2: RBAC coaches + event participants (parallel) ─────────────────
-
-  const coachRoleIds  = (coachRoleRows ?? []).map((r: { id: number }) => r.id);
+  // ── Round 2: event participants ──────────────────────────────────────────
   const periodEventIds = (events ?? [] as RawEvent[]).map((e) => e.id);
 
   // Build EP chunk queries (avoids PostgREST URL-length limits on large .in() sets)
@@ -212,22 +181,16 @@ export async function fetchReportData(
     epChunks.push(periodEventIds.slice(i, i + EP_CHUNK));
   }
 
-  // Parallel: RBAC coach lookup + event-participant chunks
-  const [rbacUrRowsResult, ...epChunkResults] = await Promise.all([
-    coachRoleIds.length > 0
-      ? supabaseAdmin.from('user_roles').select('profile_id').in('role_id', coachRoleIds)
-          .then((r) => r.data ?? [] as { profile_id: string }[])
-      : Promise.resolve([] as { profile_id: string }[]),
-    ...epChunks.map((chunk) =>
+  const epChunkResults = await Promise.all(
+    epChunks.map((chunk) =>
       supabaseAdmin.from('event_participants')
         .select('event_id, participant_id')
         .in('event_id', chunk)
         .eq('participant_type', 'athlete')
         .then((r) => r.data ?? [] as { event_id: string; participant_id: string }[])
     ),
-  ]);
+  );
 
-  const rbacCoachIds = (rbacUrRowsResult as { profile_id: string }[]).map((r) => r.profile_id);
   const eventParticipants = (epChunkResults as { event_id: string; participant_id: string }[][]).flat();
 
   // ── 3. Disciplines section ─────────────────────────────────────────────────
@@ -260,8 +223,6 @@ export async function fetchReportData(
     }
   });
 
-  // Athletes who have any medical appointment participant in the period (for coaches section)
-  const athletesWithPeriodApts = new Set(eventParticipants.map((ep) => ep.participant_id));
 
   // Athletes who have at least 1 plan assigned (all-time)
   type AthletePlanRow = { plan_id: string; athlete_id: string };
@@ -269,8 +230,16 @@ export async function fetchReportData(
     (allAthletePlans ?? [] as AthletePlanRow[]).map((ap) => ap.athlete_id)
   );
 
-  // Group active athletes by discipline code
-  type ActiveAthlete = { id: string; discipline: string | null };
+  // Group active athletes by discipline code.
+  type ActiveAthlete = {
+    id: string;
+    first_name: string;
+    last_name: string;
+    discipline: string | null;
+  };
+  const activeAthleteById = new Map(
+    (allActiveAthletes ?? [] as ActiveAthlete[]).map((athlete) => [athlete.id, athlete]),
+  );
   const discAthletes = new Map<string, Set<string>>();
   (allActiveAthletes ?? [] as ActiveAthlete[]).forEach(({ id, discipline }) => {
     const code = (discipline ?? '').toLowerCase().trim();
@@ -315,110 +284,63 @@ export async function fetchReportData(
     })
     .filter((d) => d.totalAthletes > 0);
 
-  // ── 4. Coaches section ────────────────────────────────────────────────────
-  //
-  // Coach detection strategy:
-  //   a) RBAC user_roles with role.code='coach'
-  //   b) profiles.role IN ('coach','trainer') — legacy
-  //   c) training_sessions.coach_profile_id — any coach who logged sessions
+  // ── 4. Training plans by discipline ──────────────────────────────────────
 
-  const legacyCoachIds = (legacyProfs ?? []).map((p: { id: string }) => p.id);
-
-  // Per-coach notes (period)
-  type SessionAgg = { notes: number };
-  const sessionAgg: Record<string, SessionAgg> = {};
-  (periodSessions ?? []).forEach((s: { coach_profile_id: string | null }) => {
-    const cid = s.coach_profile_id;
-    if (!cid) return;
-    if (!sessionAgg[cid]) sessionAgg[cid] = { notes: 0 };
-    sessionAgg[cid].notes++;
-  });
-
-  // Per-coach distinct athletes (all-time sessions)
-  const sessionAthletes: Record<string, Set<string>> = {};
-  (allTimeSessions ?? []).forEach(
-    (s: { coach_profile_id: string | null; athlete_id: string | null }) => {
-      const cid = s.coach_profile_id;
-      if (!cid || !s.athlete_id) return;
-      if (!sessionAthletes[cid]) sessionAthletes[cid] = new Set();
-      sessionAthletes[cid].add(s.athlete_id);
-    },
-  );
-
-  // Athlete plan assignments for training plans only
+  // Training plan assignments are accumulated, regardless of the report period.
   const planIds   = (trainingPlans ?? []).map((p: { id: string }) => p.id);
   const planIdSet = new Set(planIds);
   const athletePlanRows = (allAthletePlans ?? [] as AthletePlanRow[]).filter(
     (ap) => planIdSet.has(ap.plan_id)
   );
+  type TrainingDisciplineAgg = {
+    athleteIds: Set<string>;
+    planIds: Set<string>;
+    assignments: number;
+  };
+  const trainingAgg = new Map<string, TrainingDisciplineAgg>();
+  const getTrainingAgg = (discipline: string): TrainingDisciplineAgg => {
+    let agg = trainingAgg.get(discipline);
+    if (!agg) {
+      agg = { athleteIds: new Set(), planIds: new Set(), assignments: 0 };
+      trainingAgg.set(discipline, agg);
+    }
+    return agg;
+  };
 
-  const plansWithAssignments = new Set(athletePlanRows.map((ap) => ap.plan_id));
-
-  type PlanAgg = { planIds: Set<string> };
-  const planAgg: Record<string, PlanAgg> = {};
-  (trainingPlans ?? []).forEach((p: { id: string; uploaded_by: string | null }) => {
-    if (!p.uploaded_by || !plansWithAssignments.has(p.id)) return;
-    if (!planAgg[p.uploaded_by]) planAgg[p.uploaded_by] = { planIds: new Set() };
-    planAgg[p.uploaded_by].planIds.add(p.id);
+  athletePlanRows.forEach(({ plan_id, athlete_id }) => {
+    const athlete = activeAthleteById.get(athlete_id);
+    const discipline = athlete?.discipline?.toLowerCase().trim();
+    if (!discipline) return;
+    const agg = getTrainingAgg(discipline);
+    agg.athleteIds.add(athlete_id);
+    agg.planIds.add(plan_id);
+    agg.assignments++;
   });
 
-  // Union of all coach ID sources
-  const allCoachIds = [
-    ...new Set([
-      ...rbacCoachIds,
-      ...legacyCoachIds,
-      ...Object.keys(sessionAgg),
-      ...Object.keys(sessionAthletes),
-    ]),
-  ];
 
-  let coaches: ReportCoachRow[] = [];
-
-  if (allCoachIds.length > 0) {
-    // Fetch role too so we can exclude athlete profiles that may have slipped in
-    // via training_sessions.coach_profile_id being set incorrectly.
-    const { data: profiles } = await supabaseAdmin
-      .from('profiles')
-      .select('id, first_name, last_name, specialty, role')
-      .in('id', allCoachIds);
-
-    const ATHLETE_ROLES = new Set(['athlete']);
-
-    coaches = (
-      (profiles ?? []) as {
-        id:         string;
-        first_name: string;
-        last_name:  string;
-        specialty:  string | null;
-        role:       string | null;
-      }[]
-    )
-      .filter((p) => !ATHLETE_ROLES.has(p.role ?? ''))
-      .map((p) => {
-        // Count how many of this coach's athletes have any medical appointment in the period
-        const coachAthleteIds = sessionAthletes[p.id];
-        const athletesWithApts = coachAthleteIds
-          ? [...coachAthleteIds].filter((aid) => athletesWithPeriodApts.has(aid)).length
-          : 0;
-        return {
-          coachId:          p.id,
-          coachName:        `${p.first_name} ${p.last_name}`.trim(),
-          discipline:       p.specialty ?? 'Sin especialidad',
-          totalAthletes:    coachAthleteIds?.size ?? 0,
-          totalPlans:       planAgg[p.id]?.planIds.size  ?? 0,
-          totalNotes:       sessionAgg[p.id]?.notes       ?? 0,
-          athletesWithApts,
-        };
-      })
-      .sort((a, b) => a.discipline.localeCompare(b.discipline, 'es'));
-  }
+  const trainingDisciplines: ReportTrainingDisciplineRow[] = DISCIPLINES
+    .map((discipline) => {
+      const agg = trainingAgg.get(discipline.value);
+      return {
+        disciplineCode: discipline.value,
+        disciplineName: discipline.label,
+        disciplineBlock: discipline.block,
+        athletesWithPlans: agg?.athleteIds.size ?? 0,
+        trainingPlans: agg?.planIds.size ?? 0,
+        planAssignments: agg?.assignments ?? 0,
+      };
+    })
+    .filter((discipline) => {
+      const activeAthletes = discAthletes.get(discipline.disciplineCode)?.size ?? 0;
+      return activeAthletes > 0;
+    });
 
   return {
     activeAthletes: activeAthletes ?? 0,
     from,
     to,
     services,
-    coaches,
+    trainingDisciplines,
     staffMembers,
     disciplines,
   };

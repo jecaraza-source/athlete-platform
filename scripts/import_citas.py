@@ -38,6 +38,7 @@ import argparse
 import unicodedata
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
+from pathlib import Path
 
 try:
     import openpyxl
@@ -53,7 +54,7 @@ except ImportError:
 # Constants
 # ---------------------------------------------------------------------------
 
-EXCEL_PATH = (
+DEFAULT_EXCEL_PATH = (
     "/Users/javierescobedo/Library/CloudStorage/Dropbox/"
     "AO Deporte/Entrenamientos/CALENDARIO_CITAS_DEPURADO_ACTIVOS_260626.xlsx"
 )
@@ -127,6 +128,15 @@ def parse_time_str(time_str: str):
         return 8, 0   # fallback
 
 
+def utc_minute(value: datetime | str) -> str:
+    """Normalize an event timestamp to a UTC key at minute precision."""
+    if isinstance(value, str):
+        value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M")
+
+
 class SupabaseClient:
     def __init__(self, url: str, service_key: str):
         self.url = url.rstrip("/")
@@ -165,10 +175,20 @@ class SupabaseClient:
 
 def main():
     parser = argparse.ArgumentParser(description="Import citas from Excel to Supabase")
+    parser.add_argument(
+        "--excel_path",
+        "--excel-path",
+        dest="excel_path",
+        default=DEFAULT_EXCEL_PATH,
+        help=f"Path to the Excel workbook (default: {DEFAULT_EXCEL_PATH})",
+    )
     parser.add_argument("--dry-run", action="store_true",
                         help="Parse and validate without writing to DB")
     args = parser.parse_args()
     dry = args.dry_run
+    excel_path = Path(args.excel_path).expanduser()
+    if not excel_path.is_file():
+        parser.error(f"Excel workbook not found: {excel_path}")
     if dry:
         print("🔍  DRY RUN — no data will be written\n")
 
@@ -221,19 +241,35 @@ def main():
 
     # ── 4. Check already-imported events ─────────────────────────────────────
     print("\nChecking for already-imported events...")
-    existing = db.get(
-        "events",
-        f"select=title,start_at&description=ilike.{requests.utils.quote(IMPORT_MARKER + '%')}&limit=5000"
-    )
+    existing: list[dict] = []
+    offset = 0
+    while True:
+        batch = db.get(
+            "events",
+            (
+                "select=title,start_at"
+                f"&description=ilike.{requests.utils.quote(IMPORT_MARKER + '%')}"
+                "&order=start_at.asc,id.asc"
+                f"&offset={offset}&limit=1000"
+            ),
+        )
+        existing.extend(batch)
+        if len(batch) < 1000:
+            break
+        offset += 1000
     already_imported: set[tuple[str, str]] = set()
     for e in existing:
-        already_imported.add((e["title"], e["start_at"][:16]))
+        already_imported.add((e["title"], utc_minute(e["start_at"])))
     print(f"  {len(already_imported)} already-imported slots (will skip)")
 
     # ── 5. Parse Excel ────────────────────────────────────────────────────────
-    print(f"\nParsing {EXCEL_PATH} ...")
-    wb = openpyxl.load_workbook(EXCEL_PATH, data_only=True)
-    ws = wb[SHEET_NAME]
+    print(f"\nParsing {excel_path} ...")
+    wb = openpyxl.load_workbook(excel_path, data_only=True)
+    try:
+        ws = wb[SHEET_NAME]
+    except KeyError:
+        available = ", ".join(wb.sheetnames)
+        sys.exit(f"❌  Worksheet {SHEET_NAME!r} not found. Available sheets: {available}")
 
     rows = list(ws.iter_rows(values_only=True))
     data_rows = [r for r in rows[1:] if any(c is not None for c in r)]
@@ -285,25 +321,9 @@ def main():
         title = str(profesionista).strip()
 
         # Deduplication check
-        if (title, start_iso[:16]) in already_imported:
+        if (title, utc_minute(start_dt)) in already_imported:
             skipped_dup += 1
             continue
-
-        if key not in slots:
-            slots[key] = {
-                "title":                 title,
-                "event_type":            event_type,
-                "sport_id":              None,
-                "start_at":              start_iso,
-                "end_at":                end_iso,
-                "status":                "scheduled",
-                "created_by_profile_id": creator_id,
-                "description":           (
-                    f"{IMPORT_MARKER} {servicio_norm} | "
-                    f"Profesionista: {profesionista} | "
-                    f"Mes: {mes} {semana}"
-                ),
-            }
 
         # Find athlete by name — four strategies:
         # 0) manual override  1) exact lower  2) accent-stripped norm  3) prefix
@@ -320,6 +340,21 @@ def main():
             )
         )
         if athlete_id:
+            if key not in slots:
+                slots[key] = {
+                    "title":                 title,
+                    "event_type":            event_type,
+                    "sport_id":              None,
+                    "start_at":              start_iso,
+                    "end_at":                end_iso,
+                    "status":                "scheduled",
+                    "created_by_profile_id": creator_id,
+                    "description":           (
+                        f"{IMPORT_MARKER} {servicio_norm} | "
+                        f"Profesionista: {profesionista} | "
+                        f"Mes: {mes} {semana}"
+                    ),
+                }
             # Avoid adding the same athlete twice to the same slot
             existing_ids = [aid for aid, _ in slot_athletes[key]]
             if athlete_id not in existing_ids:

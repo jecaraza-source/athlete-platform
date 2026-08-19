@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guía de Planes de Entrenamiento</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #ffffff;
+  --bg2: #f5f5f5;
+  --bg3: #ebebeb;
+  --text: #1a1a1a;
+  --text2: #555;
+  --text3: #888;
+  --border: rgba(0,0,0,0.11);
+  --border2: rgba(0,0,0,0.22);
+  --r-md: 8px;
+  --r-lg: 12px;
+  --blue: #1d4ed8;
+  --blue-bg: #eff6ff;
+  --blue-border: #bfdbfe;
+  --info-bg: #E6F1FB;
+  --info-text: #0C447C;
+  --info-border: #B5D4F4;
+  --warn-bg: #FAEEDA;
+  --warn-text: #633806;
+  --warn-border: #FAC775;
+  --ok-bg: #EAF3DE;
+  --ok-text: #27500A;
+  --ok-border: #C0DD97;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1e; --bg2: #2c2c2e; --bg3: #3a3a3c;
+    --text: #f0f0f0; --text2: #aaa; --text3: #666;
+    --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.22);
+    --blue-bg: #042C53; --blue-border: #185FA5;
+    --info-bg: #042C53; --info-text: #85B7EB; --info-border: #185FA5;
+    --warn-bg: #412402; --warn-text: #FAC775; --warn-border: #633806;
+    --ok-bg: #173404; --ok-text: #C0DD97; --ok-border: #3B6D11;
+  }
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg3);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 2rem 1rem 3rem;
+}
+.page-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.page-header h1 {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.page-header p { font-size: 14px; color: var(--text3); }
+
+.container {
+  max-width: 740px;
+  margin: 0 auto;
+  background: var(--bg);
+  border-radius: var(--r-lg);
+  border: 0.5px solid var(--border);
+  padding: 1.75rem;
+}
+
+/* ── Audience tabs ─────────────────────────────────────────────────── */
+.audience-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 1.5rem;
+  background: var(--bg2);
+  padding: 4px;
+  border-radius: 10px;
+}
+.aud-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.12s;
+  font-family: inherit;
+}
+.aud-btn.active {
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+/* ── Step nav pills ────────────────────────────────────────────────── */
+.step-nav {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.step-btn {
+  padding: 5px 13px;
+  border-radius: 20px;
+  border: 0.5px solid var(--border2);
+  background: var(--bg2);
+  color: var(--text2);
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.12s;
+  font-family: inherit;
+  line-height: 1.4;
+}
+.step-btn.active {
+  background: var(--blue-bg);
+  color: var(--blue);
+  border-color: var(--blue-border);
+  font-weight: 500;
+}
+.step-btn:hover:not(.active) { background: var(--bg3); color: var(--text); }
+
+/* ── Section visibility ────────────────────────────────────────────── */
+.audience-section { display: none; }
+.audience-section.visible { display: block; }
+.step-content { display: none; }
+.step-content.visible { display: block; }
+
+/* ── Step header ───────────────────────────────────────────────────── */
+.step-header { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+.step-num {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--blue-bg); color: var(--blue);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 500; flex-shrink: 0;
+}
+.step-title { font-size: 18px; font-weight: 500; color: var(--text); }
+.step-desc { font-size: 14px; color: var(--text2); line-height: 1.65; margin-bottom: 1.25rem; }
+
+/* ── Progress bar ──────────────────────────────────────────────────── */
+.progress-bar { height: 3px; background: var(--bg2); border-radius: 2px; margin-bottom: 1.5rem; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.2s; }
+
+/* ── Mockup frame ──────────────────────────────────────────────────── */
+.mockup {
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+.mockup-bar {
+  background: var(--bg2);
+  border-bottom: 0.5px solid var(--border);
+  padding: 9px 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.dots { display: flex; gap: 5px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border2); }
+.url-pill {
+  font-size: 11px; color: var(--text3);
+  background: var(--bg3); border-radius: 6px;
+  padding: 3px 10px; flex: 1;
+  font-family: 'Menlo','Courier New',monospace;
+}
+.mockup-body { padding: 18px; }
+
+/* ── Form elements (static) ────────────────────────────────────────── */
+.form-group { margin-bottom: 13px; }
+.form-label { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 4px; display: block; }
+.form-input, .form-textarea, .form-select {
+  width: 100%;
+  border: 0.5px solid var(--border2);
+  border-radius: var(--r-md);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text3);
+  background: var(--bg);
+  font-family: inherit;
+}
+.form-textarea { resize: none; height: 72px; padding-top: 9px; }
+.form-select { width: auto; }
+
+/* ── Buttons (static mockup) ───────────────────────────────────────── */
+.btn-blue {
+  background: #1d4ed8; color: #fff;
+  border: none; border-radius: var(--r-md);
+  padding: 8px 18px; font-size: 13px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: inherit; cursor: default;
+}
+.btn-ghost {
+  background: var(--bg); border: 0.5px solid var(--border2);
+  color: var(--text); border-radius: var(--r-md);
+  padding: 7px 14px; font-size: 12px;
+  font-family: inherit; cursor: default;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.btn-danger {
+  background: var(--bg); border: 0.5px solid #fca5a5;
+  color: #dc2626; border-radius: var(--r-md);
+  padding: 7px 14px; font-size: 12px;
+  font-family: inherit; cursor: default;
+}
+
+/* ── Badges ────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 3px 9px; border-radius: 20px;
+  font-size: 11px; font-weight: 500;
+}
+.badge-pub   { background: #ede9fe; color: #4c1d95; }
+.badge-draft { background: var(--bg2); color: var(--text3); }
+.badge-new   { background: #22c55e; color: #fff; }
+.badge-blue  { background: var(--blue-bg); color: var(--blue); }
+.badge-indiv { background: #f0f9ff; color: #0369a1; }
+.badge-coll  { background: #fdf4ff; color: #7c3aed; }
+
+/* ── Tips ──────────────────────────────────────────────────────────── */
+.tip {
+  border-radius: var(--r-md); padding: 11px 13px;
+  display: flex; gap: 9px; align-items: flex-start;
+  font-size: 13px; line-height: 1.55; margin-bottom: 10px;
+}
+.tip.info    { background: var(--info-bg); color: var(--info-text); border: 0.5px solid var(--info-border); }
+.tip.warn    { background: var(--warn-bg); color: var(--warn-text); border: 0.5px solid var(--warn-border); }
+.tip.ok      { background: var(--ok-bg);   color: var(--ok-text);   border: 0.5px solid var(--ok-border); }
+.tip-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+/* ── Checklist ─────────────────────────────────────────────────────── */
+.checklist { display: flex; flex-direction: column; gap: 7px; margin-bottom: 1.25rem; }
+.check-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 11px 13px; border-radius: var(--r-md);
+  border: 0.5px solid var(--border); background: var(--bg);
+}
+.check-icon { font-size: 15px; margin-top: 1px; flex-shrink: 0; color: #1D9E75; }
+.check-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+.check-text strong { font-weight: 500; }
+
+/* ── Grid 2 ────────────────────────────────────────────────────────── */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+@media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } }
+.card2 { background: var(--bg2); border-radius: var(--r-md); padding: 13px; font-size: 13px; }
+.card2-title { font-weight: 500; color: var(--text); margin-bottom: 7px; display: flex; align-items: center; gap: 6px; }
+.card2-list { color: var(--text2); line-height: 1.85; }
+
+/* ── Plan card (mockup) ────────────────────────────────────────────── */
+.plan-card {
+  border: 0.5px solid var(--border); border-radius: var(--r-lg);
+  background: var(--bg); overflow: hidden; margin-bottom: 10px;
+}
+.plan-card-head {
+  padding: 12px 14px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+}
+.plan-card-title { font-size: 14px; font-weight: 500; color: var(--text); }
+.plan-card-meta { font-size: 11px; color: var(--text3); margin-top: 3px; }
+.plan-card-body { padding: 0 14px 12px; }
+.plan-card-desc { font-size: 12px; color: var(--text2); line-height: 1.55; margin-bottom: 8px; }
+.plan-card-footer {
+  border-top: 0.5px solid var(--border);
+  padding: 9px 14px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+
+/* ── Mobile phone mockup ───────────────────────────────────────────── */
+.phone-frame {
+  width: 240px;
+  border: 1.5px solid var(--border2);
+  border-radius: 28px;
+  background: var(--bg);
+  overflow: hidden;
+  margin: 0 auto 1.25rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+.phone-notch {
+  background: var(--bg2);
+  height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: var(--text3);
+  border-bottom: 0.5px solid var(--border);
+}
+.phone-screen { padding: 14px 12px 20px; }
+.phone-header { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+.phone-sub { font-size: 11px; color: var(--text3); margin-bottom: 12px; line-height: 1.4; }
+.phone-plan-card {
+  border-radius: 10px;
+  border-left: 3px solid;
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.phone-plan-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 10px 8px;
+}
+.phone-icon-wrap {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; flex-shrink: 0;
+}
+.phone-plan-title { font-size: 12px; font-weight: 700; color: var(--text); line-height: 1.3; }
+.phone-plan-cat { font-size: 10px; font-weight: 600; margin-top: 1px; }
+.phone-plan-date { font-size: 10px; color: var(--text3); }
+.phone-plan-body {
+  border-top: 0.5px solid var(--border);
+  padding: 8px 10px;
+}
+.phone-plan-desc { font-size: 11px; color: var(--text2); line-height: 1.5; margin-bottom: 7px; }
+.phone-pdf-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 0.5px solid; border-radius: 7px;
+  padding: 5px 10px; font-size: 11px; font-weight: 600;
+}
+
+/* ── Toggle row ────────────────────────────────────────────────────── */
+.toggle-row {
+  display: flex; align-items: center; gap: 12px;
+  border: 0.5px solid var(--border); border-radius: var(--r-md);
+  padding: 11px 14px; margin-bottom: 8px;
+}
+.toggle-pill {
+  width: 36px; height: 20px; border-radius: 10px;
+  background: var(--bg2); border: 0.5px solid var(--border2);
+  position: relative; flex-shrink: 0;
+}
+.toggle-pill.on { background: #1d4ed8; border-color: #1d4ed8; }
+.toggle-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: white; position: absolute; top: 3px; left: 3px;
+  transition: left 0.12s;
+}
+.toggle-pill.on .toggle-dot { left: 19px; }
+.toggle-label { font-size: 13px; font-weight: 500; color: var(--text); }
+.toggle-desc { font-size: 12px; color: var(--text3); }
+
+/* ── Activity log ──────────────────────────────────────────────────── */
+.activity-item {
+  display: flex; gap: 9px; padding: 7px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.activity-item:last-child { border-bottom: none; }
+.adot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.atext { font-size: 13px; color: var(--text2); line-height: 1.5; }
+.atext b { color: var(--text); font-weight: 500; }
+
+/* ── Tab-style nav inside step ─────────────────────────────────────── */
+.subtabs { display: flex; gap: 6px; margin-bottom: 1rem; }
+.subtab {
+  padding: 5px 12px; border-radius: 6px;
+  border: 0.5px solid var(--border2);
+  background: var(--bg2); color: var(--text2);
+  font-size: 12px; cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; gap: 5px;
+  transition: all 0.12s;
+}
+.subtab.active { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-border); font-weight: 500; }
+.subpanel { display: none; }
+.subpanel.visible { display: block; }
+
+/* ── Nav footer ────────────────────────────────────────────────────── */
+.nav-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 1.5rem; padding-top: 1.25rem;
+  border-top: 0.5px solid var(--border); gap: 8px;
+}
+.nav-btn {
+  padding: 8px 16px; border-radius: var(--r-md);
+  border: 0.5px solid var(--border2);
+  background: var(--bg2); color: var(--text);
+  font-size: 13px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: inherit; transition: background 0.12s;
+}
+.nav-btn:hover { background: var(--bg3); }
+.nav-btn.primary { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-border); }
+.step-counter { font-size: 13px; color: var(--text3); }
+code {
+  font-family: 'Menlo','Courier New',monospace;
+  font-size: 12px; background: var(--bg2);
+  padding: 2px 6px; border-radius: 4px; color: var(--text);
+}
+
+/* ── Discipline pills ──────────────────────────────────────────────── */
+.disc-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.25rem; }
+.disc-pill {
+  padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
+  border: 0.5px solid; display: flex; align-items: center; gap: 6px;
+}
+.disc-training   { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.disc-medical    { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
+.disc-nutrition  { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+.disc-rehab      { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+.disc-psych      { background: #faf5ff; color: #7c3aed; border-color: #e9d5ff; }
+
+/* ── Assign toggle mockup ──────────────────────────────────────────── */
+.assign-toggle { display: flex; gap: 6px; margin-bottom: 10px; }
+.assign-btn {
+  flex: 1; padding: 8px 10px; border-radius: var(--r-md);
+  border: 0.5px solid var(--border2); background: var(--bg2);
+  color: var(--text2); font-size: 12px; text-align: center; cursor: default;
+}
+.assign-btn.active { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+
+/* ── Notif checkboxes (static) ─────────────────────────────────────── */
+.notif-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); margin-bottom: 7px; }
+.cb-box {
+  width: 15px; height: 15px; border-radius: 4px;
+  border: 0.5px solid var(--border2); display: inline-flex;
+  align-items: center; justify-content: center; flex-shrink: 0;
+}
+.cb-box.checked { background: #1d4ed8; border-color: #1d4ed8; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1><i class="ti ti-barbell"></i> Planes de Entrenamiento</h1>
+  <p>Guía de operación completa · Plataforma AO Deportes · junio 2026</p>
+</div>
+
+<div class="container">
+
+  <!-- ── Audience selector ──────────────────────────────────────────── -->
+  <div class="audience-tabs" id="audTabs">
+    <button class="aud-btn active" data-aud="coach">
+      <i class="ti ti-whistle"></i> Entrenador / Staff
+    </button>
+    <button class="aud-btn" data-aud="athlete">
+      <i class="ti ti-run"></i> Atleta
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       VISTA ENTRENADOR
+  ═══════════════════════════════════════════════════════════════════ -->
+  <div class="audience-section visible" id="aud-coach">
+
+    <div class="step-nav" id="coachStepNav">
+      <button class="step-btn active" data-step="0"><i class="ti ti-layout-grid"></i> Disciplinas</button>
+      <button class="step-btn" data-step="1"><i class="ti ti-plus"></i> Crear plan</button>
+      <button class="step-btn" data-step="2"><i class="ti ti-users"></i> Asignar</button>
+      <button class="step-btn" data-step="3"><i class="ti ti-device-mobile"></i> Publicar</button>
+      <button class="step-btn" data-step="4"><i class="ti ti-bell"></i> Notificar</button>
+      <button class="step-btn" data-step="5"><i class="ti ti-eye"></i> Gestionar</button>
+      <button class="step-btn" data-step="6"><i class="ti ti-trash"></i> Eliminar</button>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill" id="coachProgress" style="width:14%"></div></div>
+
+    <!-- C0: Disciplinas ───────────────────────────────────────── -->
+    <div class="step-content visible" id="coach-step-0">
+      <div class="step-header">
+        <div class="step-num"><i class="ti ti-layout-grid"></i></div>
+        <div class="step-title">Las cinco disciplinas de planes</div>
+      </div>
+      <p class="step-desc">Los planes están organizados por tipo. Cada disciplina tiene su propia sección en <code>/plans</code>. El entrenador puede crear y gestionar planes en todas ellas.</p>
+      <div class="disc-grid">
+        <div class="disc-pill disc-training"><i class="ti ti-barbell"></i> Plan de Entrenamiento</div>
+        <div class="disc-pill disc-medical"><i class="ti ti-stethoscope"></i> Plan Médico</div>
+        <div class="disc-pill disc-nutrition"><i class="ti ti-salad"></i> Plan Alimentario</div>
+        <div class="disc-pill disc-rehab"><i class="ti ti-bandage"></i> Plan de Rehabilitación</div>
+        <div class="disc-pill disc-psych"><i class="ti ti-brain"></i> Plan Psicológico</div>
+      </div>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="url-pill">plataforma.com/plans</div>
+        </div>
+        <div class="mockup-body">
+          <div style="font-size:18px;font-weight:500;color:var(--text);margin-bottom:4px">Planes individuales</div>
+          <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Selecciona la disciplina para ver y crear planes.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="border:0.5px solid #fecdd3;background:#fff1f2;border-radius:var(--r-lg);padding:14px;display:flex;align-items:flex-start;gap:10px">
+              <span style="font-size:22px">🩺</span>
+              <div><div style="font-weight:500;color:#be123c;font-size:13px">Plan Médico</div><div style="font-size:11px;color:#f43f5e;margin-top:2px">Atención y seguimiento</div></div>
+            </div>
+            <div style="border:1.5px solid #bfdbfe;background:#eff6ff;border-radius:var(--r-lg);padding:14px;display:flex;align-items:flex-start;gap:10px">
+              <span style="font-size:22px">🏋️</span>
+              <div><div style="font-weight:500;color:#1d4ed8;font-size:13px">Plan de Entrenamiento</div><div style="font-size:11px;color:#3b82f6;margin-top:2px">Carga y periodización</div></div>
+            </div>
+            <div style="border:0.5px solid #bbf7d0;background:#f0fdf4;border-radius:var(--r-lg);padding:14px;display:flex;align-items:flex-start;gap:10px">
+              <span style="font-size:22px">🥗</span>
+              <div><div style="font-weight:500;color:#15803d;font-size:13px">Plan Alimentario</div><div style="font-size:11px;color:#22c55e;margin-top:2px">Nutrición personalizada</div></div>
+            </div>
+            <div style="border:0.5px solid #e9d5ff;background:#faf5ff;border-radius:var(--r-lg);padding:14px;display:flex;align-items:flex-start;gap:10px">
+              <span style="font-size:22px">🧠</span>
+              <div><div style="font-weight:500;color:#7c3aed;font-size:13px">Plan Psicológico</div><div style="font-size:11px;color:#a855f7;margin-top:2px">Bienestar y rendimiento</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tip info"><i class="ti ti-info-circle tip-icon"></i>
+        <span>El acceso a todas las disciplinas está disponible para los roles <code>trainer</code>, <code>coach</code>, <code>admin</code>, <code>program_director</code>, <code>medic</code>, <code>physio</code>, <code>nutritionist</code> y <code>psychologist</code>.</span>
+      </div>
+    </div>
+
+    <!-- C1: Crear plan ────────────────────────────────────────── -->
+    <div class="step-content" id="coach-step-1">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">Crear un plan nuevo</div>
+      </div>
+      <p class="step-desc">Ve a <strong>Planes → [Disciplina] → sección derecha "Nuevo plan"</strong>. El formulario está disponible en la misma página junto a la lista de planes.</p>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="url-pill">plataforma.com/plans/training</div>
+        </div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+              <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:10px">Planes activos <span style="color:var(--text3);font-weight:400">(3)</span></div>
+              <div class="plan-card">
+                <div class="plan-card-head">
+                  <div><div class="plan-card-title">Mesociclo base — Temporada 2026</div><div class="plan-card-meta">12 jun · plan_base.pdf · 2.3 MB</div></div>
+                  <div><span class="badge badge-pub">📱 En app</span></div>
+                </div>
+              </div>
+            </div>
+            <div style="border:0.5px solid var(--border);border-radius:var(--r-lg);padding:14px">
+              <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:12px">Nuevo plan</div>
+              <div class="form-group">
+                <div class="form-label">Título <span style="color:#dc2626">*</span></div>
+                <div class="form-input">ej. Mesociclo fuerza — Jun 2026</div>
+              </div>
+              <div class="form-group">
+                <div class="form-label">Descripción (opcional)</div>
+                <div class="form-textarea" style="font-size:12px">Breve descripción del plan…</div>
+              </div>
+              <div class="form-group">
+                <div class="form-label">Archivo PDF (opcional)</div>
+                <div style="font-size:12px;color:var(--text3);padding:8px 12px;border:0.5px dashed var(--border2);border-radius:var(--r-md)">
+                  <i class="ti ti-upload" style="font-size:14px"></i> Seleccionar PDF · máx 50 MB
+                </div>
+              </div>
+              <div class="form-group">
+                <div class="form-label">Notas internas (opcional)</div>
+                <div class="form-textarea" style="height:52px;font-size:12px">Solo visible para el equipo técnico…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="checklist">
+        <div class="check-item"><i class="ti ti-check check-icon"></i>
+          <div class="check-text"><strong>Título:</strong> requerido. Sé específico — incluye ciclo, fecha o atleta</div>
+        </div>
+        <div class="check-item"><i class="ti ti-check check-icon"></i>
+          <div class="check-text"><strong>PDF:</strong> opcional pero recomendado. Solo formato PDF, máximo 50 MB. El atleta lo descargará desde la app</div>
+        </div>
+        <div class="check-item"><i class="ti ti-check check-icon"></i>
+          <div class="check-text"><strong>Notas internas:</strong> solo el equipo técnico las ve — el atleta nunca</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C2: Asignar ───────────────────────────────────────────── -->
+    <div class="step-content" id="coach-step-2">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div class="step-title">Asignar el plan a atletas</div>
+      </div>
+      <p class="step-desc">Dentro del formulario de creación, elige entre dos modos de asignación:</p>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="url-pill">formulario → sección "Asignación de atletas"</div>
+        </div>
+        <div class="mockup-body">
+          <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:10px">Asignación de atletas</div>
+          <div class="assign-toggle">
+            <div class="assign-btn active">👥 Todos los atletas activos</div>
+            <div class="assign-btn">🎯 Atletas específicos</div>
+          </div>
+          <div style="font-size:12px;color:var(--text3);padding:10px;background:var(--bg2);border-radius:var(--r-md)">
+            El plan se asignará automáticamente a todos los atletas con estado <strong style="color:var(--text)">activo</strong> al momento de guardar.
+          </div>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="card2">
+          <div class="card2-title"><span class="badge badge-coll">Colectivo</span></div>
+          <div class="card2-list">
+            Asigna a <strong>todos</strong> los atletas activos<br>
+            Ideal para planes de temporada<br>
+            No requiere selección manual<br>
+            <span style="font-size:12px;color:var(--text3)">Nuevos atletas deben asignarse individualmente si se agregan después</span>
+          </div>
+        </div>
+        <div class="card2">
+          <div class="card2-title"><span class="badge badge-indiv">Individual</span></div>
+          <div class="card2-list">
+            Selección manual por nombre<br>
+            Busca por apellido o nombre<br>
+            Puedes seleccionar varios<br>
+            <span style="font-size:12px;color:var(--text3)">Ideal para planes de rehabilitación o programas específicos</span>
+          </div>
+        </div>
+      </div>
+      <div class="tip warn"><i class="ti ti-alert-triangle tip-icon"></i>
+        <span>En modo <strong>colectivo</strong>, la asignación ocurre al momento de crear el plan. Si se dan de alta atletas después, deberás reasignar el plan individualmente a los nuevos.</span>
+      </div>
+    </div>
+
+    <!-- C3: Publicar ─────────────────────────────────────────── -->
+    <div class="step-content" id="coach-step-3">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div class="step-title">Publicar en la app móvil</div>
+      </div>
+      <p class="step-desc">Un plan puede existir como <strong>borrador</strong> (solo visible para el equipo) o <strong>publicado</strong> (visible para los atletas en la app). Puedes controlar esto al crear el plan o después desde la tarjeta.</p>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="url-pill">formulario → toggle "Publicar en app móvil"</div>
+        </div>
+        <div class="mockup-body">
+          <div class="toggle-row">
+            <div class="toggle-pill on"><div class="toggle-dot"></div></div>
+            <div>
+              <div class="toggle-label">📱 Publicar en app móvil</div>
+              <div class="toggle-desc">Los atletas asignados podrán ver este plan en la app.</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--text3);margin:8px 0 16px">Una vez creado, también puedes publicar/despublicar desde el botón en la tarjeta del plan.</div>
+          <div class="plan-card">
+            <div class="plan-card-head">
+              <div>
+                <div class="plan-card-title">Mesociclo fuerza — Jun 2026</div>
+                <div class="plan-card-meta">17 jun · mesociclo_fuerza.pdf · 1.8 MB</div>
+              </div>
+              <div style="display:flex;gap:5px;align-items:center">
+                <span class="badge badge-new">Nuevo</span>
+                <span class="badge badge-pub">📱 En app</span>
+              </div>
+            </div>
+            <div class="plan-card-body">
+              <div class="plan-card-desc">Bloque de fuerza máxima 6 semanas. Énfasis en sentadilla y empuje.</div>
+              <div style="font-size:12px;color:var(--text3)">👥 Colectivo · 18 atletas</div>
+            </div>
+            <div class="plan-card-footer">
+              <span style="font-size:12px;color:#1d4ed8">Ver PDF ↗</span>
+              <div style="display:flex;gap:6px">
+                <div class="btn-ghost"><i class="ti ti-eye-off" style="font-size:12px"></i> Despublicar</div>
+                <div class="btn-danger">Eliminar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tip ok"><i class="ti ti-circle-check tip-icon"></i>
+        <span>Los atletas <strong>solo ven planes publicados</strong>. Un plan en borrador es invisible para ellos aunque estén asignados.</span>
+      </div>
+    </div>
+
+    <!-- C4: Notificar ────────────────────────────────────────── -->
+    <div class="step-content" id="coach-step-4">
+      <div class="step-header">
+        <div class="step-num">4</div>
+        <div class="step-title">Notificar a los atletas</div>
+      </div>
+      <p class="step-desc">Al crear el plan puedes notificar automáticamente a los atletas asignados por dos canales, en el mismo momento del guardado.</p>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="url-pill">formulario → sección "Notificar a los atletas"</div>
+        </div>
+        <div class="mockup-body">
+          <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px">Notificar a los atletas</div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Se enviará al momento de crear el plan.</div>
+          <div class="notif-row">
+            <div class="cb-box checked"><i class="ti ti-check" style="font-size:9px;color:#fff"></i></div>
+            <span>📧 Notificar por correo electrónico</span>
+          </div>
+          <div class="notif-row">
+            <div class="cb-box checked"><i class="ti ti-check" style="font-size:9px;color:#fff"></i></div>
+            <span>📱 Notificar por push (app móvil)</span>
+          </div>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="card2">
+          <div class="card2-title"><i class="ti ti-mail" style="font-size:15px"></i> Email</div>
+          <div class="card2-list">
+            Llega al correo del atleta<br>
+            Incluye título y tipo de plan<br>
+            Invita a abrir la app móvil<br>
+            <span style="font-size:12px;color:var(--text3)">Solo si el atleta tiene email registrado</span>
+          </div>
+        </div>
+        <div class="card2">
+          <div class="card2-title"><i class="ti ti-device-mobile" style="font-size:15px"></i> Push</div>
+          <div class="card2-list">
+            Notificación al dispositivo<br>
+            Aparece en pantalla de bloqueo<br>
+            Deep link directo a la app<br>
+            <span style="font-size:12px;color:var(--text3)">Requiere que el atleta tenga la app instalada con permisos de notificación</span>
+          </div>
+        </div>
+      </div>
+      <div class="tip info"><i class="ti ti-info-circle tip-icon"></i>
+        <span>Las notificaciones se envían <strong>una sola vez</strong> al crear el plan. Si publicas un borrador después, deberás notificar manualmente desde el panel de comunicaciones.</span>
+      </div>
+    </div>
+
+    <!-- C5: Gestionar ───────────────────────────────────────── -->
+    <div class="step-content" id="coach-step-5">
+      <div class="step-header">
+        <div class="step-num">5</div>
+        <div class="step-title">Gestionar y dar seguimiento a los planes</div>
+      </div>
+      <p class="step-desc">Desde la lista de planes puedes monitorear todos los planes de una disciplina, su estado de publicación y los atletas asignados.</p>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="url-pill">plataforma.com/plans/training — lista de planes</div>
+        </div>
+        <div class="mockup-body">
+          <div class="plan-card">
+            <div class="plan-card-head">
+              <div>
+                <div class="plan-card-title">Mesociclo base — Temporada 2026</div>
+                <div class="plan-card-meta">12 jun · base_t2026.pdf · 3.1 MB</div>
+              </div>
+              <span class="badge badge-pub">📱 En app</span>
+            </div>
+            <div class="plan-card-body">
+              <div class="plan-card-desc">Bloque introductorio 8 semanas. Adaptación y acondicionamiento general.</div>
+              <div style="font-size:12px;color:var(--text3)">👥 Colectivo · 18 atletas</div>
+            </div>
+            <div class="plan-card-footer">
+              <span style="font-size:12px;color:#1d4ed8">Ver PDF ↗</span>
+              <div style="display:flex;gap:6px">
+                <div class="btn-ghost">Despublicar</div>
+                <div class="btn-danger">Eliminar</div>
+              </div>
+            </div>
+          </div>
+          <div class="plan-card">
+            <div class="plan-card-head">
+              <div>
+                <div class="plan-card-title">Plan rehabilitación — Atleta Martínez</div>
+                <div class="plan-card-meta">10 jun · sin PDF</div>
+              </div>
+              <span class="badge badge-draft">Borrador</span>
+            </div>
+            <div class="plan-card-body">
+              <div style="font-size:12px;color:var(--text3)">👤 Individual · Martínez, Rodrigo</div>
+            </div>
+            <div class="plan-card-footer">
+              <span></span>
+              <div style="display:flex;gap:6px">
+                <div class="btn-ghost" style="color:#1d4ed8;border-color:#bfdbfe">📱 Publicar en app</div>
+                <div class="btn-danger">Eliminar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="checklist">
+        <div class="check-item"><i class="ti ti-check check-icon"></i>
+          <div class="check-text"><strong>Badge "📱 En app":</strong> el atleta ya puede verlo en la app móvil</div>
+        </div>
+        <div class="check-item"><i class="ti ti-check check-icon"></i>
+          <div class="check-text"><strong>Badge "Borrador":</strong> guardado pero no visible para atletas — publícalo cuando esté listo</div>
+        </div>
+        <div class="check-item"><i class="ti ti-check check-icon"></i>
+          <div class="check-text"><strong>Botón "Despublicar":</strong> retira el plan de la app sin eliminarlo — el contenido se preserva</div>
+        </div>
+        <div class="check-item"><i class="ti ti-check check-icon"></i>
+          <div class="check-text"><strong>"Ver PDF ↗":</strong> abre el archivo directamente — el enlace expira en 1 hora por seguridad</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C6: Eliminar ────────────────────────────────────────── -->
+    <div class="step-content" id="coach-step-6">
+      <div class="step-header">
+        <div class="step-num">6</div>
+        <div class="step-title">Eliminar un plan</div>
+      </div>
+      <p class="step-desc">La eliminación es <strong>permanente e irreversible</strong>: borra el registro de base de datos, el archivo PDF del storage y todas las asignaciones a atletas.</p>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="url-pill">tarjeta del plan → botón "Eliminar"</div>
+        </div>
+        <div class="mockup-body">
+          <div style="background:rgba(0,0,0,0.4);border-radius:var(--r-lg);padding:20px;display:flex;align-items:center;justify-content:center;min-height:130px">
+            <div style="background:var(--bg);border-radius:var(--r-lg);padding:20px;max-width:320px;width:100%">
+              <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:8px">¿Eliminar este plan?</div>
+              <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5">
+                "Mesociclo fuerza — Jun 2026"<br>
+                <span style="font-size:12px;color:#dc2626;margin-top:4px;display:block">Esta acción no se puede deshacer.</span>
+              </div>
+              <div style="display:flex;gap:8px">
+                <div class="btn-danger" style="padding:8px 18px;font-size:13px">Confirmar eliminación</div>
+                <div class="btn-ghost">Cancelar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tip warn"><i class="ti ti-alert-triangle tip-icon"></i>
+        <span>Si solo quieres dejar de mostrar el plan temporalmente, usa <strong>Despublicar</strong> en lugar de eliminar. Así conservas el contenido y puedes republicarlo después.</span>
+      </div>
+      <div class="checklist">
+        <div class="check-item"><i class="ti ti-check check-icon"></i>
+          <div class="check-text">Se elimina el registro del plan en la base de datos</div>
+        </div>
+        <div class="check-item"><i class="ti ti-check check-icon"></i>
+          <div class="check-text">Se elimina el PDF del storage de Supabase</div>
+        </div>
+        <div class="check-item"><i class="ti ti-check check-icon"></i>
+          <div class="check-text">Se eliminan todas las asignaciones a atletas (en cascada)</div>
+        </div>
+        <div class="check-item"><i class="ti ti-check check-icon"></i>
+          <div class="check-text">Los atletas dejan de ver el plan inmediatamente en la app</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coach nav footer -->
+    <div class="nav-footer">
+      <button class="nav-btn" id="coachPrev" onclick="coachNav(-1)" style="visibility:hidden">
+        <i class="ti ti-arrow-left"></i> Anterior
+      </button>
+      <span class="step-counter" id="coachCounter">Paso 1 de 7</span>
+      <button class="nav-btn primary" id="coachNext" onclick="coachNav(1)">
+        Siguiente <i class="ti ti-arrow-right"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       VISTA ATLETA
+  ═══════════════════════════════════════════════════════════════════ -->
+  <div class="audience-section" id="aud-athlete">
+
+    <div class="step-nav" id="athStepNav">
+      <button class="step-btn active" data-step="0"><i class="ti ti-device-mobile"></i> App móvil</button>
+      <button class="step-btn" data-step="1"><i class="ti ti-world"></i> Web</button>
+      <button class="step-btn" data-step="2"><i class="ti ti-file-text"></i> Ver PDF</button>
+      <button class="step-btn" data-step="3"><i class="ti ti-bell"></i> Notificaciones</button>
+      <button class="step-btn" data-step="4"><i class="ti ti-help-circle"></i> Preguntas frecuentes</button>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill" id="athProgress" style="width:20%"></div></div>
+
+    <!-- A0: App móvil ────────────────────────────────────────── -->
+    <div class="step-content visible" id="ath-step-0">
+      <div class="step-header">
+        <div class="step-num"><i class="ti ti-device-mobile"></i></div>
+        <div class="step-title">Ver mis planes en la app móvil</div>
+      </div>
+      <p class="step-desc">Toca la pestaña <strong>Plan</strong> en la barra inferior de la app. Verás todos tus planes publicados agrupados en tarjetas por tipo de disciplina.</p>
+      <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+        <div class="phone-frame">
+          <div class="phone-notch">AO Deportes</div>
+          <div class="phone-screen">
+            <div class="phone-header">Mis Planes</div>
+            <div class="phone-sub">Planes personalizados elaborados por tu equipo técnico. Toca cada plan para ver el detalle.</div>
+            <div class="phone-plan-card" style="border-left: 3px solid #1d4ed8">
+              <div class="phone-plan-head">
+                <div class="phone-icon-wrap" style="background:#eff6ff">🏋️</div>
+                <div>
+                  <div class="phone-plan-title">Mesociclo base — Temp. 2026</div>
+                  <div class="phone-plan-cat" style="color:#1d4ed8">Plan de Entrenamiento</div>
+                  <div class="phone-plan-date">12 jun 2026</div>
+                </div>
+                <i class="ti ti-chevron-down" style="font-size:14px;color:var(--text3);margin-left:auto;flex-shrink:0"></i>
+              </div>
+            </div>
+            <div class="phone-plan-card" style="border-left: 3px solid #be123c">
+              <div class="phone-plan-head">
+                <div class="phone-icon-wrap" style="background:#fff1f2">🩺</div>
+                <div>
+                  <div class="phone-plan-title">Seguimiento médico preventivo</div>
+                  <div class="phone-plan-cat" style="color:#be123c">Plan Médico</div>
+                  <div class="phone-plan-date">3 jun 2026</div>
+                </div>
+                <i class="ti ti-chevron-down" style="font-size:14px;color:var(--text3);margin-left:auto;flex-shrink:0"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:200px">
+          <div class="checklist">
+            <div class="check-item"><i class="ti ti-check check-icon"></i>
+              <div class="check-text">Toca cualquier tarjeta para <strong>expandir</strong> y ver la descripción completa</div>
+            </div>
+            <div class="check-item"><i class="ti ti-check check-icon"></i>
+              <div class="check-text">Desliza hacia abajo para <strong>actualizar</strong> la lista (pull-to-refresh)</div>
+            </div>
+            <div class="check-item"><i class="ti ti-check check-icon"></i>
+              <div class="check-text">Si el plan tiene PDF, aparece el botón <strong>"Ver documento PDF"</strong></div>
+            </div>
+            <div class="check-item"><i class="ti ti-check check-icon"></i>
+              <div class="check-text">Los planes se muestran <strong>del más reciente al más antiguo</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tip info"><i class="ti ti-info-circle tip-icon"></i>
+        <span>La pestaña <strong>Plan</strong> solo está disponible para usuarios con rol atleta. Si eres entrenador, gestiona los planes desde la plataforma web en <code>/plans</code>.</span>
+      </div>
+    </div>
+
+    <!-- A1: Web ──────────────────────────────────────────────── -->
+    <div class="step-content" id="ath-step-1">
+      <div class="step-header">
+        <div class="step-num"><i class="ti ti-world"></i></div>
+        <div class="step-title">Ver mis planes en la web</div>
+      </div>
+      <p class="step-desc">Si accedes a la plataforma desde el navegador web, también puedes ver tus planes publicados en <code>/plans/[disciplina]</code>. La vista es de solo lectura — sin formulario de creación.</p>
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="url-pill">plataforma.com/plans/training — vista atleta</div>
+        </div>
+        <div class="mockup-body">
+          <div style="font-size:16px;font-weight:500;color:#1d4ed8;margin-bottom:4px">Plan de Entrenamiento</div>
+          <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Programas de carga, periodización y desarrollo físico.</div>
+          <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:10px">Mis planes <span style="color:var(--text3);font-weight:400">(2)</span></div>
+          <div class="plan-card">
+            <div class="plan-card-head">
+              <div>
+                <div class="plan-card-title">Mesociclo base — Temporada 2026</div>
+                <div class="plan-card-meta">12 jun · base_t2026.pdf · 3.1 MB</div>
+              </div>
+              <span class="badge badge-pub">📱 En app</span>
+            </div>
+            <div class="plan-card-body">
+              <div class="plan-card-desc">Bloque introductorio 8 semanas. Adaptación y acondicionamiento general.</div>
+            </div>
+            <div class="plan-card-footer">
+              <a style="font-size:12px;color:#1d4ed8">Ver PDF ↗</a>
+              <span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tip info"><i class="ti ti-info-circle tip-icon"></i>
+        <span>En la vista web, el atleta <strong>no ve</strong> el formulario de creación ni los botones de publicar/eliminar. Solo aparece la lista de sus planes publicados y el enlace para ver el PDF.</span>
+      </div>
+    </div>
+
+    <!-- A2: Ver PDF ──────────────────────────────────────────── -->
+    <div class="step-content" id="ath-step-2">
+      <div class="step-header">
+        <div class="step-num"><i class="ti ti-file-text"></i></div>
+        <div class="step-title">Abrir el documento PDF del plan</div>
+      </div>
+      <p class="step-desc">Si el plan tiene un PDF adjunto, puedes abrirlo tanto desde la app como desde la web.</p>
+      <div class="subtabs" id="pdfSubtabs">
+        <button class="subtab active" data-sub="mobile">📱 App móvil</button>
+        <button class="subtab" data-sub="web">🌐 Web</button>
+      </div>
+      <div class="subpanel visible" id="sub-mobile">
+        <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+          <div class="phone-frame">
+            <div class="phone-notch">AO Deportes</div>
+            <div class="phone-screen">
+              <div class="phone-plan-card" style="border-left:3px solid #1d4ed8">
+                <div class="phone-plan-head">
+                  <div class="phone-icon-wrap" style="background:#eff6ff">🏋️</div>
+                  <div>
+                    <div class="phone-plan-title">Mesociclo base — Temp. 2026</div>
+                    <div class="phone-plan-cat" style="color:#1d4ed8">Plan de Entrenamiento</div>
+                  </div>
+                  <i class="ti ti-chevron-up" style="font-size:14px;color:var(--text3);margin-left:auto;flex-shrink:0"></i>
+                </div>
+                <div class="phone-plan-body">
+                  <div class="phone-plan-desc">Bloque introductorio 8 semanas. Adaptación y acondicionamiento.</div>
+                  <div class="phone-pdf-btn" style="color:#1d4ed8;border-color:#1d4ed8">
+                    <i class="ti ti-file-text" style="font-size:13px"></i>
+                    Ver documento PDF
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="flex:1;min-width:200px">
+            <div class="checklist">
+              <div class="check-item"><i class="ti ti-point check-icon" style="color:#1d4ed8"></i>
+                <div class="check-text">Toca la tarjeta del plan para <strong>expandirla</strong></div>
+              </div>
+              <div class="check-item"><i class="ti ti-point check-icon" style="color:#1d4ed8"></i>
+                <div class="check-text">Toca <strong>"Ver documento PDF"</strong> — se genera un enlace seguro</div>
+              </div>
+              <div class="check-item"><i class="ti ti-point check-icon" style="color:#1d4ed8"></i>
+                <div class="check-text">El PDF se abre en el <strong>visor del navegador</strong> del dispositivo</div>
+              </div>
+              <div class="check-item"><i class="ti ti-point check-icon" style="color:#1d4ed8"></i>
+                <div class="check-text">Puedes descargarlo desde el visor para <strong>consultarlo sin internet</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="subpanel" id="sub-web">
+        <div class="mockup">
+          <div class="mockup-bar">
+            <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+            <div class="url-pill">plataforma.com/plans/training</div>
+          </div>
+          <div class="mockup-body">
+            <div class="plan-card">
+              <div class="plan-card-head">
+                <div><div class="plan-card-title">Mesociclo base — Temporada 2026</div></div>
+              </div>
+              <div class="plan-card-footer">
+                <a style="font-size:13px;color:#1d4ed8;display:flex;align-items:center;gap:5px"><i class="ti ti-external-link" style="font-size:13px"></i> Ver PDF ↗</a>
+              </div>
+            </div>
+            <div class="tip info" style="margin-top:10px;margin-bottom:0">
+              <i class="ti ti-clock tip-icon"></i>
+              <span>El enlace del PDF es temporal — expira en <strong>1 hora</strong> por seguridad. Si el enlace no abre, recarga la página para obtener uno nuevo.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A3: Notificaciones ────────────────────────────────────── -->
+    <div class="step-content" id="ath-step-3">
+      <div class="step-header">
+        <div class="step-num"><i class="ti ti-bell"></i></div>
+        <div class="step-title">Recibir notificaciones de planes nuevos</div>
+      </div>
+      <p class="step-desc">Cuando el equipo técnico publica un plan y activa las notificaciones, recibirás un aviso por correo y/o por push en la app.</p>
+      <div class="grid2">
+        <div class="card2">
+          <div class="card2-title"><i class="ti ti-mail" style="font-size:15px"></i> Email</div>
+          <div class="card2-list">
+            Asunto: <em>"Nuevo Plan de Entrenamiento: [título]"</em><br>
+            Remitente: Equipo AO Deportes<br>
+            Incluye el nombre del plan<br>
+            <span style="font-size:12px;color:var(--text3)">Llega al correo con el que estás registrado</span>
+          </div>
+        </div>
+        <div class="card2">
+          <div class="card2-title"><i class="ti ti-device-mobile" style="font-size:15px"></i> Push</div>
+          <div class="card2-list">
+            Notificación en pantalla de bloqueo<br>
+            Muestra el tipo y nombre del plan<br>
+            Al tocar, abre la app directamente<br>
+            <span style="font-size:12px;color:var(--text3)">Activa los permisos de notificación en ajustes del dispositivo</span>
+          </div>
+        </div>
+      </div>
+      <div class="tip warn"><i class="ti ti-alert-triangle tip-icon"></i>
+        <span>Si no recibes notificaciones push, verifica que la app tenga permisos en <strong>Ajustes → AO Deportes → Notificaciones</strong> en tu dispositivo.</span>
+      </div>
+      <div class="tip info"><i class="ti ti-info-circle tip-icon"></i>
+        <span>Las notificaciones dependen de que el entrenador las haya activado al crear el plan. Aunque no llegue notificación, siempre puedes revisar la pestaña <strong>Plan</strong> en la app para ver nuevos planes.</span>
+      </div>
+    </div>
+
+    <!-- A4: FAQ ──────────────────────────────────────────────── -->
+    <div class="step-content" id="ath-step-4">
+      <div class="step-header">
+        <div class="step-num"><i class="ti ti-help-circle"></i></div>
+        <div class="step-title">Preguntas frecuentes del atleta</div>
+      </div>
+      <div class="checklist">
+        <div class="check-item">
+          <i class="ti ti-question-mark check-icon" style="color:#1d4ed8"></i>
+          <div class="check-text">
+            <strong>¿Por qué no veo ningún plan?</strong><br>
+            El equipo técnico aún no ha publicado un plan para ti. Contacta a tu entrenador si esperabas uno.
+          </div>
+        </div>
+        <div class="check-item">
+          <i class="ti ti-question-mark check-icon" style="color:#1d4ed8"></i>
+          <div class="check-text">
+            <strong>¿Puedo editar o comentar en el plan?</strong><br>
+            No. La vista del atleta es de solo lectura. Para hacer observaciones, usa el sistema de tickets o habla directamente con tu entrenador.
+          </div>
+        </div>
+        <div class="check-item">
+          <i class="ti ti-question-mark check-icon" style="color:#1d4ed8"></i>
+          <div class="check-text">
+            <strong>¿El PDF se puede descargar para ver sin internet?</strong><br>
+            Sí. Cuando abras el PDF desde la app o el navegador, usa la opción de descarga del visor para guardarlo en tu dispositivo.
+          </div>
+        </div>
+        <div class="check-item">
+          <i class="ti ti-question-mark check-icon" style="color:#1d4ed8"></i>
+          <div class="check-text">
+            <strong>¿Por qué el enlace del PDF no abre?</strong><br>
+            Los enlaces del PDF expiran en 1 hora. Recarga la página o cierra y reabre el plan en la app para obtener un enlace nuevo.
+          </div>
+        </div>
+        <div class="check-item">
+          <i class="ti ti-question-mark check-icon" style="color:#1d4ed8"></i>
+          <div class="check-text">
+            <strong>¿Puedo ver planes de otras disciplinas (nutrición, médico)?</strong><br>
+            Sí, si el equipo técnico te los ha asignado y publicado. Revisa cada sección desde el menú <strong>Planes</strong> en la web o la pestaña Plan en la app.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Athlete nav footer -->
+    <div class="nav-footer">
+      <button class="nav-btn" id="athPrev" onclick="athNav(-1)" style="visibility:hidden">
+        <i class="ti ti-arrow-left"></i> Anterior
+      </button>
+      <span class="step-counter" id="athCounter">Paso 1 de 5</span>
+      <button class="nav-btn primary" id="athNext" onclick="athNav(1)">
+        Siguiente <i class="ti ti-arrow-right"></i>
+      </button>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+/* ── Audience switch ─────────────────────────────────────────────── */
+var aud = 'coach';
+document.getElementById('audTabs').addEventListener('click', function(e) {
+  var btn = e.target.closest('.aud-btn');
+  if (!btn) return;
+  aud = btn.dataset.aud;
+  document.querySelectorAll('.aud-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.aud === aud); });
+  document.querySelectorAll('.audience-section').forEach(function(s) { s.classList.toggle('visible', s.id === 'aud-' + aud); });
+});
+
+/* ── Coach steps ─────────────────────────────────────────────────── */
+var coachCurrent = 0, coachTotal = 7;
+function showCoachStep(n) {
+  document.querySelectorAll('#aud-coach .step-content').forEach(function(el, i) { el.classList.toggle('visible', i === n); });
+  document.querySelectorAll('#coachStepNav .step-btn').forEach(function(el, i) { el.classList.toggle('active', i === n); });
+  document.getElementById('coachPrev').style.visibility = n === 0 ? 'hidden' : 'visible';
+  document.getElementById('coachNext').style.visibility = n === coachTotal - 1 ? 'hidden' : 'visible';
+  document.getElementById('coachCounter').textContent = 'Paso ' + (n + 1) + ' de ' + coachTotal;
+  document.getElementById('coachProgress').style.width = Math.round(((n + 1) / coachTotal) * 100) + '%';
+  coachCurrent = n;
+}
+function coachNav(dir) { var n = coachCurrent + dir; if (n >= 0 && n < coachTotal) showCoachStep(n); }
+document.getElementById('coachStepNav').addEventListener('click', function(e) {
+  var btn = e.target.closest('.step-btn');
+  if (!btn) return;
+  showCoachStep(parseInt(btn.dataset.step));
+});
+
+/* ── Athlete steps ───────────────────────────────────────────────── */
+var athCurrent = 0, athTotal = 5;
+function showAthStep(n) {
+  document.querySelectorAll('#aud-athlete .step-content').forEach(function(el, i) { el.classList.toggle('visible', i === n); });
+  document.querySelectorAll('#athStepNav .step-btn').forEach(function(el, i) { el.classList.toggle('active', i === n); });
+  document.getElementById('athPrev').style.visibility = n === 0 ? 'hidden' : 'visible';
+  document.getElementById('athNext').style.visibility = n === athTotal - 1 ? 'hidden' : 'visible';
+  document.getElementById('athCounter').textContent = 'Paso ' + (n + 1) + ' de ' + athTotal;
+  document.getElementById('athProgress').style.width = Math.round(((n + 1) / athTotal) * 100) + '%';
+  athCurrent = n;
+}
+function athNav(dir) { var n = athCurrent + dir; if (n >= 0 && n < athTotal) showAthStep(n); }
+document.getElementById('athStepNav').addEventListener('click', function(e) {
+  var btn = e.target.closest('.step-btn');
+  if (!btn) return;
+  showAthStep(parseInt(btn.dataset.step));
+});
+
+/* ── Sub-tabs (PDF section) ──────────────────────────────────────── */
+var pdfTabs = document.getElementById('pdfSubtabs');
+if (pdfTabs) {
+  pdfTabs.addEventListener('click', function(e) {
+    var btn = e.target.closest('.subtab');
+    if (!btn) return;
+    var sub = btn.dataset.sub;
+    document.querySelectorAll('#ath-step-2 .subtab').forEach(function(b) { b.classList.toggle('active', b.dataset.sub === sub); });
+    document.querySelectorAll('#ath-step-2 .subpanel').forEach(function(p) { p.classList.toggle('visible', p.id === 'sub-' + sub); });
+  });
+}
+</script>
+</body>
+</html>

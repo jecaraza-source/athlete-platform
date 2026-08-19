@@ -152,7 +152,7 @@ export default async function PlansDisciplinePage({
               {tp('newPlanTitle')}
             </h2>
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-              <PlanForm type={type} athletes={athletes} />
+            <PlanForm type={type} athletes={athletes} disciplines={disciplines} />
             </div>
           </section>
         )}
