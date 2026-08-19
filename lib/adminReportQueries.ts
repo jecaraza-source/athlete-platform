@@ -131,9 +131,14 @@ export async function fetchReportData(
     const st = titleToServiceType(title ?? '');
     if (!HEALTH_SERVICES.includes(st)) return;
     tally[st].scheduled++;
-    if (status === 'show')                                          tally[st].show++;
-    else if (status === 'show_remote')                              tally[st].show_remote++;
-    else if (status === 'no_show' || status === 'no_show_remote')   tally[st].no_show++;
+    if (status === 'show') {
+      tally[st].show++;
+    } else if (status === 'show_remote' || status === 'no_show_remote') {
+      // `no_show_remote` means the athlete was attended by call/message.
+      tally[st].show_remote++;
+    } else if (status === 'no_show') {
+      tally[st].no_show++;
+    }
   });
 
   const services: ReportServiceRow[] = [
@@ -165,9 +170,9 @@ export async function fetchReportData(
     // Upcoming = still in the future and not yet given an outcome
     if (status === 'scheduled' && start_at > nowUTC)               staffTally[cid].upcoming++;
     else if (status === 'show')                                     staffTally[cid].show++;
-    else if (status === 'show_remote')                              staffTally[cid].show_remote++;
+    else if (status === 'show_remote' || status === 'no_show_remote') staffTally[cid].show_remote++;
     else if (status === 'rescheduled')                              staffTally[cid].rescheduled++;
-    else if (status === 'no_show' || status === 'no_show_remote')   staffTally[cid].no_show++;
+    else if (status === 'no_show')                                  staffTally[cid].no_show++;
   });
 
   const staffMembers: ReportStaffMemberRow[] = (
@@ -230,8 +235,8 @@ export async function fetchReportData(
   // Uses the DISCIPLINES constant (same values stored in athletes.discipline).
   // Per discipline, we count:
   //   • totalAthletes    — registered active athletes in this discipline
-  //   • athletesAttended — distinct athletes with at least 1 show/show_remote
-  //   • athletesNoShow   — distinct athletes with at least 1 no_show/no_show_remote
+  //   • athletesAttended — distinct athletes with at least 1 in-person or remote outcome
+  //   • athletesNoShow   — distinct athletes with at least 1 no_show
   //   • athletesWithPlans — distinct athletes with at least 1 plan (all-time)
 
   // Build athlete → event-statuses + event-start_at maps for discipline aggregation
@@ -284,8 +289,10 @@ export async function fetchReportData(
       athleteIds.forEach((aid) => {
         const statuses = athleteStatuses.get(aid);
         if (statuses) {
-          if (statuses.has('show') || statuses.has('show_remote'))         athletesAttended++;
-          if (statuses.has('no_show') || statuses.has('no_show_remote'))   athletesNoShow++;
+          if (statuses.has('show') || statuses.has('show_remote') || statuses.has('no_show_remote')) {
+            athletesAttended++;
+          }
+          if (statuses.has('no_show')) athletesNoShow++;
         }
         if (athletesWithPlanSet.has(aid)) athletesWithPlans++;
       });

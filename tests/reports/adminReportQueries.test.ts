@@ -249,7 +249,7 @@ describe('fetchReportData — Staff Médico section', () => {
         { id: 'e1', title: 'MÉDICO 1', status: 'show',        created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
         { id: 'e2', title: 'MÉDICO 2', status: 'show_remote', created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
         { id: 'e3', title: 'MÉDICO 3', status: 'no_show',     created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
-        // Nutritionist: 1 rescheduled, 1 no_show_remote (2 total)
+        // Nutritionist: 1 rescheduled, 1 remote call/message (2 total)
         { id: 'e4', title: 'NUTRICIÓN 1', status: 'rescheduled',    created_by_profile_id: NUTRI_ID, start_at: PAST_ISO },
         { id: 'e5', title: 'NUTRICIÓN 2', status: 'no_show_remote', created_by_profile_id: NUTRI_ID, start_at: PAST_ISO },
       ],
@@ -282,9 +282,9 @@ describe('fetchReportData — Staff Médico section', () => {
     expect(nutri).toBeDefined();
     expect(nutri!.scheduled).toBe(2);
     expect(nutri!.attendedPresential).toBe(0);
-    expect(nutri!.attendedRemote).toBe(0);
+    expect(nutri!.attendedRemote).toBe(1);
     expect(nutri!.rescheduled).toBe(1);
-    expect(nutri!.noShow).toBe(1);           // no_show_remote counts as noShow
+    expect(nutri!.noShow).toBe(0);           // no_show_remote counts as remote attendance
     expect(nutri!.roleLabel).toBe('Nutricionista');
   });
 
@@ -545,7 +545,7 @@ describe('fetchReportData — Por Disciplina section', () => {
     const natacion = result.disciplines.find((d) => d.disciplineCode === 'natacion');
     expect(natacion).toBeDefined();
     expect(natacion!.athletesAttended).toBe(1);  // show_remote counts as attended
-    expect(natacion!.athletesNoShow).toBe(1);    // also had a no_show (counts independently)
+    expect(natacion!.athletesNoShow).toBe(1);    // only the no_show event counts as absence
   });
 
   it('excludes disciplines with zero athletes from the result', async () => {

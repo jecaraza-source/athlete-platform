@@ -99,11 +99,11 @@ export interface ReportServiceRow {
   scheduled: number;
   /** Events with status='show' */
   attendedPresential: number;
-  /** Events with status='show_remote'; null = NO APLICA for this service */
+  /** Events attended remotely: status='show_remote' or status='no_show_remote'; null = NO APLICA */
   attendedRemote: number | null;
   /** Follow-up session notes logged in period */
   followUpNotes: number;
-  /** Events with status IN ('no_show', 'no_show_remote') */
+  /** Events with status='no_show' */
   noShow: number;
 }
 
@@ -133,11 +133,11 @@ export interface ReportStaffMemberRow {
   upcoming: number;
   /** Eventos con status='show' */
   attendedPresential: number;
-  /** Eventos con status='show_remote' */
+  /** Eventos atendidos remotamente: status='show_remote' o status='no_show_remote' */
   attendedRemote: number;
   /** Eventos con status='rescheduled' */
   rescheduled: number;
-  /** Eventos con status IN ('no_show','no_show_remote') */
+  /** Eventos con status='no_show' */
   noShow: number;
   /** Tasa de asistencia: (show+show_remote)/(show+show_remote+no_show) × 100
    *  null cuando no hay eventos con resultado conocido aún */
@@ -150,9 +150,9 @@ export interface ReportDisciplineRow {
   disciplineBlock: string;
   /** Atletas activos registrados en esta disciplina */
   totalAthletes: number;
-  /** Atletas que tuvieron al menos 1 cita show/show_remote en el período */
+  /** Atletas que tuvieron al menos 1 cita presencial o remota en el período */
   athletesAttended: number;
-  /** Atletas que tuvieron al menos 1 no_show/no_show_remote en el período */
+  /** Atletas que tuvieron al menos 1 no_show en el período */
   athletesNoShow: number;
   /** Atletas con al menos 1 cita futura programada (status='scheduled', start_at > now) */
   athletesWithUpcomingApts: number;
