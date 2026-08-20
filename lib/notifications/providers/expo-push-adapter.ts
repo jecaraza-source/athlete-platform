@@ -48,7 +48,10 @@ export class ExpoPushAdapter implements PushProvider {
           'Accept':        'application/json',
           'Accept-Encoding': 'gzip, deflate',
         },
-        body: JSON.stringify(messages.length === 1 ? messages[0] : messages),
+        // Always send an array — Expo returns `data` as a bare object (not
+        // an array) when the request body is a single message object, which
+        // broke the array-shaped parsing below.
+        body: JSON.stringify(messages),
       });
 
       const json = (await response.json()) as Record<string, unknown>;

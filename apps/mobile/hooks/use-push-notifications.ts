@@ -131,6 +131,15 @@ export function usePushNotifications() {
     // needing to look up the subscription/player ID.
     OneSignal.login(profile.id);
 
+    // Register the email subscription so the same external_id can receive
+    // the newsletter's email channel (channel_for_external_user_ids: 'email'
+    // in lib/newsletter/onesignal.ts) — without this, OneSignal has no email
+    // to deliver to and the send cron fails with "All included players are
+    // not subscribed".
+    if (profile.email) {
+      OneSignal.User.addEmail(profile.email);
+    }
+
     // Segmentation tags — enables "send to all athletes" or "send to all staff"
     // from the OneSignal dashboard or REST API.
     const isStaff = roles.some((r) => (STAFF_ROLES as readonly string[]).includes(r.code));
