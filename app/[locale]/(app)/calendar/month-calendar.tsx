@@ -7,6 +7,8 @@ import NewEventForm from './new-event-form';
 // Types
 // ---------------------------------------------------------------------------
 
+type Shift = 'morning' | 'afternoon';
+
 type CalendarEvent = {
   id: string;
   title: string;
@@ -14,6 +16,7 @@ type CalendarEvent = {
   sport_id: string | null;
   start_at: string;
   end_at: string;
+  shift?: Shift;
 };
 
 type Athlete     = { id: string; first_name: string; last_name: string; discipline?: string | null };
@@ -253,6 +256,8 @@ export default function MonthCalendar({
   participants = [],
   sports = [],
   disciplines = [],
+  availableShifts = ['afternoon'],
+  canManage = true,
 }: {
   events: CalendarEvent[];
   currentProfileId: string;
@@ -260,6 +265,8 @@ export default function MonthCalendar({
   participants?: Participant[];
   sports?: { id: string; name: string; category_type: string }[];
   disciplines?: readonly Discipline[];
+  availableShifts?: Shift[];
+  canManage?: boolean;
 }) {
   const today = new Date();
   const [view,               setView]             = useState<View>('month');
@@ -269,6 +276,7 @@ export default function MonthCalendar({
   const [selectedUserId,     setSelectedUserId]   = useState('');
   const [selectedSportId,    setSelectedSportId]  = useState('');
   const [selectedDiscipline, setSelectedDiscipline] = useState('');
+  const [selectedShift,      setSelectedShift]    = useState<Shift>(availableShifts[0] ?? 'afternoon');
 
   // Apply athlete filter
   const athleteFiltered = selectedUserId
@@ -289,7 +297,7 @@ export default function MonthCalendar({
 
   // Apply discipline filter — shows events where at least one participant
   // athlete belongs to the selected discipline
-  const visibleEvents = selectedDiscipline
+  const disciplineFiltered = selectedDiscipline
     ? (() => {
         const discAthletes = new Set(
           athletes
@@ -304,6 +312,11 @@ export default function MonthCalendar({
         return sportFiltered.filter((e) => allowed.has(e.id));
       })()
     : sportFiltered;
+
+  // Shift filter — only active when the user can see multiple shifts
+  const visibleEvents = availableShifts.length > 1
+    ? disciplineFiltered.filter((e) => (e.shift ?? 'afternoon') === selectedShift)
+    : disciplineFiltered;
 
   function prev() {
     const offsets: Record<View, number> = { day: -1, week: -7, month: 0 };
@@ -344,8 +357,32 @@ export default function MonthCalendar({
 
   const VIEW_LABELS: Record<View, string> = { day: 'Día', week: 'Semana', month: 'Mes' };
 
+  const SHIFT_LABELS: Record<Shift, string> = {
+    morning:   'Matutino',
+    afternoon: 'Vespertino',
+  };
+
   return (
     <div className="rounded-xl border border-gray-200 p-5 mb-8">
+      {/* Shift tabs — only shown when user has access to both shifts */}
+      {availableShifts.length > 1 && (
+        <div className="flex gap-1 mb-4 border-b border-gray-200 pb-0">
+          {availableShifts.map((s) => (
+            <button
+              key={s}
+              onClick={() => setSelectedShift(s)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                selectedShift === s
+                  ? 'border-sky-600 text-sky-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {SHIFT_LABELS[s]}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
@@ -400,7 +437,15 @@ export default function MonthCalendar({
               </button>
             ))}
           </div>
-          <NewEventForm currentProfileId={currentProfileId} athletes={athletes} sports={sports} />
+          {canManage && (
+            <NewEventForm
+              currentProfileId={currentProfileId}
+              athletes={athletes}
+              sports={sports}
+              defaultShift={availableShifts.length > 1 ? selectedShift : availableShifts[0]}
+              canManageMorning={availableShifts.length > 1}
+            />
+          )}
         </div>
       </div>
 

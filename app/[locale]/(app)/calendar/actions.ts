@@ -45,6 +45,7 @@ export async function createEvent(formData: FormData) {
     end_at:                formData.get('end_at')                as string,
     status:               (formData.get('status') as string)    || 'scheduled',
     description:          (formData.get('description') as string) || null,
+    shift:                (formData.get('shift') as string)     || 'afternoon',
     created_by_profile_id: createdByProfileId,
   };
 
@@ -160,6 +161,7 @@ export async function updateEvent(id: string, formData: FormData) {
     end_at:      formData.get('end_at')      as string,
     status:      formData.get('status')      as string,
     description: (formData.get('description') as string) || null,
+    shift:      (formData.get('shift') as string) || 'afternoon',
   };
 
   const { error } = await supabaseAdmin.from('events').update(payload).eq('id', id);

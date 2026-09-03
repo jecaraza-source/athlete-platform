@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import EditEventCard from './edit-event-card';
 
+type Shift      = 'morning' | 'afternoon';
 type Athlete    = { id: string; first_name: string; last_name: string; discipline?: string | null };
 type Sport      = { id: string; name: string; category_type: string };
 type Discipline = { value: string; label: string };
@@ -18,6 +19,7 @@ type EventRow = {
   end_at: string;
   status: string;
   description: string | null;
+  shift?: Shift;
 };
 
 export default function EventsListClient({
@@ -26,16 +28,21 @@ export default function EventsListClient({
   participantsByEvent,
   sports = [],
   disciplines = [],
+  availableShifts = ['afternoon'],
+  canManageMorning = false,
 }: {
   events: EventRow[];
   athletes: Athlete[];
   participantsByEvent: Record<string, Athlete[]>;
   sports?: Sport[];
   disciplines?: Discipline[];
+  availableShifts?: Shift[];
+  canManageMorning?: boolean;
 }) {
   const t      = useTranslations('calendar');
   const locale = useLocale();
 
+  const [selectedShift,      setSelectedShift]      = useState<Shift>(availableShifts[0] ?? 'afternoon');
   const [selectedAthleteId,  setSelectedAthleteId]  = useState('');
   const [selectedDiscipline, setSelectedDiscipline] = useState('');
   const [selectedEventType,  setSelectedEventType]  = useState('');
@@ -96,13 +103,14 @@ export default function EventsListClient({
   const filtered = useMemo(() => {
     return events.filter((e) => {
       const participants = participantsByEvent[e.id] ?? [];
+      const matchesShift      = availableShifts.length < 2 || (e.shift ?? 'afternoon') === selectedShift;
       const matchesAthlete    = !selectedAthleteId   || participants.some((a) => a.id === selectedAthleteId);
       const matchesDiscipline = !disciplineAthleteIds || participants.some((a) => disciplineAthleteIds.has(a.id));
       const matchesEventType  = !selectedEventType   || e.event_type === selectedEventType;
       const matchesMonth      = !selectedMonth       || e.start_at.startsWith(selectedMonth);
-      return matchesAthlete && matchesDiscipline && matchesEventType && matchesMonth;
+      return matchesShift && matchesAthlete && matchesDiscipline && matchesEventType && matchesMonth;
     });
-  }, [events, participantsByEvent, selectedAthleteId, disciplineAthleteIds, selectedEventType, selectedMonth]);
+  }, [events, participantsByEvent, availableShifts, selectedShift, selectedAthleteId, disciplineAthleteIds, selectedEventType, selectedMonth]);
 
   // Discipline options derived from athletes in the dataset
   const availableDisciplines = useMemo(() => {
@@ -113,6 +121,11 @@ export default function EventsListClient({
 
   const hasFilters = !!(selectedAthleteId || selectedDiscipline || selectedEventType || selectedMonth);
 
+  const SHIFT_LABELS: Record<Shift, string> = {
+    morning:   t('shiftMorning'),
+    afternoon: t('shiftAfternoon'),
+  };
+
   function formatMonth(ym: string) {
     const [y, m] = ym.split('-').map(Number);
     return new Date(y, m - 1, 1).toLocaleDateString(locale, { month: 'long', year: 'numeric' });
@@ -120,6 +133,25 @@ export default function EventsListClient({
 
   return (
     <div>
+      {/* Shift tabs */}
+      {availableShifts.length > 1 && (
+        <div className="flex gap-1 mb-4 border-b border-gray-200">
+          {availableShifts.map((s) => (
+            <button
+              key={s}
+              onClick={() => setSelectedShift(s)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                selectedShift === s
+                  ? 'border-sky-600 text-sky-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {SHIFT_LABELS[s]}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Filter bar — always visible so month/type filters are accessible */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
 
@@ -190,6 +222,7 @@ export default function EventsListClient({
               setSelectedDiscipline('');
               setSelectedEventType('');
               setSelectedMonth('');
+              // Do NOT reset selectedShift — that's controlled by the tabs
             }}
             className="text-xs text-gray-400 hover:text-gray-600"
           >

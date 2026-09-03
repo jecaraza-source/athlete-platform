@@ -1,10 +1,12 @@
 import BackButton from '@/components/back-button';
 import { getTranslations } from 'next-intl/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { requirePermission, getCurrentUser } from '@/lib/rbac/server';
+import { hasPermission, requirePermission, getCurrentUser } from '@/lib/rbac/server';
 import { DISCIPLINES } from '@/lib/types/diagnostic';
 import MonthCalendar from './month-calendar';
 import EventsListClient from './events-list-client';
+
+export type Shift = 'morning' | 'afternoon';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,25 +17,29 @@ type EventRow = {
   title: string;
   event_type: string;
   sport_id: string | null;
-  sport_name: string | null; // resolved from the sports join
+  sport_name: string | null;
   start_at: string;
   end_at: string;
   status: string;
   description: string | null;
+  shift: Shift;
 };
 
 const PAGE = 1000;
 
-/** Paginates all events (bypasses Supabase's 1,000-row server cap). */
-async function fetchAllEvents() {
+/** Paginates events filtered by allowed shifts. */
+async function fetchAllEvents(shifts: Shift[]) {
   const all: Record<string, unknown>[] = [];
   let from = 0;
   while (true) {
-    const { data, error } = await supabaseAdmin
+    let q = supabaseAdmin
       .from('events')
-      .select('id, title, event_type, sport_id, start_at, end_at, status, description, sports(id, name)')
+      .select('id, title, event_type, sport_id, start_at, end_at, status, description, shift, sports(id, name)')
       .order('start_at', { ascending: true })
       .range(from, from + PAGE - 1);
+    if (shifts.length === 1) q = q.eq('shift', shifts[0]);
+    else q = q.in('shift', shifts);
+    const { data, error } = await q;
     if (error || !data?.length) break;
     all.push(...(data as Record<string, unknown>[]));
     if (data.length < PAGE) break;
@@ -78,7 +84,20 @@ async function fetchAllAthletes() {
 }
 
 export default async function CalendarPage() {
-  await requirePermission('view_calendar');
+  const [canViewAfternoon, canViewMorning, canManageMorning] = await Promise.all([
+    hasPermission('view_calendar'),
+    hasPermission('view_morning_calendar'),
+    hasPermission('manage_morning_calendar'),
+  ]);
+
+  if (!canViewAfternoon && !canViewMorning) {
+    await requirePermission('view_calendar'); // triggers redirect
+  }
+
+  const availableShifts: Shift[] = [
+    ...(canViewAfternoon ? ['afternoon' as Shift] : []),
+    ...(canViewMorning   ? ['morning'   as Shift] : []),
+  ];
 
   const currentUser = await getCurrentUser();
   const currentProfileId = currentUser?.profile?.id ?? '';
@@ -86,7 +105,7 @@ export default async function CalendarPage() {
   // Fetch events, athletes, participants and sports in parallel.
   // events and event_participants exceed 1,000 rows, so we use paginated fetchers.
   const [rawEventsAll, athletesData, participantsAll, { data: sportsData }] = await Promise.all([
-    fetchAllEvents(),
+    fetchAllEvents(availableShifts),
     fetchAllAthletes(),
     fetchAllParticipants(),
     supabaseAdmin.from('sports').select('id, name, category_type').eq('status', 'active').order('name'),
@@ -102,7 +121,11 @@ export default async function CalendarPage() {
     new Map(
       rawEvents.map((e) => [
         e.id,
-        { ...e, sport_name: (Array.isArray(e.sports) ? e.sports[0] : e.sports)?.name ?? null },
+        {
+          ...e,
+          sport_name: (Array.isArray(e.sports) ? e.sports[0] : e.sports)?.name ?? null,
+          shift: (e.shift as Shift) ?? 'afternoon',
+        },
       ])
     ).values()
   );
@@ -146,6 +169,8 @@ export default async function CalendarPage() {
         participants={participants}
         sports={sports}
         disciplines={DISCIPLINES}
+        availableShifts={availableShifts}
+        canManage={canManageMorning || canViewAfternoon}
       />
 
       <EventsListClient
@@ -154,6 +179,8 @@ export default async function CalendarPage() {
         participantsByEvent={participantsByEvent}
         sports={sports}
         disciplines={DISCIPLINES.map((d) => ({ value: d.value, label: d.label }))}
+        availableShifts={availableShifts}
+        canManageMorning={canManageMorning}
       />
     </main>
   );

@@ -129,6 +129,20 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     );
   }
 
+  // 4. Merge individual profile-level permission overrides (migration 048).
+  if (profile) {
+    const { data: ppRows } = await supabaseAdmin
+      .from('profile_permissions')
+      .select('permission_id, permissions(name)')
+      .eq('profile_id', profile.id);
+
+    for (const pp of ppRows ?? []) {
+      const perm = pp.permissions as { name: string } | { name: string }[] | null;
+      const name = Array.isArray(perm) ? perm[0]?.name : perm?.name;
+      if (name) permissions.add(name);
+    }
+  }
+
   return { authUserId: authUser.id, profile, roles, permissions };
 });
 

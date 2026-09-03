@@ -75,6 +75,9 @@ NAME_OVERRIDES: dict[str, str] = {
     "Jimena Espinosa Narváe": "Jimena Espinoza Narváez",
 }
 
+# Default shift for imported events (overridable with --shift)
+DEFAULT_SHIFT = 'afternoon'
+
 # SERVICIO → event_type
 SERVICE_TYPE_MAP = {
     "MÉDICO":       "medical",
@@ -184,8 +187,13 @@ def main():
     )
     parser.add_argument("--dry-run", action="store_true",
                         help="Parse and validate without writing to DB")
+    parser.add_argument("--shift", choices=['morning', 'afternoon'],
+                        default=DEFAULT_SHIFT,
+                        help="Shift to assign to all imported events (default: afternoon)")
     args = parser.parse_args()
     dry = args.dry_run
+    shift = args.shift
+    print(f"Shift: {shift}")
     excel_path = Path(args.excel_path).expanduser()
     if not excel_path.is_file():
         parser.error(f"Excel workbook not found: {excel_path}")
@@ -348,11 +356,12 @@ def main():
                     "start_at":              start_iso,
                     "end_at":                end_iso,
                     "status":                "scheduled",
+                    "shift":                 shift,
                     "created_by_profile_id": creator_id,
                     "description":           (
                         f"{IMPORT_MARKER} {servicio_norm} | "
                         f"Profesionista: {profesionista} | "
-                        f"Mes: {mes} {semana}"
+                        f"Mes: {mes} {semana} | Turno: {shift}"
                     ),
                 }
             # Avoid adding the same athlete twice to the same slot

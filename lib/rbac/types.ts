@@ -69,6 +69,8 @@ export const PERMISSION_NAMES = [
   // Calendar
   'view_calendar',
   'manage_calendar',
+  'view_morning_calendar',
+  'manage_morning_calendar',
   // Administration
   'manage_users',
   'manage_roles',

@@ -14,10 +14,14 @@ export default function NewEventForm({
   currentProfileId,
   athletes = [],
   sports = [],
+  defaultShift = 'afternoon',
+  canManageMorning = false,
 }: {
   currentProfileId: string;
   athletes?: Athlete[];
   sports?: Sport[];
+  defaultShift?: string;
+  canManageMorning?: boolean;
 }) {
   const t  = useTranslations('calendar');
   const tc = useTranslations('common');
@@ -101,6 +105,30 @@ export default function NewEventForm({
 
       <form ref={formRef} action={handleSubmit} className="space-y-3">
         <input type="hidden" name="created_by_profile_id" value={currentProfileId} />
+        {/* Shift: selector for users with both shifts, hidden for the rest */}
+        {canManageMorning ? (
+          <div>
+            <label className="block text-xs font-medium mb-1" htmlFor="ev_shift">
+              {t('shiftLabel')}
+            </label>
+            <div className="flex gap-2">
+              {(['afternoon', 'morning'] as const).map((s) => (
+                <label key={s} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                  <input
+                    type="radio"
+                    name="shift"
+                    value={s}
+                    defaultChecked={s === defaultShift}
+                    className="accent-sky-600"
+                  />
+                  {s === 'morning' ? t('shiftMorning') : t('shiftAfternoon')}
+                </label>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <input type="hidden" name="shift" value={defaultShift} />
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium mb-1" htmlFor="ev_title">
