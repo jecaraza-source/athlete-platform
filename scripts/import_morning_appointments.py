@@ -22,7 +22,7 @@ import requests
 ROOT = Path(__file__).resolve().parents[1]
 WORKBOOK = Path("/Users/javierescobedo/Library/CloudStorage/Dropbox/AO Deporte/Entrenamientos/CALENDARIO ATENCION MATUTINO.xlsx")
 ENV_FILE = ROOT / ".env.local"
-IMPORT_MARKER = "[MORNING_APPOINTMENT_IMPORT]"
+DESCRIPTION = "Cita Programada de Seguimiento"
 MEXICO_TZ = timezone(timedelta(hours=-6))
 BATCH_SIZE = 200
 EVENT_TYPES = {"MÉDICO": "medical", "NUTRICIÓN": "nutrition", "PSICOLOGÍA": "psychology"}
@@ -39,6 +39,14 @@ def load_env(path: Path) -> dict[str, str]:
 
 def normalize(value: str) -> str:
     return " ".join(unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode().lower().split())
+
+def utc_slot_time(value: str | datetime) -> str:
+    timestamp = (
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if isinstance(value, str)
+        else value
+    )
+    return timestamp.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class Supabase:
@@ -133,14 +141,13 @@ def main() -> None:
         for athlete in client.fetch_all("athletes", {"select": "id,first_name,last_name"})
     }
     existing = client.fetch_all("events", {
-        "select": "description",
+        "select": "title,event_type,start_at",
         "shift": "eq.morning",
-        "description": f"ilike.{IMPORT_MARKER}%",
+        "description": f"eq.{DESCRIPTION}",
     })
-    existing_sources = {
-        row["description"].split("source=", 1)[1].split(";", 1)[0]
+    existing_slots = {
+        (row["title"], row["event_type"], utc_slot_time(row["start_at"]))
         for row in existing
-        if row.get("description") and "source=" in row["description"]
     }
     profiles = client.fetch_all("profiles", {"select": "id", "order": "created_at"})
     if not profiles:
@@ -151,10 +158,13 @@ def main() -> None:
     unresolved: list[str] = []
     for appointment in appointments:
         athlete_id = athlete_ids.get(normalize(appointment["name"]))
-        source = "|".join((str(appointment["folio"]), appointment["service"], appointment["professional"], appointment["start_at"].isoformat()))
         if not athlete_id:
             unresolved.append(f"{appointment['folio']}: {appointment['name']}")
-        elif source not in existing_sources:
+        elif (
+            appointment["professional"],
+            EVENT_TYPES[appointment["service"]],
+            utc_slot_time(appointment["start_at"]),
+        ) not in existing_slots:
             start_at = appointment["start_at"]
             events.append({
                 "id": str(uuid.uuid4()),
@@ -165,7 +175,7 @@ def main() -> None:
                 "status": "scheduled",
                 "shift": "morning",
                 "created_by_profile_id": profiles[0]["id"],
-                "description": f"{IMPORT_MARKER} source={source}; Folio: {appointment['folio']}; Turno: morning",
+                "description": DESCRIPTION,
             })
             athlete_ids_for_events.append(athlete_id)
 
