@@ -254,7 +254,10 @@
     "eventsCount": "{count, plural, one {# evento} other {# eventos}}",
     "noEventsForAthlete": "Sin eventos para este atleta.",
     "noEventsYet": "Sin eventos todavía.",
-    "noEventsForFilter": "Sin eventos con los filtros seleccionados."
+    "noEventsForFilter": "Sin eventos con los filtros seleccionados.",
+    "shiftLabel": "Turno",
+    "shiftMorning": "Matutino (9:00–15:00)",
+    "shiftAfternoon": "Vespertino"
   },
   "followUp": {
     "title": "Seguimiento",

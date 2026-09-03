@@ -254,7 +254,10 @@
     "eventsCount": "{count, plural, one {# event} other {# events}}",
     "noEventsForAthlete": "No events found for this athlete.",
     "noEventsYet": "No events yet.",
-    "noEventsForFilter": "No events match the selected filters."
+    "noEventsForFilter": "No events match the selected filters.",
+    "shiftLabel": "Shift",
+    "shiftMorning": "Morning (9:00–15:00)",
+    "shiftAfternoon": "Afternoon"
   },
   "followUp": {
     "title": "Follow-up",
