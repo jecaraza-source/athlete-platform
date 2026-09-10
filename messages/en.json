@@ -167,6 +167,8 @@
     "schoolOrClub": "School / Club",
     "status": "Status",
     "searchPlaceholder": "Search by name…",
+    "searchFolioPlaceholder": "Search by folio number…",
+    "folio": "Folio",
     "colDiscipline": "Discipline",
     "colDiagnostic": "Initial Diagnostic",
     "filterAll": "All",
