@@ -26,6 +26,15 @@ export default async function AppShell({ children }: { children: ReactNode }) {
   const profile  = currentUser?.profile ?? null;
   const authUser = profile; // keeps remaining code compatible
   const needsConsent = profile != null && !profile.privacy_consent_accepted_at;
+  const roleCodes = new Set(currentUser?.roles.map((role) => role.code));
+  const permissions = currentUser?.permissions ?? new Set<string>();
+  const showPsychAthlete = roleCodes.has('athlete');
+  const showPsychCoach = roleCodes.has('coach') && permissions.has('psych.read_interpreted');
+  const showPsychClinical = roleCodes.has('mental_health_admin');
+  const showPsychOverview = (
+    (roleCodes.has('program_director') || roleCodes.has('super_admin')) &&
+    permissions.has('psych.read_interpreted')
+  );
 
   return (
     <div className="min-h-screen flex bg-gray-50 text-gray-900">
@@ -46,7 +55,18 @@ export default async function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Navigation */}
-        <NavLinks showAdmin={showAdmin} showFinances={showFinances} isAthlete={isAthlete} showAppointments={showAppointments} showAthletes={showAthletes} showFollowUp={showFollowUp} />
+        <NavLinks
+          showAdmin={showAdmin}
+          showFinances={showFinances}
+          isAthlete={isAthlete}
+          showAppointments={showAppointments}
+          showAthletes={showAthletes}
+          showFollowUp={showFollowUp}
+          showPsychAthlete={showPsychAthlete}
+          showPsychCoach={showPsychCoach}
+          showPsychClinical={showPsychClinical}
+          showPsychOverview={showPsychOverview}
+        />
 
         {/* Footer */}
         <div className="border-t border-gray-200">

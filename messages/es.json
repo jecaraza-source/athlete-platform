@@ -52,7 +52,12 @@
     "finances": "Finanzas",
     "preferences": "Preferencias",
     "admin": "Admin",
-    "appointments": "Mis Citas"
+    "appointments": "Mis Citas",
+    "psychologicalTests": "Pruebas psicológicas",
+    "psychAthlete": "Mi bienestar deportivo",
+    "psychCoach": "Equipo psicológico",
+    "psychClinical": "Gestión clínica",
+    "psychOverview": "Panorama de alertas"
   },
   "auth": {
     "signIn": "Iniciar sesión",
