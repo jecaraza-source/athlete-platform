@@ -42,6 +42,7 @@ export function calculatePsychScores(
 
   const responseByItem = new Map(responses.map((response) => [response.item_code, response.raw_value]));
   const totals = new Map<string, number>();
+  const counts = new Map<string, number>();
 
   for (const item of items) {
     if (item.subscale_code === 'unscored') continue;
@@ -54,13 +55,19 @@ export function calculatePsychScores(
       ? bounds.min + bounds.max - response
       : response;
     totals.set(item.subscale_code, (totals.get(item.subscale_code) ?? 0) + value);
+    counts.set(item.subscale_code, (counts.get(item.subscale_code) ?? 0) + 1);
   }
 
   return [...totals.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(([subscaleCode, rawScore]) => ({
-      subscaleCode,
-      rawScore,
-      band: instrumentCode === 'SCAT' ? scatBand(rawScore) : null,
-    }));
+    .map(([subscaleCode, total]) => {
+      const rawScore = instrumentCode === 'TOPS'
+        ? total / (counts.get(subscaleCode) ?? 1)
+        : total;
+      return {
+        subscaleCode,
+        rawScore,
+        band: instrumentCode === 'SCAT' ? scatBand(rawScore) : null,
+      };
+    });
 }

@@ -57,6 +57,25 @@ const SCORE_LABELS: Record<string, string> = {
   physical_emotional_exhaustion: 'Agotamiento físico/emocional',
   reduced_sense_of_accomplishment: 'Reducción del sentido de logro',
   sport_devaluation: 'Devaluación del deporte',
+  confidence: 'Confianza',
+  constancy: 'Constancia',
+  control: 'Control',
+  practice_goal_setting: 'Práctica: establecimiento de metas',
+  practice_self_talk: 'Práctica: autodiálogo',
+  practice_imagery: 'Práctica: visualización',
+  practice_attentional_control: 'Práctica: control atencional',
+  practice_relaxation: 'Práctica: relajación',
+  practice_automaticity: 'Práctica: automaticidad',
+  practice_activation: 'Práctica: activación',
+  practice_emotional_control: 'Práctica: control emocional',
+  competition_goal_setting: 'Competencia: establecimiento de metas',
+  competition_self_talk: 'Competencia: autodiálogo',
+  competition_imagery: 'Competencia: visualización',
+  competition_negative_thinking: 'Competencia: pensamiento negativo',
+  competition_relaxation: 'Competencia: relajación',
+  competition_automaticity: 'Competencia: automaticidad',
+  competition_activation: 'Competencia: activación',
+  competition_emotional_control: 'Competencia: control emocional',
 };
 
 export function PsychQuestionnaire({ assessmentId, instrumentCode, instrumentName, items }: Props) {
@@ -132,7 +151,7 @@ export function PsychQuestionnaire({ assessmentId, instrumentCode, instrumentNam
                 <div key={score.subscaleCode} className="rounded-lg bg-white px-3 py-2">
                   <dt className="text-xs font-medium text-gray-600">{SCORE_LABELS[score.subscaleCode] ?? score.subscaleCode}</dt>
                   <dd className="mt-0.5 text-lg font-bold text-[#2D2D2D]">
-                    {score.rawScore}
+                    {Number.isInteger(score.rawScore) ? score.rawScore : score.rawScore.toFixed(2)}
                     {score.band && <span className="ml-2 text-xs font-semibold text-[#C0172C]">{score.band}</span>}
                   </dd>
                 </div>
