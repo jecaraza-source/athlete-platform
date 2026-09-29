@@ -5,6 +5,10 @@ import SignOutButton from './sign-out-button';
 import NavLinks from './nav-links';
 import LanguageSwitcher from './language-switcher';
 import PrivacyConsentModal from './PrivacyConsentModal';
+const PSYCHOLOGICAL_TESTING_EMAILS = new Set([
+  'soporte@aodeporte.com',
+  'psi04@aodeporte.com',
+]);
 
 export default async function AppShell({ children }: { children: ReactNode }) {
   // getCurrentUser() is memoized — hasRole/hasPermission() reuse the same resolved data.
@@ -28,10 +32,15 @@ export default async function AppShell({ children }: { children: ReactNode }) {
   const needsConsent = profile != null && !profile.privacy_consent_accepted_at;
   const roleCodes = new Set(currentUser?.roles.map((role) => role.code));
   const permissions = currentUser?.permissions ?? new Set<string>();
-  const showPsychAthlete = roleCodes.has('athlete');
-  const showPsychCoach = roleCodes.has('coach') && permissions.has('psych.read_interpreted');
-  const showPsychClinical = roleCodes.has('mental_health_admin');
-  const showPsychOverview = (
+  const canSeePsychologicalMenu = profile?.email
+    ? PSYCHOLOGICAL_TESTING_EMAILS.has(profile.email.trim().toLowerCase())
+    : false;
+  const showPsychAthlete = canSeePsychologicalMenu && roleCodes.has('athlete');
+  const showPsychCoach = canSeePsychologicalMenu &&
+    roleCodes.has('coach') &&
+    permissions.has('psych.read_interpreted');
+  const showPsychClinical = canSeePsychologicalMenu && roleCodes.has('mental_health_admin');
+  const showPsychOverview = canSeePsychologicalMenu && (
     (roleCodes.has('program_director') || roleCodes.has('super_admin')) &&
     permissions.has('psych.read_interpreted')
   );
