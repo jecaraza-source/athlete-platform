@@ -1,16 +1,17 @@
 // =============================================================================
 // POST /api/psych/assessments/[id]/responses
 //
-// Phase 1 writes raw answers through the caller-scoped Supabase client so
+// Writes raw answers through the caller-scoped Supabase client so
 // psych_responses RLS remains the sole authority for athlete ownership and the
-// pending-assessment state. Scoring is deliberately deferred until instrument
-// scoring keys and formulas have been clinically validated.
+// pending-assessment state. Once every validated item is present, the server
+// applies the registered scoring key and completes the assessment.
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { calculatePsychScores } from '@/lib/psych/scoring';
 
 export const runtime = 'nodejs';
 
@@ -94,6 +95,14 @@ export async function POST(
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('id')
+    .eq('auth_user_id', user.id)
+    .maybeSingle();
+  if (!profile) {
+    return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+  }
 
   let body: RequestBody;
   try {
@@ -105,6 +114,42 @@ export async function POST(
   const parsed = parseResponses(body.responses);
   if ('error' in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+  const { data: testAssessment } = await supabaseAdmin
+    .from('psych_assessments')
+    .select('id, is_test_run, psych_instruments!inner(id, code, item_count)')
+    .eq('id', assessmentId)
+    .eq('athlete_id', profile.id)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (testAssessment?.is_test_run) {
+    const testInstrument = Array.isArray(testAssessment.psych_instruments)
+      ? testAssessment.psych_instruments[0]
+      : testAssessment.psych_instruments;
+    const { data: testItems } = testInstrument
+      ? await supabaseAdmin
+        .from('psych_instrument_items')
+        .select('item_code, subscale_code, is_reverse_scored, response_options')
+        .eq('instrument_id', testInstrument.id)
+        .order('item_order')
+      : { data: null };
+    if (!testInstrument || !testItems || parsed.responses.length !== testInstrument.item_count) {
+      return NextResponse.json({ error: 'El cuestionario de prueba no está disponible.' }, { status: 409 });
+    }
+    try {
+      const scores = calculatePsychScores(testInstrument.code, testItems, parsed.responses);
+      return NextResponse.json({
+        ok: true,
+        assessmentId,
+        complete: true,
+        isTestRun: true,
+        scores,
+        message: 'Prueba completada. Las respuestas y resultados no fueron guardados.',
+      });
+    } catch {
+      return NextResponse.json({ error: 'No fue posible calcular la prueba.' }, { status: 400 });
+    }
   }
 
   // ── FASE 1: scoped client + RLS-authorized raw-response insert ──────────
@@ -170,7 +215,7 @@ export async function POST(
   ] = await Promise.all([
     supabaseAdmin
       .from('psych_instruments')
-      .select('item_count')
+      .select('id, code, item_count')
       .eq('id', assessment.instrument_id)
       .maybeSingle(),
     // UNIQUE (assessment_id, item_code) makes this exact row count equal to
@@ -204,28 +249,62 @@ export async function POST(
     });
   }
 
-  // ── FASE 1 / FASE 2 BOUNDARY ────────────────────────────────────────────
-  //
-  // No code below this boundary may run when the scoped INSERT was rejected.
-  // A clinically validated scorer must own the only subsequent use of
-  // supabaseAdmin: read instrument.code, insert psych_scores, mark the
-  // assessment completed, and create psych_alerts from athlete history.
-  //
-  // The scorer is intentionally not implemented yet because the instrument
-  // item keys, inverse items, and clinical formulas have not been specified.
-  // Keep the assessment pending rather than persisting invented scores.
-  return NextResponse.json(
-    {
-      error: 'Psychological scoring is not implemented yet.',
-      code: 'PSYCH_SCORING_NOT_IMPLEMENTED',
-      assessmentId,
-      complete: true,
-      attemptedCount,
-      insertedCount,
-      duplicateCount,
-      registeredItemCount,
-      expectedItemCount: instrument.item_count,
-    },
-    { status: 501 }
-  );
+  const [{ data: items }, { data: savedResponses }] = await Promise.all([
+    supabaseAdmin
+      .from('psych_instrument_items')
+      .select('item_code, subscale_code, is_reverse_scored, response_options')
+      .eq('instrument_id', instrument.id)
+      .order('item_order'),
+    supabaseAdmin
+      .from('psych_responses')
+      .select('item_code, raw_value')
+      .eq('assessment_id', assessmentId),
+  ]);
+
+  if (!items || !savedResponses || items.length !== instrument.item_count) {
+    return NextResponse.json({ error: 'Unable to load the scoring key.' }, { status: 500 });
+  }
+
+  let scores;
+  try {
+    scores = calculatePsychScores(instrument.code, items, savedResponses);
+  } catch {
+    return NextResponse.json({ error: 'Unable to calculate the assessment scores.' }, { status: 500 });
+  }
+
+  if (scores.length > 0) {
+    const { error: scoreError } = await supabaseAdmin
+      .from('psych_scores')
+      .upsert(
+        scores.map((score) => ({
+          assessment_id: assessmentId,
+          subscale_code: score.subscaleCode,
+          raw_score: score.rawScore,
+          band: score.band,
+        })),
+        { onConflict: 'assessment_id,subscale_code' }
+      );
+    if (scoreError) return NextResponse.json({ error: scoreError.message }, { status: 500 });
+  }
+
+  const { error: completionError } = await supabaseAdmin
+    .from('psych_assessments')
+    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .eq('id', assessmentId)
+    .eq('status', 'pending');
+  if (completionError) return NextResponse.json({ error: completionError.message }, { status: 500 });
+
+  return NextResponse.json({
+    ok: true,
+    assessmentId,
+    complete: true,
+    attemptedCount,
+    insertedCount,
+    duplicateCount,
+    registeredItemCount,
+    expectedItemCount: instrument.item_count,
+    message: instrument.code === 'BASC-3-PRS-C'
+      ? 'Tus respuestas fueron registradas para revisión profesional.'
+      : 'Tus respuestas fueron registradas y el cuestionario fue completado.',
+  });
 }

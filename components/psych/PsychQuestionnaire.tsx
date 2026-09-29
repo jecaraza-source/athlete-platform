@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState, useTransition } from 'react';
+import { calculatePsychScores, type CalculatedScore } from '@/lib/psych/scoring';
 
 type ResponseOption = {
   value: string;
@@ -12,10 +13,13 @@ type InstrumentItem = {
   item_order: number;
   prompt_text: string;
   response_options: unknown;
+  subscale_code: string;
+  is_reverse_scored: boolean;
 };
 
 type Props = {
   assessmentId: string;
+  instrumentCode: string;
   instrumentName: string;
   items: InstrumentItem[];
 };
@@ -45,9 +49,20 @@ function normaliseOptions(value: unknown): ResponseOption[] {
   });
 }
 
-export function PsychQuestionnaire({ assessmentId, instrumentName, items }: Props) {
+const SCORE_LABELS: Record<string, string> = {
+  cognitive_anxiety: 'Ansiedad cognitiva',
+  somatic_anxiety: 'Ansiedad somática',
+  self_confidence: 'Autoconfianza',
+  trait_competitive_anxiety: 'Ansiedad competitiva',
+  physical_emotional_exhaustion: 'Agotamiento físico/emocional',
+  reduced_sense_of_accomplishment: 'Reducción del sentido de logro',
+  sport_devaluation: 'Devaluación del deporte',
+};
+
+export function PsychQuestionnaire({ assessmentId, instrumentCode, instrumentName, items }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [scores, setScores] = useState<CalculatedScore[] | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -61,6 +76,7 @@ export function PsychQuestionnaire({ assessmentId, instrumentName, items }: Prop
     if (responses.some((response) => !response.raw_value)) {
       setError('Responde todos los reactivos antes de enviar el cuestionario.');
       setMessage(null);
+      setScores(null);
       return;
     }
 
@@ -81,14 +97,17 @@ export function PsychQuestionnaire({ assessmentId, instrumentName, items }: Prop
         if (!response.ok) {
           setError(result.error ?? 'No fue posible registrar tus respuestas.');
           setMessage(null);
+          setScores(null);
           return;
         }
 
         setMessage(result.message ?? 'Tus respuestas fueron registradas.');
+        setScores(calculatePsychScores(instrumentCode, items, responses));
         setError(null);
       } catch {
         setError('No fue posible conectar con el servidor. Intenta nuevamente.');
         setMessage(null);
+        setScores(null);
       }
     });
   }
@@ -104,6 +123,23 @@ export function PsychQuestionnaire({ assessmentId, instrumentName, items }: Prop
       <div className="space-y-6 p-6">
         {error && <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
         {message && <p className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{message}</p>}
+        {scores && scores.length > 0 && (
+          <section className="rounded-xl border border-green-200 bg-green-50 p-4" aria-live="polite">
+            <h3 className="text-sm font-bold text-green-900">Puntuaciones registradas</h3>
+            <p className="mt-1 text-xs text-green-800">Son resultados de seguimiento; la interpretación corresponde al equipo de salud mental.</p>
+            <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+              {scores.map((score) => (
+                <div key={score.subscaleCode} className="rounded-lg bg-white px-3 py-2">
+                  <dt className="text-xs font-medium text-gray-600">{SCORE_LABELS[score.subscaleCode] ?? score.subscaleCode}</dt>
+                  <dd className="mt-0.5 text-lg font-bold text-[#2D2D2D]">
+                    {score.rawScore}
+                    {score.band && <span className="ml-2 text-xs font-semibold text-[#C0172C]">{score.band}</span>}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
 
         {items.map((item) => {
           const options = normaliseOptions(item.response_options);

@@ -29,6 +29,28 @@ async function requireMentalHealthPermission(permission: string) {
   return { user, error: null };
 }
 
+export async function schedulePsychAssessment(input: { athleteId: string; instrumentId: string; scheduledFor: string }): Promise<{ error?: string }> {
+  const { user, error: accessError } = await requireMentalHealthPermission('psych.schedule_assessments');
+  if (!user?.profile || accessError) return { error: accessError ?? 'No autorizado.' };
+  const date = new Date(input.scheduledFor);
+  if (!input.athleteId || !input.instrumentId || Number.isNaN(date.getTime())) return { error: 'Selecciona atleta, examen y fecha válidos.' };
+  const [{ data: athlete }, { data: instrument }] = await Promise.all([
+    supabaseAdmin.from('profiles').select('id, first_name, email').eq('id', input.athleteId).maybeSingle(),
+    supabaseAdmin.from('psych_instruments').select('id, name, item_count').eq('id', input.instrumentId).eq('is_active', true).in('license_status', ['licensed', 'not_required']).maybeSingle(),
+  ]);
+  if (!athlete || !instrument) return { error: 'Atleta o instrumento no disponible.' };
+  const { count } = await supabaseAdmin.from('psych_instrument_items').select('id', { count: 'exact', head: true }).eq('instrument_id', instrument.id);
+  if (count !== instrument.item_count) return { error: 'El instrumento no tiene todos sus reactivos cargados.' };
+  const { data: assessment, error } = await supabaseAdmin.from('psych_assessments').insert({ athlete_id: athlete.id, instrument_id: instrument.id, scheduled_for: date.toISOString(), context: 'scheduled' }).select('id').single();
+  if (error || !assessment) return { error: error?.message ?? 'No fue posible programar la evaluación.' };
+  const key = `psych-assessment:${assessment.id}`;
+  await supabaseAdmin.from('email_jobs').insert({ recipient_profile_id: athlete.id, recipient_email: athlete.email, subject: 'Tienes una evaluación psicológica pendiente', html_body: `<p>Hola ${athlete.first_name},</p><p>Tienes pendiente la evaluación <strong>${instrument.name}</strong>.</p>`, plain_body: `Tienes pendiente la evaluación ${instrument.name}.`, idempotency_key: `${key}:email`, scheduled_at: new Date().toISOString() });
+  const { data: tokens } = await supabaseAdmin.from('push_device_tokens').select('id, onesignal_player_id, device_token').eq('profile_id', athlete.id).eq('is_active', true);
+  if (tokens?.length) await supabaseAdmin.from('push_jobs').insert(tokens.map((token) => ({ recipient_profile_id: athlete.id, device_token_id: token.id, onesignal_player_id: token.onesignal_player_id ?? token.device_token, title: 'Evaluación pendiente', message: `Tienes pendiente ${instrument.name}.`, deep_link: '/dashboard/psych', extra_data: { assessmentId: assessment.id }, idempotency_key: `${key}:push:${token.id}`, scheduled_at: new Date().toISOString() })));
+  revalidatePath('/dashboard/mental-health');
+  return {};
+}
+
 export async function saveInstrumentLicenseCheck(input: {
   instrumentId: string;
   permissionType: string;

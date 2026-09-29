@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 type Instrument = {
   id: string;
+  code: string;
   name: string;
   item_count: number;
   is_active: boolean;
@@ -20,6 +21,8 @@ type InstrumentItem = {
   item_order: number;
   prompt_text: string;
   response_options: unknown;
+  subscale_code: string;
+  is_reverse_scored: boolean;
 };
 
 export default async function AthletePsychDashboardPage() {
@@ -30,7 +33,7 @@ export default async function AthletePsychDashboardPage() {
 
   const { data: assessmentRaw } = await supabaseAdmin
     .from('psych_assessments')
-    .select('id, scheduled_for, psych_instruments!inner(id, name, item_count, is_active, is_test_only, license_status)')
+    .select('id, scheduled_for, psych_instruments!inner(id, code, name, item_count, is_active, is_test_only, license_status)')
     .eq('athlete_id', user.profile.id)
     .eq('status', 'pending')
     .eq('psych_instruments.is_active', true)
@@ -52,7 +55,7 @@ export default async function AthletePsychDashboardPage() {
   const { data: itemRows } = instrument
     ? await supabaseAdmin
       .from('psych_instrument_items')
-      .select('item_code, item_order, prompt_text, response_options')
+      .select('item_code, item_order, prompt_text, response_options, subscale_code, is_reverse_scored')
       .eq('instrument_id', instrument.id)
       .order('item_order')
     : { data: [] as InstrumentItem[] };
@@ -108,7 +111,7 @@ export default async function AthletePsychDashboardPage() {
 
       <section className="mb-10">
         {hasAvailableQuestionnaire && assessment && instrument ? (
-          <PsychQuestionnaire assessmentId={assessment.id} instrumentName={instrument.name} items={items} />
+          <PsychQuestionnaire assessmentId={assessment.id} instrumentCode={instrument.code} instrumentName={instrument.name} items={items} />
         ) : (
           <div className="rounded-2xl border border-dashed border-red-200 bg-red-50 px-6 py-10 text-center">
             <p className="text-lg font-bold text-[#2D2D2D]">No hay ningún cuestionario disponible todavía</p>

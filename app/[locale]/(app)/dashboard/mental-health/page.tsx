@@ -5,6 +5,7 @@ import { LicenseStatusManager } from '@/components/psych/LicenseStatusManager';
 import { PsychAlertsManager } from '@/components/psych/PsychAlertsManager';
 import { PsychInstrumentCatalog } from '@/components/psych/PsychInstrumentCatalog';
 import { PsychAssessmentList } from '@/components/psych/PsychAssessmentList';
+import { SchedulePsychAssessment } from '@/components/psych/SchedulePsychAssessment';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,16 +26,23 @@ export default async function MentalHealthDashboardPage() {
 
   const { data: instrumentRows } = await supabaseAdmin
     .from('psych_instruments')
-    .select('id, code, name, license_status, is_active')
+    .select('id, code, name, item_count, license_status, is_active')
     .eq('is_test_only', false)
     .order('name');
   const instruments = (instrumentRows ?? []) as Array<{
     id: string;
     code: string;
     name: string;
+    item_count: number;
     license_status: LicenseStatus;
     is_active: boolean;
   }>;
+  const [{ data: athleteRows }, { data: availableItemRows }] = await Promise.all([
+    supabaseAdmin.from('profiles').select('id, first_name, last_name').eq('role', 'athlete').order('last_name'),
+    supabaseAdmin.from('psych_instrument_items').select('instrument_id'),
+  ]);
+  const itemCounts = new Map<string, number>();
+  for (const row of availableItemRows ?? []) itemCounts.set(row.instrument_id as string, (itemCounts.get(row.instrument_id as string) ?? 0) + 1);
 
   const { data: checkRows } = instruments.length > 0
     ? await supabaseAdmin
@@ -146,6 +154,10 @@ export default async function MentalHealthDashboardPage() {
         </p>
       </header>
       <LicenseStatusManager instruments={managerInstruments} />
+      <SchedulePsychAssessment
+        athletes={(athleteRows ?? []).map((athlete) => ({ id: athlete.id as string, label: `${athlete.first_name} ${athlete.last_name}`.trim() }))}
+        instruments={instruments.filter((instrument) => instrument.license_status === 'licensed' && instrument.is_active && itemCounts.get(instrument.id) === instrument.item_count).map((instrument) => ({ id: instrument.id, label: `${instrument.code} — ${instrument.name}` }))}
+      />
       <PsychAssessmentList assessments={assessments} />
       <PsychInstrumentCatalog instruments={instruments.map((instrument) => ({
         id: instrument.id,
