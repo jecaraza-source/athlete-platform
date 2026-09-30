@@ -10,6 +10,12 @@ type Instrument = {
   isActive: boolean;
   licenseStatus: string;
 };
+const LICENSE_STATUS_LABELS: Record<string, string> = {
+  pending_review: 'Pendiente de revisión',
+  licensed: 'Licenciado',
+  not_required: 'No requerido',
+  denied: 'Denegado',
+};
 
 export function PsychInstrumentCatalog({ instruments }: { instruments: Instrument[] }) {
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +34,7 @@ export function PsychInstrumentCatalog({ instruments }: { instruments: Instrumen
         {instruments.map((instrument) => (
           <div key={instrument.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 last:border-0">
             <div><p className="text-xs font-bold uppercase tracking-wide text-[#C0172C]">{instrument.code}</p><p className="font-semibold text-[#2D2D2D]">{instrument.name}</p></div>
-            <div className="flex items-center gap-3"><span className="text-xs text-gray-500">Licencia: {instrument.licenseStatus}</span><button type="button" onClick={() => toggle(instrument)} disabled={isPending} className={`rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-60 ${instrument.isActive ? 'bg-green-50 text-green-800' : 'bg-gray-100 text-gray-700'}`}>{instrument.isActive ? 'Activo' : 'Inactivo'}</button></div>
+            <div className="flex items-center gap-3"><span className="text-xs text-gray-500">Licencia: {LICENSE_STATUS_LABELS[instrument.licenseStatus] ?? instrument.licenseStatus}</span><button type="button" onClick={() => toggle(instrument)} disabled={isPending} className={`rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-60 ${instrument.isActive ? 'bg-green-50 text-green-800' : 'bg-gray-100 text-gray-700'}`}>{instrument.isActive ? 'Activo' : 'Inactivo'}</button></div>
           </div>
         ))}
       </div>

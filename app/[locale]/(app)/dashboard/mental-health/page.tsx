@@ -9,12 +9,6 @@ import { SchedulePsychAssessment } from '@/components/psych/SchedulePsychAssessm
 
 export const dynamic = 'force-dynamic';
 
-const REQUIRED_PERMISSIONS = [
-  ['instrument_use', 'Permiso de uso del instrumento'],
-  ['digital_reproduction', 'Permiso de reproducción digital'],
-  ['official_scoring', 'Permiso y clave oficial de scoring'],
-  ['spanish_translation', 'Permiso de traducción al español'],
-] as const;
 
 type LicenseStatus = 'pending_review' | 'licensed' | 'not_required' | 'denied';
 
@@ -26,7 +20,7 @@ export default async function MentalHealthDashboardPage() {
 
   const { data: instrumentRows } = await supabaseAdmin
     .from('psych_instruments')
-    .select('id, code, name, item_count, license_status, is_active')
+    .select('id, code, name, item_count, license_status, license_notes, is_active')
     .eq('is_test_only', false)
     .order('name');
   const instruments = (instrumentRows ?? []) as Array<{
@@ -35,6 +29,7 @@ export default async function MentalHealthDashboardPage() {
     name: string;
     item_count: number;
     license_status: LicenseStatus;
+    license_notes: string | null;
     is_active: boolean;
   }>;
   const [{ data: athleteRows }, { data: availableItemRows }] = await Promise.all([
@@ -44,54 +39,6 @@ export default async function MentalHealthDashboardPage() {
   const itemCounts = new Map<string, number>();
   for (const row of availableItemRows ?? []) itemCounts.set(row.instrument_id as string, (itemCounts.get(row.instrument_id as string) ?? 0) + 1);
 
-  const { data: checkRows } = instruments.length > 0
-    ? await supabaseAdmin
-      .from('psych_instrument_license_checks')
-      .select('instrument_id, permission_type, status, notes, verified_at, profiles(first_name, last_name)')
-      .in('instrument_id', instruments.map((instrument) => instrument.id))
-    : { data: [] };
-  const checksByInstrument = new Map<string, Map<string, {
-    status: LicenseStatus;
-    notes: string | null;
-    verified_at: string | null;
-    profiles: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null;
-  }>>();
-
-  for (const check of checkRows ?? []) {
-    const row = check as {
-      instrument_id: string;
-      permission_type: string;
-      status: LicenseStatus;
-      notes: string | null;
-      verified_at: string | null;
-      profiles: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null;
-    };
-    const checks = checksByInstrument.get(row.instrument_id) ?? new Map();
-    checks.set(row.permission_type, row);
-    checksByInstrument.set(row.instrument_id, checks);
-  }
-
-  const managerInstruments = instruments.map((instrument) => {
-    const checks = checksByInstrument.get(instrument.id);
-    return {
-      id: instrument.id,
-      code: instrument.code,
-      name: instrument.name,
-      licenseStatus: instrument.license_status,
-      checks: REQUIRED_PERMISSIONS.map(([permissionType, label]) => {
-        const check = checks?.get(permissionType);
-        const verifier = Array.isArray(check?.profiles) ? check?.profiles[0] : check?.profiles;
-        return {
-          permissionType,
-          label,
-          status: check?.status ?? 'pending_review' as LicenseStatus,
-          notes: check?.notes ?? '',
-          verifiedBy: verifier ? `${verifier.first_name} ${verifier.last_name}`.trim() : null,
-          verifiedAt: check?.verified_at ?? null,
-        };
-      }),
-    };
-  });
 
   const { data: alertRows } = await supabaseAdmin
     .from('psych_alerts')
@@ -150,10 +97,16 @@ export default async function MentalHealthDashboardPage() {
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Salud mental</p>
         <h1 className="mt-1 text-3xl font-bold text-[#2D2D2D]">Estado de licenciamiento por instrumento</h1>
         <p className="mt-2 max-w-3xl text-sm text-gray-600">
-          Cada instrumento requiere cuatro verificaciones independientes antes de ser autorizado para evaluaciones clínicas.
+          Aprueba el estado de licencia y registra las notas o el alcance de la autorización correspondiente.
         </p>
       </header>
-      <LicenseStatusManager instruments={managerInstruments} />
+      <LicenseStatusManager instruments={instruments.map((instrument) => ({
+        id: instrument.id,
+        code: instrument.code,
+        name: instrument.name,
+        licenseStatus: instrument.license_status,
+        licenseNotes: instrument.license_notes ?? '',
+      }))} />
       <SchedulePsychAssessment
         athletes={(athleteRows ?? []).map((athlete) => ({ id: athlete.id as string, label: `${athlete.first_name} ${athlete.last_name}`.trim() }))}
         instruments={instruments.filter((instrument) => instrument.license_status === 'licensed' && instrument.is_active && itemCounts.get(instrument.id) === instrument.item_count).map((instrument) => ({ id: instrument.id, label: `${instrument.code} — ${instrument.name}` }))}

@@ -11,12 +11,6 @@ const LICENSE_STATUSES = new Set([
   'denied',
 ]);
 
-const PERMISSION_TYPES = new Set([
-  'instrument_use',
-  'digital_reproduction',
-  'official_scoring',
-  'spanish_translation',
-]);
 async function requireMentalHealthPermission(permission: string) {
   const user = await getCurrentUser();
   if (!user?.profile) return { user: null, error: 'No autenticado.' };
@@ -51,32 +45,27 @@ export async function schedulePsychAssessment(input: { athleteId: string; instru
   return {};
 }
 
-export async function saveInstrumentLicenseCheck(input: {
+export async function savePsychInstrumentLicense(input: {
   instrumentId: string;
-  permissionType: string;
   status: string;
   notes: string;
 }): Promise<{ error?: string }> {
   const { user, error: accessError } = await requireMentalHealthPermission('psych.manage_instruments');
   if (!user?.profile || accessError) return { error: accessError ?? 'No autorizado.' };
-  if (!LICENSE_STATUSES.has(input.status) || !PERMISSION_TYPES.has(input.permissionType)) {
+  if (!LICENSE_STATUSES.has(input.status)) {
     return { error: 'Estado de licenciamiento inválido.' };
   }
 
   const { error } = await supabaseAdmin
-    .from('psych_instrument_license_checks')
-    .upsert(
-      {
-        instrument_id: input.instrumentId,
-        permission_type: input.permissionType,
-        status: input.status,
-        notes: input.notes.trim() || null,
-        verified_by: user.profile.id,
-        verified_at: new Date().toISOString(),
-      },
-      { onConflict: 'instrument_id,permission_type' }
-    );
-
+    .from('psych_instruments')
+    .update({
+      license_status: input.status,
+      license_notes: input.notes.trim() || null,
+      license_verified_by: input.status === 'licensed' ? user.profile.id : null,
+      license_verified_at: input.status === 'licensed' ? new Date().toISOString() : null,
+    })
+    .eq('id', input.instrumentId)
+    .eq('is_test_only', false);
   if (error) return { error: error.message };
   revalidatePath('/dashboard/mental-health');
   return {};
