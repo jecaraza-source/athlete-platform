@@ -35,7 +35,7 @@ export default async function AppShell({ children }: { children: ReactNode }) {
   const canSeePsychologicalMenu = profile?.email
     ? PSYCHOLOGICAL_TESTING_EMAILS.has(profile.email.trim().toLowerCase())
     : false;
-  const showPsychAthlete = canSeePsychologicalMenu && roleCodes.has('athlete');
+  const showPsychAthlete = roleCodes.has('athlete');
   const showPsychCoach = canSeePsychologicalMenu &&
     roleCodes.has('coach') &&
     permissions.has('psych.read_interpreted');

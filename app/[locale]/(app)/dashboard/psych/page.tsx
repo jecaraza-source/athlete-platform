@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation';
 import { requireAuthenticated } from '@/lib/rbac/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PsychQuestionnaire } from '@/components/psych/PsychQuestionnaire';
-import { PsychTrendChart } from '@/components/psych/PsychTrendChart';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,46 +65,14 @@ export default async function AthletePsychDashboardPage() {
     items.length === instrument.item_count
   );
 
-  const { data: publishedAssessmentsRaw } = await supabaseAdmin
-    .from('psych_assessments')
-    .select('id, completed_at, psych_instruments!inner(is_test_only)')
-    .eq('athlete_id', user.profile.id)
-    .eq('published_to_athlete', true)
-    .eq('psych_instruments.is_test_only', false)
-    .not('completed_at', 'is', null)
-    .order('completed_at', { ascending: true });
-
-  const publishedAssessments = (publishedAssessmentsRaw ?? []) as Array<{
-    id: string;
-    completed_at: string;
-  }>;
-  const assessmentDates = new Map(publishedAssessments.map((row) => [row.id, row.completed_at]));
-  const { data: scoreRows } = publishedAssessments.length > 0
-    ? await supabaseAdmin
-      .from('psych_scores')
-      .select('assessment_id, subscale_code, raw_score')
-      .in('assessment_id', publishedAssessments.map((row) => row.id))
-    : { data: [] as Array<{ assessment_id: string; subscale_code: string; raw_score: number }> };
-
-  const trends = (scoreRows ?? []).reduce<Record<string, Array<{ completedAt: string; rawScore: number }>>>(
-    (accumulator, score) => {
-      const completedAt = assessmentDates.get(score.assessment_id);
-      if (!completedAt) return accumulator;
-      const points = accumulator[score.subscale_code] ?? [];
-      points.push({ completedAt, rawScore: Number(score.raw_score) });
-      accumulator[score.subscale_code] = points;
-      return accumulator;
-    },
-    {}
-  );
 
   return (
     <main className="max-w-6xl p-8">
       <header className="mb-8 border-l-4 border-[#C0172C] pl-4">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Perfil Psicológico</p>
-        <h1 className="mt-1 text-3xl font-bold text-[#2D2D2D]">Mi bienestar deportivo</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Exámenes</p>
+        <h1 className="mt-1 text-3xl font-bold text-[#2D2D2D]">Mi evaluación programada</h1>
         <p className="mt-2 max-w-2xl text-sm text-gray-600">
-          Consulta tus evaluaciones disponibles y los resultados que el equipo de salud mental haya publicado para ti.
+          Aquí podrás responder la evaluación psicológica que el equipo te haya programado.
         </p>
       </header>
 
@@ -122,13 +89,6 @@ export default async function AthletePsychDashboardPage() {
         )}
       </section>
 
-      <section>
-        <div className="mb-4">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Resultados publicados</p>
-          <h2 className="mt-1 text-2xl font-bold text-[#2D2D2D]">Mi tendencia por subescala</h2>
-        </div>
-        <PsychTrendChart trends={trends} />
-      </section>
     </main>
   );
 }
