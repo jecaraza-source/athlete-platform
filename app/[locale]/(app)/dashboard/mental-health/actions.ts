@@ -35,7 +35,7 @@ export async function schedulePsychAssessment(input: { athleteId: string; instru
   if (!athlete || !instrument) return { error: 'Atleta o instrumento no disponible.' };
   const { count } = await supabaseAdmin.from('psych_instrument_items').select('id', { count: 'exact', head: true }).eq('instrument_id', instrument.id);
   if (count !== instrument.item_count) return { error: 'El instrumento no tiene todos sus reactivos cargados.' };
-  const { data: assessment, error } = await supabaseAdmin.from('psych_assessments').insert({ athlete_id: athlete.id, instrument_id: instrument.id, scheduled_for: date.toISOString(), context: 'scheduled' }).select('id').single();
+  const { data: assessment, error } = await supabaseAdmin.from('psych_assessments').insert({ athlete_id: athlete.id, instrument_id: instrument.id, scheduled_by: user.profile.id, scheduled_for: date.toISOString(), context: 'scheduled' }).select('id').single();
   if (error || !assessment) return { error: error?.message ?? 'No fue posible programar la evaluación.' };
   const key = `psych-assessment:${assessment.id}`;
   await supabaseAdmin.from('email_jobs').insert({ recipient_profile_id: athlete.id, recipient_email: athlete.email, subject: 'Tienes una evaluación psicológica pendiente', html_body: `<p>Hola ${athlete.first_name},</p><p>Tienes pendiente la evaluación <strong>${instrument.name}</strong>.</p>`, plain_body: `Tienes pendiente la evaluación ${instrument.name}.`, idempotency_key: `${key}:email`, scheduled_at: new Date().toISOString() });
