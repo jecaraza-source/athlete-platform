@@ -61,6 +61,15 @@ export default function AppLayout() {
         name="calendar/create"
         options={{ title: 'Nuevo evento', headerBackTitle: 'Calendario' }}
       />
+
+      <Stack.Screen
+        name="psych/[assessmentId]"
+        options={{ title: 'Prueba psicológica', headerBackTitle: 'Inicio' }}
+      />
+      <Stack.Screen
+        name="psych/history"
+        options={{ title: 'Historial psicológico', headerBackTitle: 'Inicio' }}
+      />
     </Stack>
   );
 }

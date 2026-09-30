@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 
 type Athlete = {
   id: string;
+  athlete_code: string | null;
   first_name: string;
   last_name: string;
   status: string;
@@ -27,13 +28,13 @@ type Athlete = {
 export default async function AthletesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; discipline?: string; diagnostic?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; folio?: string; status?: string; discipline?: string; diagnostic?: string; page?: string }>;
 }) {
   await requirePermission('view_athletes');
   const t  = await getTranslations('athletes');
   const tc = await getTranslations('common');
 
-  const { q = '', status = '', discipline = '', diagnostic = '', page: pageStr = '1' } = await searchParams;
+  const { q = '', folio = '', status = '', discipline = '', diagnostic = '', page: pageStr = '1' } = await searchParams;
   const page = Math.max(1, parseInt(pageStr, 10) || 1);
 
   // ───────────────────────────────────────────────────────────────────────
@@ -56,7 +57,7 @@ export default async function AthletesPage({
   // puts active athletes first, inactive athletes at the end.
   let baseQuery = supabaseAdmin
     .from('athletes')
-    .select('id, first_name, last_name, status, school_or_club')
+    .select('id, athlete_code, first_name, last_name, status, school_or_club')
     .order('status', { ascending: true })
     .order('last_name', { ascending: true });
 
@@ -70,6 +71,9 @@ export default async function AthletesPage({
   }
   if (status) {
     baseQuery = baseQuery.eq('status', status);
+  }
+  if (folio.trim()) {
+    baseQuery = baseQuery.ilike('athlete_code', `%${folio.trim()}%`);
   }
 
   const { data: baseData, error: baseError } = await baseQuery;
@@ -109,6 +113,7 @@ export default async function AthletesPage({
     const diag = diagMap[a.id as string] as Record<string, unknown> | undefined;
     return {
       id:                a.id as string,
+      athlete_code:      (a.athlete_code as string) ?? null,
       first_name:        a.first_name as string,
       last_name:         a.last_name as string,
       status:            a.status as string,
@@ -129,7 +134,7 @@ export default async function AthletesPage({
     );
   }
 
-  const hasActiveFilters = !!(q || status || discipline || diagnostic);
+  const hasActiveFilters = !!(q || folio || status || discipline || diagnostic);
 
   // Paginate the fully-filtered array
   const totalItems  = athletes.length;
@@ -145,6 +150,7 @@ export default async function AthletesPage({
 
       <AthletesFilter
         currentQ={q}
+        currentFolio={folio}
         currentStatus={status}
         currentDiscipline={discipline}
         currentDiagnostic={diagnostic}
@@ -164,6 +170,7 @@ export default async function AthletesPage({
             <thead>
               <tr className="border-b text-left text-gray-500">
                 <th className="pb-2 pr-4 font-medium">{t('name')}</th>
+                <th className="pb-2 pr-4 font-medium">{t('folio')}</th>
                 <th className="pb-2 pr-4 font-medium">{t('colDiscipline')}</th>
                 <th className="pb-2 pr-4 font-medium">{t('colDiagnostic')}</th>
                 <th className="pb-2 font-medium">{t('status')}</th>
@@ -182,6 +189,9 @@ export default async function AthletesPage({
                       >
                         {athlete.first_name} {athlete.last_name}
                       </Link>
+                    </td>
+                    <td className="py-3 pr-4 font-mono text-xs text-gray-600">
+                      {athlete.athlete_code ?? '—'}
                     </td>
                     <td className="py-3 pr-4 text-gray-600">
                       {getDisciplineLabel(athlete.discipline)}

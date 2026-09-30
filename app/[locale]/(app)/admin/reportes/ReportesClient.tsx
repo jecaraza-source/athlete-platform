@@ -181,8 +181,7 @@ function buildPrintDocument(
     <tr>
       <td style="font-weight:700">${r.service}</td>
       <td style="text-align:center">${r.scheduled}</td>
-      <td style="text-align:center">${r.attendedPresential}</td>
-      <td style="text-align:center">${r.attendedRemote === null ? 'NO APLICA' : r.attendedRemote}</td>
+      <td style="text-align:center">${r.attended}</td>
       <td style="text-align:center">${r.noShow}</td>
     </tr>`).join('');
 
@@ -206,13 +205,12 @@ function buildPrintDocument(
       </td>
       <td style="text-align:center">${s.scheduled}</td>
       <td style="text-align:center">${s.upcoming}</td>
-      <td style="text-align:center">${s.attendedPresential}</td>
-      <td style="text-align:center">${s.attendedRemote}</td>
+      <td style="text-align:center">${s.attended}</td>
       <td style="text-align:center">${s.rescheduled}</td>
       <td style="text-align:center">${s.noShow}</td>
       <td style="text-align:center">${s.attendanceRate !== null ? s.attendanceRate + '%' : '—'}</td>
     </tr>`).join('')
-    : '<tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:12px">Sin actividad de staff médico para este período</td></tr>';
+    : '<tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:12px">Sin actividad de staff médico para este período</td></tr>';
 
   const disciplineRows = data.disciplines.length > 0
     ? data.disciplines.map((d: ReportDisciplineRow) => `
@@ -291,8 +289,7 @@ function buildPrintDocument(
       <tr>
         <th style="width:18%">SERVICIOS</th>
         <th style="width:16.4%;text-align:center">TOTAL CITAS PROGRAMADAS</th>
-        <th style="width:16.4%;text-align:center">CITAS ATENDIDAS PRESENCIAL</th>
-        <th style="width:16.4%;text-align:center">CITAS ATENDIDAS VÍA REMOTA</th>
+        <th style="width:32.8%;text-align:center">CITAS ATENDIDAS</th>
         <th style="width:18%;text-align:center">CITAS NO ATENDIDAS</th>
       </tr>
     </thead>
@@ -320,8 +317,7 @@ function buildPrintDocument(
         <th style="width:16%">NOMBRE / ROL</th>
         <th style="width:12%;text-align:center">TOTAL</th>
         <th style="width:12%;text-align:center">PRÓXIMAS</th>
-        <th style="width:12%;text-align:center">PRESENCIAL</th>
-        <th style="width:12%;text-align:center">REMOTO</th>
+        <th style="width:24%;text-align:center">ATENDIDAS</th>
         <th style="width:12%;text-align:center">REPROG.</th>
         <th style="width:12%;text-align:center">NO ATEND.</th>
         <th style="width:12%;text-align:center">% ASIST.</th>
@@ -465,8 +461,7 @@ function ServiceTable({ rows, loading }: { rows: ReportServiceRow[]; loading: bo
           <tr className="border-b border-[#2A2D3A] bg-[#1A1D27]">
             <th className="px-4 py-3 text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Servicio</th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Citas Programadas</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Atendidas Presencial</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Atendidas Remoto</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Atendidas</th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">No Atendidas</th>
           </tr>
         </thead>
@@ -483,14 +478,7 @@ function ServiceTable({ rows, loading }: { rows: ReportServiceRow[]; loading: bo
                 <span className="rounded bg-[#2A2D3A] px-2 py-0.5 text-[#F1F5F9] font-medium">{r.scheduled}</span>
               </td>
               <td className="px-4 py-3 text-center">
-                <span className="rounded bg-emerald-900/30 px-2 py-0.5 text-emerald-300 font-medium">{r.attendedPresential}</span>
-              </td>
-              <td className="px-4 py-3 text-center">
-                {r.attendedRemote === null ? (
-                  <span className="text-[#94A3B8] text-xs italic">NO APLICA</span>
-                ) : (
-                  <span className="rounded bg-blue-900/30 px-2 py-0.5 text-blue-300 font-medium">{r.attendedRemote}</span>
-                )}
+                <span className="rounded bg-emerald-900/30 px-2 py-0.5 text-emerald-300 font-medium">{r.attended}</span>
               </td>
               <td className="px-4 py-3 text-center">
                 {r.noShow > 0 ? (
@@ -529,8 +517,7 @@ function StaffMemberTable({ rows, loading }: { rows: ReportStaffMemberRow[]; loa
               <div>Próximas</div>
               <div className="text-[10px] font-normal text-[#64748B] normal-case tracking-normal mt-0.5">futuras</div>
             </th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Presencial</th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Remoto</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Atendidas</th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">Reprog.</th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">No Atend.</th>
             <th className="px-4 py-3 text-center text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">% Asist.</th>
@@ -559,14 +546,7 @@ function StaffMemberTable({ rows, loading }: { rows: ReportStaffMemberRow[]; loa
                 )}
               </td>
               <td className="px-4 py-3 text-center">
-                <span className="rounded bg-emerald-900/30 px-2 py-0.5 text-emerald-300 font-medium">{s.attendedPresential}</span>
-              </td>
-              <td className="px-4 py-3 text-center">
-                {s.attendedRemote > 0 ? (
-                  <span className="rounded bg-blue-900/30 px-2 py-0.5 text-blue-300 font-medium">{s.attendedRemote}</span>
-                ) : (
-                  <span className="text-[#94A3B8]">0</span>
-                )}
+                <span className="rounded bg-emerald-900/30 px-2 py-0.5 text-emerald-300 font-medium">{s.attended}</span>
               </td>
               <td className="px-4 py-3 text-center">
                 {s.rescheduled > 0 ? (
@@ -741,7 +721,6 @@ function TrainingDisciplineTable({ rows, loading }: { rows: ReportTrainingDiscip
 const CHT = {
   scheduled:  '#6366f1',
   presential: '#34d399',
-  remote:     '#60a5fa',
   noShow:     '#f87171',
   plans:      '#a78bfa',
   athletes:   '#2dd4bf',
@@ -761,11 +740,10 @@ const LEG_STY = { fontSize: 11, color: '#94A3B8', paddingTop: 6 };
 // ─── Chart: attendance donut ──────────────────────────────────────────────────
 
 function AttendancePieChart({
-  presential, remote, noShow, id,
-}: { presential: number; remote: number; noShow: number; id?: string }) {
+  attended, noShow, id,
+}: { attended: number; noShow: number; id?: string }) {
   const slices = [
-    { name: 'Presencial',   value: presential, color: CHT.presential },
-    { name: 'Remoto',       value: remote,     color: CHT.remote     },
+    { name: 'Atendidas',    value: attended,   color: CHT.presential },
     { name: 'No Atendidas', value: noShow,     color: CHT.noShow     },
   ].filter(s => s.value > 0);
 
@@ -807,8 +785,7 @@ function ServicesBarChart({ rows, id }: { rows: ReportServiceRow[]; id?: string 
   const chartData = rows.map(r => ({
     name:              r.service,
     Programadas:       r.scheduled,
-    Presencial:        r.attendedPresential,
-    Remoto:            r.attendedRemote ?? 0,
+    Atendidas:         r.attended,
     'No Atendidas':    r.noShow,
   }));
   return (
@@ -824,8 +801,7 @@ function ServicesBarChart({ rows, id }: { rows: ReportServiceRow[]; id?: string 
           <Tooltip contentStyle={TOOLTIP_STYLE} />
           <Legend iconType="square" wrapperStyle={LEG_STY} />
           <Bar dataKey="Programadas"     fill={CHT.scheduled}  radius={[3,3,0,0]} />
-          <Bar dataKey="Presencial"      fill={CHT.presential} radius={[3,3,0,0]} />
-          <Bar dataKey="Remoto"          fill={CHT.remote}     radius={[3,3,0,0]} />
+          <Bar dataKey="Atendidas"       fill={CHT.presential} radius={[3,3,0,0]} />
           <Bar dataKey="No Atendidas"    fill={CHT.noShow}     radius={[3,3,0,0]} />
         </BarChart>
       </ResponsiveContainer>
@@ -996,9 +972,8 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
 
   // Summary KPIs for the services section
   const totalScheduled  = data.services.reduce((s, r) => s + r.scheduled,          0);
-  const totalAttended   = data.services.reduce((s, r) => s + r.attendedPresential,  0);
+  const totalAttended   = data.services.reduce((s, r) => s + r.attended,             0);
   const totalNoShow     = data.services.reduce((s, r) => s + r.noShow,              0);
-  const totalRemote     = data.services.reduce((s, r) => s + (r.attendedRemote ?? 0), 0);
 
   return (
     <div className="min-h-screen bg-[#0F1117] text-[#F1F5F9]">
@@ -1306,8 +1281,7 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
           {!loading && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <StatCard label="Citas Programadas"    value={totalScheduled} />
-              <StatCard label="Atendidas Presencial" value={totalAttended}  accent />
-              <StatCard label="Atendidas Remoto"     value={totalRemote}    accent />
+              <StatCard label="Atendidas"            value={totalAttended}  accent />
               <StatCard label="No Atendidas"         value={totalNoShow} />
             </div>
           )}
@@ -1316,8 +1290,7 @@ export default function ReportesClient({ defaultPeriod, initialMeta, initialData
           {!loading && data.services.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-3 mb-4">
               <AttendancePieChart
-                presential={totalAttended}
-                remote={totalRemote}
+                attended={totalAttended}
                 noShow={totalNoShow}
                 id="chart-attendance-pie"
               />

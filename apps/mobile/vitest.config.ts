@@ -1,11 +1,12 @@
 import { defineConfig } from 'vitest/config';
-import tsconfigPaths from 'vite-tsconfig-paths';
 import path from 'path';
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  root: __dirname,
   resolve: {
+    tsconfigPaths: false,
     alias: {
+      '@': path.resolve(__dirname),
       // react-native-url-polyfill adds side effects at module load time that
       // break in Node. Since we mock @/lib/supabase entirely in tests, this
       // stub prevents the polyfill from loading in the test environment.

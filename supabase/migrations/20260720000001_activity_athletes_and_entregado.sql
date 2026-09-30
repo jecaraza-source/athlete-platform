@@ -46,16 +46,41 @@ CREATE INDEX IF NOT EXISTS idx_activity_athletes_athlete
 -- RLS: solo staff autenticado puede leer; solo admin puede escribir
 ALTER TABLE public.activity_athletes ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Authenticated read activity_athletes"
-  ON public.activity_athletes FOR SELECT TO authenticated USING (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'activity_athletes'
+      AND policyname = 'Authenticated read activity_athletes'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Authenticated read activity_athletes"
+      ON public.activity_athletes FOR SELECT TO authenticated USING (true)';
+  END IF;
 
-CREATE POLICY "Admin insert activity_athletes"
-  ON public.activity_athletes FOR INSERT TO authenticated
-  WITH CHECK (true);  -- control real en Server Actions (assertAdminAccess)
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'activity_athletes'
+      AND policyname = 'Admin insert activity_athletes'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Admin insert activity_athletes"
+      ON public.activity_athletes FOR INSERT TO authenticated WITH CHECK (true)';
+  END IF;
 
-CREATE POLICY "Admin delete activity_athletes"
-  ON public.activity_athletes FOR DELETE TO authenticated
-  USING (true);       -- control real en Server Actions
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'activity_athletes'
+      AND policyname = 'Admin delete activity_athletes'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Admin delete activity_athletes"
+      ON public.activity_athletes FOR DELETE TO authenticated USING (true)';
+  END IF;
+END $$;
 
 COMMENT ON TABLE public.activity_athletes
   IS 'Relación actividad ↔ atleta beneficiario. Permite generar la Base de Datos de Beneficiarios de cada reporte entregable.';
