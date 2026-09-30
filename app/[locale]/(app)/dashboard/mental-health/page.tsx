@@ -95,18 +95,11 @@ export default async function MentalHealthDashboardPage() {
     <main className="max-w-7xl p-8">
       <header className="mb-8 border-l-4 border-[#C0172C] pl-4">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Salud mental</p>
-        <h1 className="mt-1 text-3xl font-bold text-[#2D2D2D]">Estado de licenciamiento por instrumento</h1>
+        <h1 className="mt-1 text-3xl font-bold text-[#2D2D2D]">Gestión clínica</h1>
         <p className="mt-2 max-w-3xl text-sm text-gray-600">
-          Aprueba el estado de licencia y registra las notas o el alcance de la autorización correspondiente.
+          Programa evaluaciones, revisa resultados y administra la disponibilidad de los instrumentos.
         </p>
       </header>
-      <LicenseStatusManager instruments={instruments.map((instrument) => ({
-        id: instrument.id,
-        code: instrument.code,
-        name: instrument.name,
-        licenseStatus: instrument.license_status,
-        licenseNotes: instrument.license_notes ?? '',
-      }))} />
       <SchedulePsychAssessment
         athletes={(athleteRows ?? []).map((athlete) => ({ id: athlete.id as string, label: `${athlete.first_name} ${athlete.last_name}`.trim() }))}
         instruments={instruments.filter((instrument) => instrument.license_status === 'licensed' && instrument.is_active && itemCounts.get(instrument.id) === instrument.item_count).map((instrument) => ({ id: instrument.id, label: `${instrument.code} — ${instrument.name}` }))}
@@ -120,6 +113,20 @@ export default async function MentalHealthDashboardPage() {
         licenseStatus: instrument.license_status,
       }))} />
       <PsychAlertsManager alerts={alerts} />
+      <section className="mt-10">
+        <div className="mb-4">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Administración</p>
+          <h2 className="mt-1 text-2xl font-bold text-[#2D2D2D]">Estado de licenciamiento por instrumento</h2>
+          <p className="mt-1 text-sm text-gray-600">Aprueba el estado de licencia y registra las notas o el alcance de la autorización correspondiente.</p>
+        </div>
+        <LicenseStatusManager instruments={instruments.map((instrument) => ({
+          id: instrument.id,
+          code: instrument.code,
+          name: instrument.name,
+          licenseStatus: instrument.license_status,
+          licenseNotes: instrument.license_notes ?? '',
+        }))} />
+      </section>
     </main>
   );
 }
