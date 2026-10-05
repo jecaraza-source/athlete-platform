@@ -55,7 +55,6 @@ export type PsychologicalHistoryItem = {
   instrumentName: string;
 };
 
-const ALLOW_TECHNICAL_FIXTURES = process.env.EXPO_PUBLIC_PSYCH_ALLOW_TEST_FIXTURES === 'true';
 export async function submitPsychResponses(
   assessmentId: string,
   responses: Array<{ item_code: string; raw_value: string }>,
@@ -73,26 +72,11 @@ export async function submitPsychResponses(
 }
 
 export async function listPsychologicalHistory(): Promise<PsychologicalHistoryItem[]> {
-  let query = supabase
-    .from('psych_assessments')
-    .select('id, completed_at, psych_instruments!inner(name, is_test_only)')
-    .eq('published_to_athlete', true)
-    .order('completed_at', { ascending: false });
-  if (!ALLOW_TECHNICAL_FIXTURES) {
-    query = query.eq('psych_instruments.is_test_only', false);
-  }
-
-  const { data, error } = await query;
+  const { data, error } = await supabase.rpc('get_published_psychological_history');
   if (error || !data) throw new Error(error?.message ?? 'No fue posible cargar el histórico.');
-
-  return data.map((row) => {
-    const instrument = Array.isArray(row.psych_instruments)
-      ? row.psych_instruments[0]
-      : row.psych_instruments;
-    return {
-      id: row.id,
-      completedAt: row.completed_at,
-      instrumentName: instrument?.name ?? 'Instrumento',
-    };
-  });
+  return data.map((row) => ({
+    id: row.id,
+    completedAt: row.completed_at,
+    instrumentName: row.instrument_name ?? 'Instrumento',
+  }));
 }

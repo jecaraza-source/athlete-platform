@@ -12,6 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { calculatePsychScores } from '@/lib/psych/scoring';
+import { validatePsychSubmission } from '@/lib/psych/submission';
 
 export const runtime = 'nodejs';
 
@@ -115,161 +116,87 @@ export async function POST(
   if ('error' in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  const { data: testAssessment } = await supabaseAdmin
+  const { data: assessment, error: assessmentError } = await supabaseAdmin
     .from('psych_assessments')
-    .select('id, is_test_run, psych_instruments!inner(id, code, item_count)')
+    .select('id, is_test_run, athlete_id, instrument_id, scheduled_by, scheduled_for, psych_instruments!inner(id, code, name, item_count, is_active, is_test_only, license_status)')
     .eq('id', assessmentId)
     .eq('athlete_id', profile.id)
     .eq('status', 'pending')
     .maybeSingle();
 
-  if (testAssessment?.is_test_run) {
-    const testInstrument = Array.isArray(testAssessment.psych_instruments)
-      ? testAssessment.psych_instruments[0]
-      : testAssessment.psych_instruments;
-    const { data: testItems } = testInstrument
-      ? await supabaseAdmin
-        .from('psych_instrument_items')
-        .select('item_code, subscale_code, is_reverse_scored, response_options')
-        .eq('instrument_id', testInstrument.id)
-        .order('item_order')
-      : { data: null };
-    if (!testInstrument || !testItems || parsed.responses.length !== testInstrument.item_count) {
-      return NextResponse.json({ error: 'El cuestionario de prueba no está disponible.' }, { status: 409 });
-    }
-    try {
-      const scores = calculatePsychScores(testInstrument.code, testItems, parsed.responses);
-      return NextResponse.json({
-        ok: true,
-        assessmentId,
-        complete: true,
-        isTestRun: true,
-        scores,
-        message: 'Prueba completada. Las respuestas y resultados no fueron guardados.',
-      });
-    } catch {
-      return NextResponse.json({ error: 'No fue posible calcular la prueba.' }, { status: 400 });
-    }
-  }
-
-  // ── FASE 1: scoped client + RLS-authorized raw-response insert ──────────
-  //
-  // Insert one row at a time. PostgREST requires SELECT permission for an
-  // ON CONFLICT/ignore-duplicates upsert, but athletes intentionally cannot
-  // read raw responses. Plain inserts keep return=minimal and let duplicate
-  // item codes be handled without overwriting an existing response.
-  const attemptedCount = parsed.responses.length;
-  let insertedCount = 0;
-  let duplicateCount = 0;
-
-  for (const response of parsed.responses) {
-    const { error: insertError } = await supabase
-      .from('psych_responses')
-      .insert({
-        assessment_id: assessmentId,
-        ...response,
-      });
-
-    if (!insertError) {
-      insertedCount += 1;
-      continue;
-    }
-    if (insertError.code === '23505') {
-      duplicateCount += 1;
-      continue;
-    }
-    if (insertError.code === '42501') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    return NextResponse.json(
-      {
-        error: insertError.message,
-        attemptedCount,
-        insertedCount,
-        duplicateCount,
-      },
-      { status: 500 }
-    );
-  }
-
-  // Partial and redundant retries preserve existing response values. The
-  // service-role read below runs only after the RLS-scoped write succeeded;
-  // it establishes completeness, not athlete authorization.
-  const { data: assessment, error: assessmentError } = await supabaseAdmin
-    .from('psych_assessments')
-    .select('athlete_id, instrument_id, scheduled_by')
-    .eq('id', assessmentId)
-    .maybeSingle();
-
   if (assessmentError || !assessment) {
-    return NextResponse.json(
-      { error: 'Assessment not found after response insertion.' },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: 'Assessment not found or no longer available.' }, { status: 404 });
+  }
+  if (assessment.scheduled_for && new Date(assessment.scheduled_for) > new Date()) {
+    return NextResponse.json({ error: 'Esta evaluación aún no está disponible.' }, { status: 409 });
   }
 
-  const [
-    { data: instrument, error: instrumentError },
-    { count: registeredItemCount, error: countError },
-  ] = await Promise.all([
-    supabaseAdmin
-      .from('psych_instruments')
-      .select('id, code, name, item_count')
-      .eq('id', assessment.instrument_id)
-      .maybeSingle(),
-    // UNIQUE (assessment_id, item_code) makes this exact row count equal to
-    // COUNT(DISTINCT item_code) for the assessment.
-    supabaseAdmin
-      .from('psych_responses')
-      .select('id', { count: 'exact', head: true })
-      .eq('assessment_id', assessmentId),
-  ]);
+  const instrument = Array.isArray(assessment.psych_instruments)
+    ? assessment.psych_instruments[0]
+    : assessment.psych_instruments;
+  if (!instrument) return NextResponse.json({ error: 'Instrument not found.' }, { status: 404 });
 
-  if (instrumentError || !instrument || countError || registeredItemCount === null) {
-    return NextResponse.json(
-      { error: 'Unable to determine assessment completion.' },
-      { status: 500 }
-    );
-  }
-
-  if (registeredItemCount !== instrument.item_count) {
-    return NextResponse.json({
-      ok: true,
-      assessmentId,
-      complete: false,
-      message: insertedCount === 0
-        ? 'All submitted responses were already recorded.'
-        : undefined,
-      attemptedCount,
-      insertedCount,
-      duplicateCount,
-      registeredItemCount,
-      expectedItemCount: instrument.item_count,
-    });
-  }
-
-  const [{ data: items }, { data: savedResponses }] = await Promise.all([
-    supabaseAdmin
+  const { data: items } = await supabaseAdmin
       .from('psych_instrument_items')
       .select('item_code, subscale_code, is_reverse_scored, response_options')
       .eq('instrument_id', instrument.id)
-      .order('item_order'),
-    supabaseAdmin
-      .from('psych_responses')
-      .select('item_code, raw_value')
-      .eq('assessment_id', assessmentId),
-  ]);
+      .order('item_order');
 
-  if (!items || !savedResponses || items.length !== instrument.item_count) {
+  if (!items || items.length !== instrument.item_count) {
     return NextResponse.json({ error: 'Unable to load the scoring key.' }, { status: 500 });
   }
+  const validation = validatePsychSubmission(items, parsed.responses);
+  if (validation.error) return NextResponse.json({ error: validation.error }, { status: 400 });
 
   let scores;
   try {
-    scores = calculatePsychScores(instrument.code, items, savedResponses);
+    scores = calculatePsychScores(instrument.code, items, parsed.responses);
   } catch {
     return NextResponse.json({ error: 'Unable to calculate the assessment scores.' }, { status: 500 });
+  }
+  if (assessment.is_test_run) {
+    return NextResponse.json({
+      ok: true,
+      assessmentId,
+      complete: true,
+      isTestRun: true,
+      scores,
+      message: 'Prueba completada. Las respuestas y resultados no fueron guardados.',
+    });
+  }
+  if (
+    !instrument.is_active ||
+    instrument.is_test_only ||
+    !['licensed', 'not_required'].includes(instrument.license_status)
+  ) {
+    return NextResponse.json({ error: 'No questionnaire is available for this assessment.' }, { status: 404 });
+  }
+
+  const { data: existingResponses, error: existingResponsesError } = await supabaseAdmin
+    .from('psych_responses')
+    .select('item_code, raw_value')
+    .eq('assessment_id', assessmentId);
+  if (existingResponsesError) return NextResponse.json({ error: existingResponsesError.message }, { status: 500 });
+
+  let insertedCount = 0;
+  if (existingResponses?.length) {
+    const existingByCode = new Map(existingResponses.map((response) => [response.item_code, response.raw_value]));
+    const matchesSubmission = existingResponses.length === parsed.responses.length &&
+      parsed.responses.every((response) => existingByCode.get(response.item_code) === response.raw_value);
+    if (!matchesSubmission) {
+      return NextResponse.json({ error: 'Esta evaluación ya contiene respuestas que no pueden reemplazarse.' }, { status: 409 });
+    }
+  } else {
+    const { error: insertError } = await supabase
+      .from('psych_responses')
+      .insert(parsed.responses.map((response) => ({ assessment_id: assessmentId, ...response })));
+    if (insertError) {
+      return NextResponse.json(
+        { error: insertError.code === '42501' ? 'Forbidden' : insertError.message },
+        { status: insertError.code === '42501' ? 403 : 500 }
+      );
+    }
+    insertedCount = parsed.responses.length;
   }
 
   if (scores.length > 0) {
@@ -333,10 +260,7 @@ export async function POST(
     ok: true,
     assessmentId,
     complete: true,
-    attemptedCount,
     insertedCount,
-    duplicateCount,
-    registeredItemCount,
     expectedItemCount: instrument.item_count,
     message: instrument.code === 'BASC-3-PRS-C'
       ? 'Tus respuestas fueron registradas para revisión profesional.'

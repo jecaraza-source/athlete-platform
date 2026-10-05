@@ -35,6 +35,7 @@ export default async function AthletePsychDashboardPage() {
     .select('id, scheduled_for, psych_instruments!inner(id, code, name, item_count, is_active, is_test_only, license_status)')
     .eq('athlete_id', user.profile.id)
     .eq('status', 'pending')
+    .or(`scheduled_for.is.null,scheduled_for.lte.${new Date().toISOString()}`)
     .eq('psych_instruments.is_active', true)
     .eq('psych_instruments.is_test_only', false)
     .in('psych_instruments.license_status', ['licensed', 'not_required'])

@@ -40,6 +40,7 @@ export async function GET(
     .eq('id', assessmentId)
     .eq('athlete_id', profile.id)
     .eq('status', 'pending')
+    .or(`scheduled_for.is.null,scheduled_for.lte.${new Date().toISOString()}`)
     .eq('psych_instruments.is_active', true)
     .in('psych_instruments.license_status', ['licensed', 'not_required']);
   if (!allowTechnicalFixtures) {
