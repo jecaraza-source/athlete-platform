@@ -11,7 +11,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { calculatePsychScores } from '@/lib/psych/scoring';
+import { derivePsychAlerts } from '@/lib/psych/alerts';
+import { calculatePsychScores, supportsAutomaticScoring, type CalculatedScore } from '@/lib/psych/scoring';
 import { validatePsychSubmission } from '@/lib/psych/submission';
 
 export const runtime = 'nodejs';
@@ -118,7 +119,7 @@ export async function POST(
   }
   const { data: assessment, error: assessmentError } = await supabaseAdmin
     .from('psych_assessments')
-    .select('id, is_test_run, athlete_id, instrument_id, scheduled_by, scheduled_for, psych_instruments!inner(id, code, name, item_count, is_active, is_test_only, license_status)')
+    .select('id, is_test_run, athlete_id, instrument_id, scheduled_by, scheduled_for, psych_instruments!inner(id, code, name, item_count, is_active, is_test_only, license_status, scoring_mode)')
     .eq('id', assessmentId)
     .eq('athlete_id', profile.id)
     .eq('status', 'pending')
@@ -148,11 +149,13 @@ export async function POST(
   const validation = validatePsychSubmission(items, parsed.responses);
   if (validation.error) return NextResponse.json({ error: validation.error }, { status: 400 });
 
-  let scores;
-  try {
-    scores = calculatePsychScores(instrument.code, items, parsed.responses);
-  } catch {
-    return NextResponse.json({ error: 'Unable to calculate the assessment scores.' }, { status: 500 });
+  let scores: CalculatedScore[] = [];
+  if (instrument.scoring_mode === 'automated' && supportsAutomaticScoring(instrument.code)) {
+    try {
+      scores = calculatePsychScores(instrument.code, items, parsed.responses);
+    } catch {
+      return NextResponse.json({ error: 'Unable to calculate the assessment scores.' }, { status: 500 });
+    }
   }
   if (assessment.is_test_run) {
     return NextResponse.json({
@@ -213,10 +216,26 @@ export async function POST(
       );
     if (scoreError) return NextResponse.json({ error: scoreError.message }, { status: 500 });
   }
+  const alerts = derivePsychAlerts(instrument.code, scores);
+  if (alerts.length > 0) {
+    const { error: alertError } = await supabaseAdmin
+      .from('psych_alerts')
+      .upsert(
+        alerts.map((alert) => ({
+          assessment_id: assessmentId,
+          athlete_id: assessment.athlete_id,
+          alert_type: alert.type,
+          severity: alert.severity,
+          notes: alert.notes,
+        })),
+        { onConflict: 'assessment_id,alert_type', ignoreDuplicates: true }
+      );
+    if (alertError) return NextResponse.json({ error: alertError.message }, { status: 500 });
+  }
 
   const { error: completionError } = await supabaseAdmin
     .from('psych_assessments')
-    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .update({ status: 'under_review', completed_at: new Date().toISOString() })
     .eq('id', assessmentId)
     .eq('status', 'pending');
   if (completionError) return NextResponse.json({ error: completionError.message }, { status: 500 });
@@ -262,8 +281,6 @@ export async function POST(
     complete: true,
     insertedCount,
     expectedItemCount: instrument.item_count,
-    message: instrument.code === 'BASC-3-PRS-C'
-      ? 'Tus respuestas fueron registradas para revisión profesional.'
-      : 'Tus respuestas fueron registradas y el cuestionario fue completado.',
+    message: 'Tus respuestas fueron registradas y la evaluación quedó en revisión profesional.',
   });
 }

@@ -22,7 +22,7 @@ export async function PATCH(
   const { id: assessmentId } = await params;
   const { data: assessment, error: readError } = await supabaseAdmin
     .from('psych_assessments')
-    .select('id, status, psych_instruments!inner(is_test_only)')
+    .select('id, status, approved_by, approved_at, clinical_summary, psych_instruments!inner(is_test_only)')
     .eq('id', assessmentId)
     .eq('psych_instruments.is_test_only', false)
     .maybeSingle();
@@ -30,9 +30,14 @@ export async function PATCH(
   if (readError || !assessment) {
     return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
   }
-  if (assessment.status !== 'completed') {
+  if (
+    assessment.status !== 'approved' ||
+    !assessment.approved_by ||
+    !assessment.approved_at ||
+    !assessment.clinical_summary?.trim()
+  ) {
     return NextResponse.json(
-      { error: 'Only completed assessments can be published.' },
+      { error: 'Only clinically approved assessments with a summary can be published.' },
       { status: 409 }
     );
   }

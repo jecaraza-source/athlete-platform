@@ -14,7 +14,7 @@ export default async function MentalHealthAssessmentDetailPage({ params }: { par
   const { id } = await params;
   const { data: assessmentRaw } = await supabaseAdmin
     .from('psych_assessments')
-    .select('id, status, published_to_athlete, profiles(first_name, last_name), psych_instruments!inner(name, is_test_only)')
+    .select('id, status, published_to_athlete, clinical_summary, reviewed_at, approved_at, profiles(first_name, last_name), psych_instruments!inner(name, is_test_only)')
     .eq('id', id)
     .eq('psych_instruments.is_test_only', false)
     .maybeSingle();
@@ -24,6 +24,9 @@ export default async function MentalHealthAssessmentDetailPage({ params }: { par
     id: string;
     status: string;
     published_to_athlete: boolean;
+    clinical_summary: string | null;
+    reviewed_at: string | null;
+    approved_at: string | null;
     profiles: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null;
     psych_instruments: { name: string } | { name: string }[] | null;
   };
@@ -45,7 +48,11 @@ export default async function MentalHealthAssessmentDetailPage({ params }: { par
         assessmentId={assessment.id}
         assessmentStatus={assessment.status}
         published={assessment.published_to_athlete}
-        canEdit={user.permissions.has('psych.write_interpretation')}
+        clinicalSummary={assessment.clinical_summary ?? ''}
+        reviewedAt={assessment.reviewed_at}
+        approvedAt={assessment.approved_at}
+        canEdit={user.permissions.has('psych.write_interpretation') && assessment.status === 'under_review' && !assessment.published_to_athlete}
+        canPublish={user.permissions.has('psych.publish_to_athlete')}
         scores={(scoreRows ?? []).map((score) => ({ id: score.id as string, subscaleCode: score.subscale_code as string, rawScore: Number(score.raw_score), band: score.band as string | null, interpretationText: score.interpretation_text as string | null }))}
         responses={(responseRows ?? []).map((response) => ({ itemCode: response.item_code as string, rawValue: response.raw_value as string, createdAt: response.created_at as string }))}
       />

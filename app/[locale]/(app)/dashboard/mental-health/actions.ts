@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/rbac/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
-const LICENSE_STATUSES = new Set([
+const LICENSE_CHECK_STATUSES = new Set([
   'pending_review',
   'licensed',
   'not_required',
@@ -45,27 +45,111 @@ export async function schedulePsychAssessment(input: { athleteId: string; instru
   return {};
 }
 
-export async function savePsychInstrumentLicense(input: {
+export async function savePsychClinicalReview(input: {
+  assessmentId: string;
+  clinicalSummary: string;
+}): Promise<{ error?: string }> {
+  const { user, error: accessError } = await requireMentalHealthPermission('psych.write_interpretation');
+  if (!user?.profile || accessError) return { error: accessError ?? 'No autorizado.' };
+  const summary = input.clinicalSummary.trim();
+  if (!summary) return { error: 'El resumen clínico es obligatorio.' };
+
+  const { error } = await supabaseAdmin
+    .from('psych_assessments')
+    .update({
+      clinical_summary: summary,
+      reviewed_by: user.profile.id,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq('id', input.assessmentId)
+    .eq('status', 'under_review')
+    .eq('published_to_athlete', false);
+  if (error) return { error: error.message };
+
+  revalidatePath('/dashboard/mental-health');
+  revalidatePath(`/dashboard/mental-health/assessments/${input.assessmentId}`);
+  return {};
+}
+
+export async function approvePsychAssessment(input: {
+  assessmentId: string;
+}): Promise<{ error?: string }> {
+  const { user, error: accessError } = await requireMentalHealthPermission('psych.write_interpretation');
+  if (!user?.profile || accessError) return { error: accessError ?? 'No autorizado.' };
+
+  const { data: assessment } = await supabaseAdmin
+    .from('psych_assessments')
+    .select('id, clinical_summary, psych_instruments!inner(is_test_only, scoring_mode)')
+    .eq('id', input.assessmentId)
+    .eq('status', 'under_review')
+    .eq('published_to_athlete', false)
+    .eq('psych_instruments.is_test_only', false)
+    .maybeSingle();
+  if (!assessment || !assessment.clinical_summary?.trim()) {
+    return { error: 'Guarda un resumen clínico antes de aprobar la evaluación.' };
+  }
+  const instrument = Array.isArray(assessment.psych_instruments) ? assessment.psych_instruments[0] : assessment.psych_instruments;
+  if (!instrument) return { error: 'Instrumento no encontrado.' };
+
+  if (instrument.scoring_mode === 'automated') {
+    const { data: scores } = await supabaseAdmin
+      .from('psych_scores')
+      .select('id, interpretation_text')
+      .eq('assessment_id', input.assessmentId);
+    if (!scores?.length || scores.some((score) => !score.interpretation_text?.trim())) {
+      return { error: 'Completa la interpretación clínica de todos los puntajes antes de aprobar.' };
+    }
+  }
+
+  const { error } = await supabaseAdmin
+    .from('psych_assessments')
+    .update({
+      status: 'approved',
+      approved_by: user.profile.id,
+      approved_at: new Date().toISOString(),
+    })
+    .eq('id', input.assessmentId)
+    .eq('status', 'under_review');
+  if (error) return { error: error.message };
+
+  revalidatePath('/dashboard/mental-health');
+  revalidatePath(`/dashboard/mental-health/assessments/${input.assessmentId}`);
+  return {};
+}
+
+export async function savePsychInstrumentLicenseCheck(input: {
   instrumentId: string;
+  permissionType: string;
   status: string;
   notes: string;
 }): Promise<{ error?: string }> {
   const { user, error: accessError } = await requireMentalHealthPermission('psych.manage_instruments');
   if (!user?.profile || accessError) return { error: accessError ?? 'No autorizado.' };
-  if (!LICENSE_STATUSES.has(input.status)) {
+  if (!LICENSE_CHECK_STATUSES.has(input.status)) {
     return { error: 'Estado de licenciamiento inválido.' };
   }
+  if (!['instrument_use', 'digital_reproduction', 'official_scoring', 'spanish_translation'].includes(input.permissionType)) {
+    return { error: 'Tipo de permiso inválido.' };
+  }
+  const { data: instrument } = await supabaseAdmin
+    .from('psych_instruments')
+    .select('id')
+    .eq('id', input.instrumentId)
+    .eq('is_test_only', false)
+    .maybeSingle();
+  if (!instrument) return { error: 'Instrumento no encontrado.' };
 
   const { error } = await supabaseAdmin
-    .from('psych_instruments')
-    .update({
-      license_status: input.status,
-      license_notes: input.notes.trim() || null,
-      license_verified_by: input.status === 'licensed' ? user.profile.id : null,
-      license_verified_at: input.status === 'licensed' ? new Date().toISOString() : null,
-    })
-    .eq('id', input.instrumentId)
-    .eq('is_test_only', false);
+    .from('psych_instrument_license_checks')
+    .upsert({
+      instrument_id: input.instrumentId,
+      permission_type: input.permissionType,
+      status: input.status,
+      notes: input.notes.trim() || null,
+      verified_by: user.profile.id,
+      verified_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'instrument_id,permission_type' });
   if (error) return { error: error.message };
   revalidatePath('/dashboard/mental-health');
   return {};
@@ -143,11 +227,15 @@ export async function savePsychScoreInterpretation(input: {
 
   const { data: score } = await supabaseAdmin
     .from('psych_scores')
-    .select('id, psych_assessments!inner(psych_instruments!inner(is_test_only))')
+    .select('id, psych_assessments!inner(status, published_to_athlete, psych_instruments!inner(is_test_only))')
     .eq('id', input.scoreId)
     .eq('psych_assessments.psych_instruments.is_test_only', false)
     .maybeSingle();
   if (!score) return { error: 'Puntaje no encontrado.' };
+  const assessment = Array.isArray(score.psych_assessments) ? score.psych_assessments[0] : score.psych_assessments;
+  if (!assessment || assessment.status !== 'under_review' || assessment.published_to_athlete) {
+    return { error: 'La interpretación sólo puede editarse durante la revisión clínica.' };
+  }
 
   const { error } = await supabaseAdmin
     .from('psych_scores')

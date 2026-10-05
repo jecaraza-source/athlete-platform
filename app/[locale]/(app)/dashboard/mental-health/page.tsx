@@ -32,12 +32,27 @@ export default async function MentalHealthDashboardPage() {
     license_notes: string | null;
     is_active: boolean;
   }>;
-  const [{ data: athleteRows }, { data: availableItemRows }] = await Promise.all([
+  const [{ data: athleteRows }, { data: availableItemRows }, { data: licenseCheckRows }] = await Promise.all([
     supabaseAdmin.from('profiles').select('id, first_name, last_name').eq('role', 'athlete').order('last_name'),
     supabaseAdmin.from('psych_instrument_items').select('instrument_id'),
+    supabaseAdmin.from('psych_instrument_license_checks').select('instrument_id, permission_type, status, notes'),
   ]);
   const itemCounts = new Map<string, number>();
   for (const row of availableItemRows ?? []) itemCounts.set(row.instrument_id as string, (itemCounts.get(row.instrument_id as string) ?? 0) + 1);
+  const licenseChecksByInstrument = new Map<string, Array<{
+    permissionType: 'instrument_use' | 'digital_reproduction' | 'official_scoring' | 'spanish_translation';
+    status: LicenseStatus;
+    notes: string;
+  }>>();
+  for (const row of licenseCheckRows ?? []) {
+    const checks = licenseChecksByInstrument.get(row.instrument_id as string) ?? [];
+    checks.push({
+      permissionType: row.permission_type as 'instrument_use' | 'digital_reproduction' | 'official_scoring' | 'spanish_translation',
+      status: row.status as LicenseStatus,
+      notes: (row.notes as string | null) ?? '',
+    });
+    licenseChecksByInstrument.set(row.instrument_id as string, checks);
+  }
 
 
   const { data: alertRows } = await supabaseAdmin
@@ -117,14 +132,14 @@ export default async function MentalHealthDashboardPage() {
         <div className="mb-4">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Administración</p>
           <h2 className="mt-1 text-2xl font-bold text-[#2D2D2D]">Estado de licenciamiento por instrumento</h2>
-          <p className="mt-1 text-sm text-gray-600">Aprueba el estado de licencia y registra las notas o el alcance de la autorización correspondiente.</p>
+          <p className="mt-1 text-sm text-gray-600">Registra evidencia para cada permiso; el estado global se deriva de las cuatro verificaciones.</p>
         </div>
         <LicenseStatusManager instruments={instruments.map((instrument) => ({
           id: instrument.id,
           code: instrument.code,
           name: instrument.name,
           licenseStatus: instrument.license_status,
-          licenseNotes: instrument.license_notes ?? '',
+          checks: licenseChecksByInstrument.get(instrument.id) ?? [],
         }))} />
       </section>
     </main>
