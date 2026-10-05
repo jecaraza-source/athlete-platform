@@ -62,3 +62,13 @@ export function canManageMedicalEventType(roleCodes: string[], eventType: string
       || allowedMedicalEventTypes(roleCodes).includes(eventType)
     );
 }
+
+/**
+ * Morning appointments are a coordinated care block. The medical, nutrition,
+ * and psychology teams can manage every service in this shift only.
+ */
+export function canManageMorningCalendar(roleCodes: string[]) {
+  return roleCodes.some((role) =>
+    ['medic', 'nutritionist', 'psychologist'].includes(role),
+  );
+}

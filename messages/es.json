@@ -52,7 +52,12 @@
     "finances": "Finanzas",
     "preferences": "Preferencias",
     "admin": "Admin",
-    "appointments": "Mis Citas"
+    "appointments": "Mis Citas",
+    "psychologicalTests": "Exámenes",
+    "psychAthlete": "Mi bienestar deportivo",
+    "psychCoach": "Equipo psicológico",
+    "psychClinical": "Gestión clínica",
+    "psychOverview": "Panorama de alertas"
   },
   "auth": {
     "signIn": "Iniciar sesión",
@@ -167,6 +172,8 @@
     "schoolOrClub": "Escuela / Club",
     "status": "Estado",
     "searchPlaceholder": "Buscar por nombre…",
+    "searchFolioPlaceholder": "Buscar por número de folio…",
+    "folio": "Folio",
     "colDiscipline": "Disciplina",
     "colDiagnostic": "Diagnóstico inicial",
     "filterAll": "Todos",

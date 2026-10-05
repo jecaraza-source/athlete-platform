@@ -150,7 +150,7 @@ describe('fetchReportData — Planes de entrenamiento por disciplina', () => {
 // =============================================================================
 
 describe('fetchReportData — Staff Médico section', () => {
-  it('tallies show/show_remote/rescheduled/no_show per staff member', async () => {
+  it('tallies in-person and remote attendance together per staff member', async () => {
     const queues = emptyQueues();
 
     const MEDIC_ID = 'staff-medic';
@@ -158,7 +158,7 @@ describe('fetchReportData — Staff Médico section', () => {
 
     queues.events = [{
       data: [
-        // Medic events: 1 show, 1 show_remote, 1 no_show (3 total)
+    // Medic events: 1 in-person, 1 remote, 1 no-show (3 total)
         { id: 'e1', title: 'MÉDICO 1', status: 'show',        created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
         { id: 'e2', title: 'MÉDICO 2', status: 'show_remote', created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
         { id: 'e3', title: 'MÉDICO 3', status: 'no_show',     created_by_profile_id: MEDIC_ID, start_at: PAST_ISO },
@@ -182,8 +182,7 @@ describe('fetchReportData — Staff Médico section', () => {
     const medic = result.staffMembers.find((s) => s.staffId === MEDIC_ID);
     expect(medic).toBeDefined();
     expect(medic!.scheduled).toBe(3);
-    expect(medic!.attendedPresential).toBe(1);
-    expect(medic!.attendedRemote).toBe(1);
+    expect(medic!.attended).toBe(2);
     expect(medic!.rescheduled).toBe(0);
     expect(medic!.noShow).toBe(1);
     expect(medic!.roleLabel).toBe('Médico');
@@ -191,10 +190,9 @@ describe('fetchReportData — Staff Médico section', () => {
     const nutri = result.staffMembers.find((s) => s.staffId === NUTRI_ID);
     expect(nutri).toBeDefined();
     expect(nutri!.scheduled).toBe(2);
-    expect(nutri!.attendedPresential).toBe(0);
-    expect(nutri!.attendedRemote).toBe(1);
+    expect(nutri!.attended).toBe(1);
     expect(nutri!.rescheduled).toBe(1);
-    expect(nutri!.noShow).toBe(0);           // no_show_remote counts as remote attendance
+    expect(nutri!.noShow).toBe(0);           // no_show_remote counts as attended
     expect(nutri!.roleLabel).toBe('Nutricionista');
   });
 
@@ -224,7 +222,7 @@ describe('fetchReportData — Staff Médico section', () => {
     expect(medic).toBeDefined();
     expect(medic!.upcoming).toBe(2);          // only the two FUTURE scheduled events
     expect(medic!.scheduled).toBe(4);         // all 4 events total
-    expect(medic!.attendedPresential).toBe(1);
+    expect(medic!.attended).toBe(1);
   });
 
   it('computes attendanceRate as null when no events have an outcome yet', async () => {

@@ -5,7 +5,11 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { assertPermission, getCurrentUser } from '@/lib/rbac/server';
 import { sendEmailDirect } from '@/lib/notifications/email-service';
 import { oneSignalAdapter } from '@/lib/notifications/providers/onesignal-adapter';
-import { isMedicalEventType, canManageMedicalEventType } from '@/lib/medical-appointments';
+import {
+  canManageMedicalEventType,
+  canManageMorningCalendar,
+  isMedicalEventType,
+} from '@/lib/medical-appointments';
 
 /**
  * Medical/nutrition/psychology/physio events must be managed through the
@@ -24,13 +28,27 @@ async function assertCanMutateMedicalEvent(eventType: string): Promise<{ error: 
   return null;
 }
 
-export async function createEvent(formData: FormData) {
+async function assertCanMutateCalendarEvent(
+  shift: string,
+  eventType: string,
+): Promise<{ error: string } | null> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'You must be signed in to perform this action.' };
+  if (shift === 'morning' && canManageMorningCalendar(user.roles.map((role) => role.code))) {
+    return null;
+  }
+
   const denied = await assertPermission('manage_calendar');
   if (denied) return denied;
+  return assertCanMutateMedicalEvent(eventType);
+}
+
+export async function createEvent(formData: FormData) {
 
   const requestedEventType = formData.get('event_type') as string;
-  const medicalDenied = await assertCanMutateMedicalEvent(requestedEventType);
-  if (medicalDenied) return medicalDenied;
+  const requestedShift = (formData.get('shift') as string) || 'afternoon';
+  const denied = await assertCanMutateCalendarEvent(requestedShift, requestedEventType);
+  if (denied) return denied;
 
   // Always use the signed-in user's profile — never trust client-supplied value.
   const currentUser = await getCurrentUser();
@@ -137,21 +155,21 @@ export async function createEvent(formData: FormData) {
 }
 
 export async function updateEvent(id: string, formData: FormData) {
-  const denied = await assertPermission('manage_calendar');
-  if (denied) return denied;
 
   const requestedEventType = formData.get('event_type') as string;
   const { data: existingEvent } = await supabaseAdmin
     .from('events')
-    .select('event_type')
+    .select('event_type, shift')
     .eq('id', id)
     .maybeSingle();
-
-  for (const eventType of [existingEvent?.event_type, requestedEventType]) {
-    if (!eventType) continue;
-    const medicalDenied = await assertCanMutateMedicalEvent(eventType);
-    if (medicalDenied) return medicalDenied;
-  }
+  const requestedShift = (formData.get('shift') as string) || 'afternoon';
+  const existingDenied = await assertCanMutateCalendarEvent(
+    existingEvent?.shift ?? requestedShift,
+    existingEvent?.event_type ?? requestedEventType,
+  );
+  if (existingDenied) return existingDenied;
+  const requestedDenied = await assertCanMutateCalendarEvent(requestedShift, requestedEventType);
+  if (requestedDenied) return requestedDenied;
 
   const payload = {
     title:       formData.get('title')       as string,
@@ -249,16 +267,17 @@ export async function updateEvent(id: string, formData: FormData) {
 }
 
 export async function deleteEvent(id: string) {
-  const denied = await assertPermission('manage_calendar');
-  if (denied) return denied;
 
   const { data: existingEvent } = await supabaseAdmin
     .from('events')
-    .select('event_type')
+    .select('event_type, shift')
     .eq('id', id)
     .maybeSingle();
-  const medicalDenied = await assertCanMutateMedicalEvent(existingEvent?.event_type ?? '');
-  if (medicalDenied) return medicalDenied;
+  const denied = await assertCanMutateCalendarEvent(
+    existingEvent?.shift ?? 'afternoon',
+    existingEvent?.event_type ?? '',
+  );
+  if (denied) return denied;
 
   const { error } = await supabaseAdmin.from('events').delete().eq('id', id);
   if (error) return { error: error.message };
@@ -268,16 +287,17 @@ export async function deleteEvent(id: string) {
 }
 
 export async function updateEventStatus(id: string, status: string) {
-  const denied = await assertPermission('manage_calendar');
-  if (denied) return denied;
 
   const { data: existingEvent } = await supabaseAdmin
     .from('events')
-    .select('event_type')
+    .select('event_type, shift')
     .eq('id', id)
     .maybeSingle();
-  const medicalDenied = await assertCanMutateMedicalEvent(existingEvent?.event_type ?? '');
-  if (medicalDenied) return medicalDenied;
+  const denied = await assertCanMutateCalendarEvent(
+    existingEvent?.shift ?? 'afternoon',
+    existingEvent?.event_type ?? '',
+  );
+  if (denied) return denied;
 
   const { error } = await supabaseAdmin
     .from('events')
