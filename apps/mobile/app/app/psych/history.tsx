@@ -64,6 +64,7 @@ export default function PsychologicalHistoryScreen() {
                   ? new Date(item.completedAt).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })
                   : 'Fecha de evaluación no disponible'}
               </Text>
+              <Text style={[styles.summary, { color: colors.text }]}>{item.clinicalSummary}</Text>
             </View>
           ))}
         </View>
@@ -82,4 +83,5 @@ const styles = StyleSheet.create({
   card: { borderRadius: 14, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
   instrument: { fontSize: 16, fontWeight: '700' },
   date: { fontSize: 13, marginTop: 6 },
+  summary: { fontSize: 14, lineHeight: 20, marginTop: 12 },
 });

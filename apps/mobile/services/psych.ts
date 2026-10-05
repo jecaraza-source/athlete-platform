@@ -53,6 +53,7 @@ export type PsychologicalHistoryItem = {
   id: string;
   completedAt: string | null;
   instrumentName: string;
+  clinicalSummary: string;
 };
 
 export async function submitPsychResponses(
@@ -65,7 +66,7 @@ export async function submitPsychResponses(
     body: JSON.stringify({ responses }),
   });
   const result = await response.json().catch(() => ({}));
-  if (!response.ok && !(response.status === 501 && result.code === 'PSYCH_SCORING_NOT_IMPLEMENTED')) {
+  if (!response.ok) {
     throw new Error(result.error ?? `No fue posible registrar tus respuestas (HTTP ${response.status}).`);
   }
   return result as SubmissionResult;
@@ -78,5 +79,6 @@ export async function listPsychologicalHistory(): Promise<PsychologicalHistoryIt
     id: row.id,
     completedAt: row.completed_at,
     instrumentName: row.instrument_name ?? 'Instrumento',
+    clinicalSummary: row.clinical_summary ?? '',
   }));
 }

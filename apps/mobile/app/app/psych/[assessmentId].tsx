@@ -94,10 +94,8 @@ export default function PsychQuestionnaireScreen() {
       const result = await submitPsychResponses(questionnaire.assessmentId, payload);
       clear();
       Alert.alert(
-        'Respuestas registradas',
-        result.code === 'PSYCH_SCORING_NOT_IMPLEMENTED'
-          ? 'Tus respuestas fueron registradas. La interpretación estará disponible cuando sea revisada por el equipo de salud mental.'
-          : (result.message ?? 'Tus respuestas fueron registradas.'),
+        'Evaluación enviada a revisión',
+        result.message ?? 'Tus respuestas fueron registradas y serán revisadas por el equipo de salud mental.',
       );
     } catch (reason) {
       Alert.alert(
