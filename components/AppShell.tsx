@@ -35,6 +35,8 @@ export default async function AppShell({ children }: { children: ReactNode }) {
   const canSeePsychologicalMenu = profile?.email
     ? PSYCHOLOGICAL_TESTING_EMAILS.has(profile.email.trim().toLowerCase())
     : false;
+  const canAccessFinances = showFinances &&
+    profile?.email?.trim().toLowerCase() === 'soporte@aodeporte.com';
   const showPsychAthlete = roleCodes.has('athlete');
   const showPsychCoach = canSeePsychologicalMenu &&
     roleCodes.has('coach') &&
@@ -66,7 +68,7 @@ export default async function AppShell({ children }: { children: ReactNode }) {
         {/* Navigation */}
         <NavLinks
           showAdmin={showAdmin}
-          showFinances={showFinances}
+          showFinances={canAccessFinances}
           isAthlete={isAthlete}
           showAppointments={showAppointments}
           showAthletes={showAthletes}
