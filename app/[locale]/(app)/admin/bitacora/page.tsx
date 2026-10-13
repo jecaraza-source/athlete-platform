@@ -55,10 +55,25 @@ export default async function AdminBitacoraPage({ params, searchParams }: PagePr
   const { locale } = await params;
   const sp         = await searchParams;
 
-  const { activities, total } = await getAdminActivities({
-    status: sp.status as ActivityStatus | undefined,
-    type:   sp.type as ('evento_deportivo' | 'consulta') | undefined,
+  const page = Math.max(1, Number(sp.page ?? 1));
+
+  const { activities, total, perPage } = await getAdminActivities({
+    status:  sp.status as ActivityStatus | undefined,
+    type:    sp.type as ('evento_deportivo' | 'consulta') | undefined,
+    page,
+    perPage: 25,
   });
+
+  const totalPages = Math.ceil(total / perPage);
+
+  function pageHref(p: number) {
+    const params = new URLSearchParams();
+    if (sp.status) params.set('status', sp.status);
+    if (sp.type)   params.set('type',   sp.type);
+    if (p > 1)     params.set('page',   String(p));
+    const qs = params.toString();
+    return `/${locale}/admin/bitacora${qs ? `?${qs}` : ''}`;
+  }
 
   return (
     <div className="p-6 max-w-6xl mx-auto flex flex-col gap-6">
@@ -95,6 +110,13 @@ export default async function AdminBitacoraPage({ params, searchParams }: PagePr
           </Link>
         ))}
       </div>
+
+      {/* Paginación — info */}
+      {totalPages > 1 && (
+        <p className="text-xs text-gray-400">
+          Página {page} de {totalPages} · {total} actividades en total
+        </p>
+      )}
 
       {/* Tabla */}
       {activities.length === 0 ? (
@@ -191,6 +213,41 @@ export default async function AdminBitacoraPage({ params, searchParams }: PagePr
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Paginación — controles */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-2">
+          {page > 1 ? (
+            <Link
+              href={pageHref(page - 1)}
+              className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              ← Anterior
+            </Link>
+          ) : (
+            <span className="px-4 py-2 text-sm border border-gray-100 rounded-lg text-gray-300 cursor-not-allowed">
+              ← Anterior
+            </span>
+          )}
+
+          <span className="text-sm text-gray-500">
+            {page} / {totalPages}
+          </span>
+
+          {page < totalPages ? (
+            <Link
+              href={pageHref(page + 1)}
+              className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Siguiente →
+            </Link>
+          ) : (
+            <span className="px-4 py-2 text-sm border border-gray-100 rounded-lg text-gray-300 cursor-not-allowed">
+              Siguiente →
+            </span>
+          )}
         </div>
       )}
     </div>
