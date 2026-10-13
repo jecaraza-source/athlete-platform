@@ -15,12 +15,14 @@ const DIAGNOSTIC_OPTIONS: { value: DiagnosticStatus }[] = [
 
 export default function AthletesFilter({
   currentQ,
+  currentFolio,
   currentStatus,
   currentDiscipline,
   currentDiagnostic,
   disciplines,
 }: {
   currentQ: string;
+  currentFolio: string;
   currentStatus: string;
   currentDiscipline: string;
   currentDiagnostic: string;
@@ -46,7 +48,7 @@ export default function AthletesFilter({
     router.push(pathname);
   }
 
-  const hasFilters = currentQ || currentStatus || currentDiscipline || currentDiagnostic;
+  const hasFilters = currentQ || currentFolio || currentStatus || currentDiscipline || currentDiagnostic;
 
   return (
     <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
@@ -67,6 +69,19 @@ export default function AthletesFilter({
         className="rounded-md border border-gray-300 px-3 py-2 text-sm w-full sm:w-56 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
       />
 
+      {/* Folio search */}
+      <input
+        type="search"
+        defaultValue={currentFolio}
+        placeholder={t('searchFolioPlaceholder')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            updateParam('folio', (e.target as HTMLInputElement).value.trim());
+          }
+        }}
+        onBlur={(e) => updateParam('folio', e.target.value.trim())}
+        className="rounded-md border border-gray-300 px-3 py-2 text-sm w-full sm:w-52 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      />
       {/* Discipline */}
       <select
         value={currentDiscipline}

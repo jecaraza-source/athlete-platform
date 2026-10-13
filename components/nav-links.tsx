@@ -76,6 +76,12 @@ const commsLinks = [
 ];
 
 const COMMS_ROOTS = commsLinks.map((l) => l.href);
+const psychLinks = [
+  { href: '/dashboard/psych' as const, key: 'psychAthlete', visible: false },
+  { href: '/dashboard/coach/psych' as const, key: 'psychCoach', visible: false },
+  { href: '/dashboard/mental-health' as const, key: 'psychClinical', visible: false },
+  { href: '/dashboard/psych/overview' as const, key: 'psychOverview', visible: false },
+];
 
 const prefsLink = {
   href: '/preferencias' as const,
@@ -98,6 +104,10 @@ export default function NavLinks({
   showAppointments = false,
   showAthletes = true,
   showFollowUp = true,
+  showPsychAthlete = false,
+  showPsychCoach = false,
+  showPsychClinical = false,
+  showPsychOverview = false,
 }: {
   showAdmin?: boolean;
   /** When true, shows the Finanzas link (user has view_finances permission). */
@@ -110,6 +120,11 @@ export default function NavLinks({
   showAthletes?: boolean;
   /** When true, shows the follow-up link (clinical/coaching staff only; auditors are excluded). */
   showFollowUp?: boolean;
+  /** Visibility gates for the psychological testing submenu. */
+  showPsychAthlete?: boolean;
+  showPsychCoach?: boolean;
+  showPsychClinical?: boolean;
+  showPsychOverview?: boolean;
 }) {
   const pathname = usePathname();
   const t = useTranslations('nav');
@@ -117,11 +132,25 @@ export default function NavLinks({
   // Auto-expand Communications when the current route is under it
   const isCommsActive = COMMS_ROOTS.some((r) => pathname.startsWith(r));
   const [commsOpen, setCommsOpen] = useState(isCommsActive);
+  const visiblePsychLinks = psychLinks.map((link) => ({
+    ...link,
+    visible: (
+      (link.key === 'psychAthlete' && showPsychAthlete) ||
+      (link.key === 'psychCoach' && showPsychCoach) ||
+      (link.key === 'psychClinical' && showPsychClinical) ||
+      (link.key === 'psychOverview' && showPsychOverview)
+    ),
+  })).filter((link) => link.visible);
+  const isPsychActive = visiblePsychLinks.some((link) => pathname.startsWith(link.href));
+  const [psychOpen, setPsychOpen] = useState(isPsychActive);
 
   // Keep expanded if user navigates to a comms route from elsewhere
   useEffect(() => {
     if (isCommsActive) setCommsOpen(true);
   }, [isCommsActive]);
+  useEffect(() => {
+    if (isPsychActive) setPsychOpen(true);
+  }, [isPsychActive]);
 
   function linkClass(href: string, inactive: string, active: string) {
     const isActive =
@@ -171,6 +200,48 @@ export default function NavLinks({
           </Link>
         )}
 
+        {/* ── Psychological testing accordion — capability-scoped ───────── */}
+        {visiblePsychLinks.length > 0 && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setPsychOpen((value) => !value)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md text-base transition-colors font-semibold ${
+                isPsychActive
+                  ? 'bg-fuchsia-100 text-fuchsia-900 font-bold'
+                  : 'bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100 hover:text-fuchsia-900'
+              }`}
+            >
+              <span>{t('psychologicalTests')}</span>
+              <svg
+                className={`h-4 w-4 transition-transform duration-200 ${psychOpen ? 'rotate-90' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            {psychOpen && (
+              <div className="mt-1 ml-3 pl-3 border-l-2 border-fuchsia-200 space-y-1">
+                {visiblePsychLinks.map((link) => {
+                  const isActive = pathname.startsWith(link.href);
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
+                        isActive
+                          ? 'bg-fuchsia-100 text-fuchsia-900 font-bold'
+                          : 'text-fuchsia-700 hover:bg-fuchsia-50 hover:text-fuchsia-900 font-medium'
+                      }`}
+                    >
+                      {t(link.key as Parameters<typeof t>[0])}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
         {/* ── Communications accordion — staff / admin only ──────── */}
         {!isAthlete && (
           <div>

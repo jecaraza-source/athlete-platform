@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:psych:e2e": "node --env-file=.env.local scripts/test-psych-e2e.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",

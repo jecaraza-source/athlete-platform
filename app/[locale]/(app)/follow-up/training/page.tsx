@@ -24,15 +24,16 @@ type TrainingSession = {
     last_name: string;
   } | null;
 };
+type Athlete = { id: string; first_name: string; last_name: string; discipline: string | null };
 
 export default async function TrainingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ athlete?: string }>;
+  searchParams: Promise<{ athlete?: string; discipline?: string }>;
 }) {
   await requireRole('medic', 'physio', 'nutritionist', 'psychologist', 'coach');
 
-  const { athlete: selectedAthleteId = '' } = await searchParams;
+  const { athlete: selectedAthleteId = '', discipline: selectedDiscipline = '' } = await searchParams;
 
   let sessionsQuery = supabaseAdmin
     .from('training_sessions')
@@ -50,24 +51,46 @@ export default async function TrainingPage({
     plansQuery = plansQuery.eq('athlete_plans.athlete_id', selectedAthleteId);
   }
 
-  const [{ data, error }, { data: athletesData }, coachesData, { data: plansData }] = await Promise.all([
+  const [{ data, error }, { data: athletesData }, coachesData, { data: plansData }, { data: sportsData }] = await Promise.all([
     sessionsQuery,
     supabaseAdmin
       .from('athletes')
-      .select('id, first_name, last_name')
+      .select('id, first_name, last_name, discipline')
       .neq('status', 'inactive')
       .order('last_name', { ascending: true }),
     // RBAC-aware: queries user_roles → roles(code='coach').
     // Falls back to profiles.role = 'coach' if no RBAC assignments found.
     getProfilesByRoleCodes(['coach']),
     plansQuery,
+    supabaseAdmin
+      .from('sports')
+      .select('name')
+      .eq('status', 'active')
+      .order('name', { ascending: true }),
   ]);
 
-  const sessions = (data ?? []) as unknown as TrainingSession[];
-  const athletes = (athletesData ?? []) as { id: string; first_name: string; last_name: string }[];
+  const allAthletes = (athletesData ?? []) as Athlete[];
+  const normaliseDiscipline = (value: string) => value.trim().toLocaleLowerCase('es');
+  const athletes = selectedDiscipline
+    ? allAthletes.filter((athlete) =>
+        athlete.discipline && normaliseDiscipline(athlete.discipline) === normaliseDiscipline(selectedDiscipline)
+      )
+    : allAthletes;
+  const selectedDisciplineAthleteIds = new Set(athletes.map((athlete) => athlete.id));
+  const sessions = ((data ?? []) as unknown as TrainingSession[])
+    .filter((session) => !selectedDiscipline || selectedDisciplineAthleteIds.has(session.athlete_id));
   const coaches = coachesData;
   const linkedPlans = ((plansData ?? []) as unknown as LinkedPlan[])
-    .filter((p) => !selectedAthleteId || p.athlete_plans.length > 0);
+    .filter((plan) => !selectedAthleteId || plan.athlete_plans.length > 0)
+    .filter((plan) =>
+      !selectedDiscipline || plan.athlete_plans.some((assignment) =>
+        selectedDisciplineAthleteIds.has(assignment.athlete_id)
+      )
+    );
+  const disciplines = (sportsData ?? []).map((sport: { name: string }) => ({
+    value: sport.name,
+    label: sport.name,
+  }));
 
   const t = await getTranslations('followUp.training');
   const tc = await getTranslations('common');
@@ -79,7 +102,12 @@ export default async function TrainingPage({
       <h1 className="text-3xl font-bold mt-4 mb-2 text-amber-700">{t('title')}</h1>
       <p className="text-gray-600 mb-8">{t('description')}</p>
 
-      <AthleteFilter athletes={athletes} selectedId={selectedAthleteId} />
+      <AthleteFilter
+        athletes={athletes}
+        selectedId={selectedAthleteId}
+        disciplines={disciplines}
+        selectedDiscipline={selectedDiscipline}
+      />
 
       <LinkedPlansSection
         plans={linkedPlans}

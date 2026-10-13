@@ -92,31 +92,29 @@ export async function fetchReportData(
   type RawEvent = { id: string; title: string | null; status: string; created_by_profile_id: string | null; start_at: string };
 
   const HEALTH_SERVICES: ServiceType[] = ['medico', 'nutricion', 'psicologia', 'fisioterapia'];
-  type Tally = { scheduled: number; show: number; show_remote: number; no_show: number };
+  type Tally = { scheduled: number; attended: number; no_show: number };
   const tally: Record<ServiceType, Tally> = {} as Record<ServiceType, Tally>;
   HEALTH_SERVICES.forEach((s) => {
-    tally[s] = { scheduled: 0, show: 0, show_remote: 0, no_show: 0 };
+    tally[s] = { scheduled: 0, attended: 0, no_show: 0 };
   });
 
   (events ?? [] as RawEvent[]).forEach(({ title, status }) => {
     const st = titleToServiceType(title ?? '');
     if (!HEALTH_SERVICES.includes(st)) return;
     tally[st].scheduled++;
-    if (status === 'show') {
-      tally[st].show++;
-    } else if (status === 'show_remote' || status === 'no_show_remote') {
+    if (status === 'show' || status === 'show_remote' || status === 'no_show_remote') {
       // `no_show_remote` means the athlete was attended by call/message.
-      tally[st].show_remote++;
+      tally[st].attended++;
     } else if (status === 'no_show') {
       tally[st].no_show++;
     }
   });
 
   const services: ReportServiceRow[] = [
-    { service: 'MÉDICO',       scheduled: tally.medico.scheduled,       attendedPresential: tally.medico.show,       attendedRemote: tally.medico.show_remote,       noShow: tally.medico.no_show },
-    { service: 'NUTRICIÓN',    scheduled: tally.nutricion.scheduled,    attendedPresential: tally.nutricion.show,    attendedRemote: tally.nutricion.show_remote,    noShow: tally.nutricion.no_show },
-    { service: 'PSICOLOGÍA',   scheduled: tally.psicologia.scheduled,   attendedPresential: tally.psicologia.show,   attendedRemote: tally.psicologia.show_remote,   noShow: tally.psicologia.no_show },
-    { service: 'FISIOTERAPIA', scheduled: tally.fisioterapia.scheduled, attendedPresential: tally.fisioterapia.show, attendedRemote: null, noShow: tally.fisioterapia.no_show },
+    { service: 'MÉDICO',       scheduled: tally.medico.scheduled,       attended: tally.medico.attended,       noShow: tally.medico.no_show },
+    { service: 'NUTRICIÓN',    scheduled: tally.nutricion.scheduled,    attended: tally.nutricion.attended,    noShow: tally.nutricion.no_show },
+    { service: 'PSICOLOGÍA',   scheduled: tally.psicologia.scheduled,   attended: tally.psicologia.attended,   noShow: tally.psicologia.no_show },
+    { service: 'FISIOTERAPIA', scheduled: tally.fisioterapia.scheduled, attended: tally.fisioterapia.attended, noShow: tally.fisioterapia.no_show },
   ];
 
   // ── 2. Staff Médico section ────────────────────────────────────────────────
@@ -129,19 +127,18 @@ export async function fetchReportData(
 
   type StaffTally = {
     scheduled: number; upcoming: number;
-    show: number; show_remote: number; rescheduled: number; no_show: number;
+    attended: number; rescheduled: number; no_show: number;
   };
   const staffTally: Record<string, StaffTally> = {};
 
   (events ?? [] as RawEvent[]).forEach(({ status, created_by_profile_id, start_at }) => {
     const cid = created_by_profile_id;
     if (!cid || !medStaffIdSet.has(cid)) return;
-    if (!staffTally[cid]) staffTally[cid] = { scheduled: 0, upcoming: 0, show: 0, show_remote: 0, rescheduled: 0, no_show: 0 };
+    if (!staffTally[cid]) staffTally[cid] = { scheduled: 0, upcoming: 0, attended: 0, rescheduled: 0, no_show: 0 };
     staffTally[cid].scheduled++;
     // Upcoming = still in the future and not yet given an outcome
     if (status === 'scheduled' && start_at > nowUTC)               staffTally[cid].upcoming++;
-    else if (status === 'show')                                     staffTally[cid].show++;
-    else if (status === 'show_remote' || status === 'no_show_remote') staffTally[cid].show_remote++;
+    else if (status === 'show' || status === 'show_remote' || status === 'no_show_remote') staffTally[cid].attended++;
     else if (status === 'rescheduled')                              staffTally[cid].rescheduled++;
     else if (status === 'no_show')                                  staffTally[cid].no_show++;
   });
@@ -153,19 +150,18 @@ export async function fetchReportData(
     .map((p) => {
       const t = staffTally[p.id];
       // Attendance rate only counts events with a definitive outcome (show / no_show)
-      const outcomeTotal = t.show + t.show_remote + t.no_show;
+      const outcomeTotal = t.attended + t.no_show;
       return {
         staffId:            p.id,
         staffName:          `${p.first_name} ${p.last_name}`.trim(),
         roleLabel:          STAFF_ROLE_LABELS[p.role ?? ''] ?? p.role ?? '',
         scheduled:          t.scheduled,
         upcoming:           t.upcoming,
-        attendedPresential: t.show,
-        attendedRemote:     t.show_remote,
+        attended:           t.attended,
         rescheduled:        t.rescheduled,
         noShow:             t.no_show,
         attendanceRate:     outcomeTotal > 0
-          ? Math.round(((t.show + t.show_remote) / outcomeTotal) * 100)
+          ? Math.round((t.attended / outcomeTotal) * 100)
           : null,
       };
     })

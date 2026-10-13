@@ -1,5 +1,5 @@
 -- =============================================================================
--- 026_mobile_notification_write_policies.sql
+-- 059_mobile_notification_write_policies.sql
 --
 -- Grants staff-role users INSERT on push_jobs and email_jobs so the mobile
 -- app can queue push / email notifications when creating events or tickets.

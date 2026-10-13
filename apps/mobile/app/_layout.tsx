@@ -81,7 +81,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (!isInitialized) return;
 
-    const inAuthGroup = segments[1] === '(auth)';
+    const inAuthGroup = (segments as readonly string[]).includes('(auth)');
 
     if (!session && !inAuthGroup) {
       // No session and not on an auth screen → go to login

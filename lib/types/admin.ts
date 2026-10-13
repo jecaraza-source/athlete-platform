@@ -97,10 +97,8 @@ export interface ReportServiceRow {
   service: string;
   /** All events in period regardless of status */
   scheduled: number;
-  /** Events with status='show' */
-  attendedPresential: number;
-  /** Events attended remotely: status='show_remote' or status='no_show_remote'; null = NO APLICA */
-  attendedRemote: number | null;
+  /** Events attended in person or remotely. */
+  attended: number;
   /** Events with status='no_show' */
   noShow: number;
 }
@@ -127,10 +125,8 @@ export interface ReportStaffMemberRow {
   scheduled: number;
   /** Eventos status='scheduled' con start_at futuro al momento del reporte */
   upcoming: number;
-  /** Eventos con status='show' */
-  attendedPresential: number;
-  /** Eventos atendidos remotamente: status='show_remote' o status='no_show_remote' */
-  attendedRemote: number;
+  /** Eventos atendidos en persona o remotamente. */
+  attended: number;
   /** Eventos con status='rescheduled' */
   rescheduled: number;
   /** Eventos con status='no_show' */

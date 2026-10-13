@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { registerDeviceToken } from '@/services/push';
 import { useAuthStore } from '@/store';
+import { getPsychAssessmentRoute } from '@/lib/psych-push';
 import type * as NotificationsType from 'expo-notifications';
 
 // ---------------------------------------------------------------------------
@@ -77,6 +78,11 @@ export function usePushNotifications() {
     // Background / quit: tapped by the user → deep-link into the app.
     responseRef.current = N.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as Record<string, unknown>;
+      const psychRoute = getPsychAssessmentRoute(data);
+      if (psychRoute) {
+        router.push(psychRoute as never);
+        return;
+      }
       // Newsletter approval notification: navigate to newsletter screen
       if (data?.type === 'newsletter_approval') {
         router.push('/app/newsletter' as never);
@@ -142,6 +148,11 @@ export function usePushNotifications() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleClick = (event: any) => {
       const data = event?.notification?.additionalData as Record<string, unknown> | undefined;
+      const psychRoute = data ? getPsychAssessmentRoute(data) : null;
+      if (psychRoute) {
+        router.push(psychRoute as never);
+        return;
+      }
       // Newsletter approval: navigate to newsletter admin screen
       if (data?.type === 'newsletter_approval') {
         router.push('/app/newsletter' as never);

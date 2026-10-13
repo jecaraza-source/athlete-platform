@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 
 // ---------------------------------------------------------------------------
 // Locale configuration
@@ -107,12 +108,18 @@ export async function proxy(request: NextRequest) {
     if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
       return NextResponse.next({ request });
     }
-    // For protected API routes, validate session
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-anon-key',
-      { cookies: { getAll: () => request.cookies.getAll(), setAll: () => {} } }
-    );
+    // For protected API routes, validate a mobile bearer token when provided;
+    // otherwise preserve the existing browser cookie-session behavior.
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-anon-key';
+    const authorization = request.headers.get('authorization');
+    const supabase = authorization?.startsWith('Bearer ')
+      ? createClient(supabaseUrl, supabaseAnonKey, {
+          global: { headers: { Authorization: authorization } },
+        })
+      : createServerClient(supabaseUrl, supabaseAnonKey, {
+          cookies: { getAll: () => request.cookies.getAll(), setAll: () => {} },
+        });
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return new NextResponse(
