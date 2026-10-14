@@ -6,6 +6,7 @@ import { PsychAlertsManager } from '@/components/psych/PsychAlertsManager';
 import { PsychInstrumentCatalog } from '@/components/psych/PsychInstrumentCatalog';
 import { PsychAssessmentList } from '@/components/psych/PsychAssessmentList';
 import { SchedulePsychAssessment } from '@/components/psych/SchedulePsychAssessment';
+import { ClinicalDashboardRefresh } from '@/components/psych/ClinicalDashboardRefresh';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,6 +111,7 @@ export default async function MentalHealthDashboardPage() {
 
   return (
     <main className="max-w-7xl p-8">
+      <ClinicalDashboardRefresh />
       <header className="mb-8 border-l-4 border-[#C0172C] pl-4">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Salud mental</p>
         <h1 className="mt-1 text-3xl font-bold text-[#2D2D2D]">Gestión clínica</h1>

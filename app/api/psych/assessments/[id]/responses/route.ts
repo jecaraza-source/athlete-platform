@@ -8,6 +8,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
@@ -248,6 +249,7 @@ export async function POST(
     .eq('id', assessmentId)
     .eq('status', 'pending');
   if (completionError) return NextResponse.json({ error: completionError.message }, { status: 500 });
+  revalidatePath('/dashboard/mental-health');
 
   return NextResponse.json({
     ok: true,
