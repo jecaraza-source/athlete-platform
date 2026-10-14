@@ -67,7 +67,7 @@ describe('coach psychological dashboard', () => {
 
   it('restricts direct coach reads and item reads at the RLS layer', () => {
     const sql = readFileSync(
-      path.resolve(__dirname, '../../supabase/migrations/20261014000002_restrict_psych_item_and_coach_reads.sql'),
+      path.resolve(__dirname, '../../supabase/migrations/20261014235610_restrict_psych_item_and_coach_reads.sql'),
       'utf8',
     );
     expect(sql).toMatch(/DROP POLICY IF EXISTS "Authenticated users can read psych instrument items"/);
