@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type Assessment = {
   id: string;
@@ -28,7 +28,24 @@ export function PsychAssessmentList({ assessments }: { assessments: Assessment[]
   const [athleteFilter, setAthleteFilter] = useState('');
   const [instrumentFilter, setInstrumentFilter] = useState('');
   const [publicationFilter, setPublicationFilter] = useState<PublicationFilter>('all');
-  const pendingReviews = assessments.filter((assessment) => assessment.status === 'under_review' && !assessment.published);
+  const [pendingReviews, setPendingReviews] = useState(() => assessments.filter((assessment) => assessment.status === 'under_review' && !assessment.published));
+  useEffect(() => {
+    let mounted = true;
+
+    async function refreshPendingReviews() {
+      const response = await fetch('/api/psych/assessments/pending-review', { cache: 'no-store' });
+      if (!response.ok || !mounted) return;
+      const payload = await response.json() as { assessments?: Assessment[] };
+      setPendingReviews(payload.assessments ?? []);
+    }
+
+    void refreshPendingReviews();
+    const interval = window.setInterval(() => { void refreshPendingReviews(); }, 30_000);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
+  }, []);
   const filtered = useMemo(() => assessments.filter((assessment) =>
     assessment.athleteName.toLowerCase().includes(athleteFilter.toLowerCase()) &&
     assessment.instrumentName.toLowerCase().includes(instrumentFilter.toLowerCase()) &&
