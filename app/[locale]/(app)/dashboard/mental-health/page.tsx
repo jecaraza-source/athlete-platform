@@ -84,7 +84,7 @@ export default async function MentalHealthDashboardPage() {
   const { data: assessmentRows } = await supabaseAdmin
     .from('psych_assessments')
     .select('id, completed_at, published_to_athlete, profiles(first_name, last_name), psych_instruments!inner(name, is_test_only)')
-    .eq('status', 'completed')
+    .in('status', ['under_review', 'approved'])
     .eq('psych_instruments.is_test_only', false)
     .order('completed_at', { ascending: false });
   const assessments = (assessmentRows ?? []).map((rawAssessment) => {
