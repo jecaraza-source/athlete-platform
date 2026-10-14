@@ -10,6 +10,7 @@ type Assessment = {
   status: 'completed' | 'under_review' | 'approved';
   published: boolean;
 };
+type PublicationFilter = 'all' | 'published' | 'unpublished' | 'under_review';
 
 const STATUS_LABELS: Record<Assessment['status'], string> = {
   completed: 'Completado (legado)',
@@ -26,11 +27,14 @@ const STATUS_STYLES: Record<Assessment['status'], string> = {
 export function PsychAssessmentList({ assessments }: { assessments: Assessment[] }) {
   const [athleteFilter, setAthleteFilter] = useState('');
   const [instrumentFilter, setInstrumentFilter] = useState('');
-  const [publicationFilter, setPublicationFilter] = useState('all');
+  const [publicationFilter, setPublicationFilter] = useState<PublicationFilter>('all');
   const filtered = useMemo(() => assessments.filter((assessment) =>
     assessment.athleteName.toLowerCase().includes(athleteFilter.toLowerCase()) &&
     assessment.instrumentName.toLowerCase().includes(instrumentFilter.toLowerCase()) &&
-    (publicationFilter === 'all' || String(assessment.published) === publicationFilter)
+    (publicationFilter === 'all' ||
+      (publicationFilter === 'published' && assessment.published) ||
+      (publicationFilter === 'unpublished' && !assessment.published) ||
+      (publicationFilter === 'under_review' && assessment.status === 'under_review'))
   ), [assessments, athleteFilter, instrumentFilter, publicationFilter]);
 
   return (
@@ -42,7 +46,7 @@ export function PsychAssessmentList({ assessments }: { assessments: Assessment[]
       <div className="mb-4 grid gap-2 md:grid-cols-3">
         <input value={athleteFilter} onChange={(event) => setAthleteFilter(event.target.value)} placeholder="Filtrar atleta" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
         <input value={instrumentFilter} onChange={(event) => setInstrumentFilter(event.target.value)} placeholder="Filtrar instrumento" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-        <select value={publicationFilter} onChange={(event) => setPublicationFilter(event.target.value)} className="rounded-lg border border-gray-300 px-3 py-2 text-sm"><option value="all">Toda publicación</option><option value="true">Publicados</option><option value="false">No publicados</option></select>
+        <select value={publicationFilter} onChange={(event) => setPublicationFilter(event.target.value as PublicationFilter)} className="rounded-lg border border-gray-300 px-3 py-2 text-sm"><option value="all">Toda publicación</option><option value="published">Publicados</option><option value="unpublished">No publicados</option><option value="under_review">En revisión clínica</option></select>
       </div>
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         {filtered.length === 0 ? <p className="px-6 py-8 text-sm text-gray-500">No hay evaluaciones para los filtros seleccionados.</p> : filtered.map((assessment) => (
