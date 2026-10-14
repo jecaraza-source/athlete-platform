@@ -12,6 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { derivePsychAlerts } from '@/lib/psych/alerts';
+import { isPsychAssessmentExpired } from '@/lib/psych/assessment-window';
 import { calculatePsychScores, supportsAutomaticScoring, type CalculatedScore } from '@/lib/psych/scoring';
 import { validatePsychSubmission } from '@/lib/psych/submission';
 
@@ -131,6 +132,14 @@ export async function POST(
   if (assessment.scheduled_for && new Date(assessment.scheduled_for) > new Date()) {
     return NextResponse.json({ error: 'Esta evaluación aún no está disponible.' }, { status: 409 });
   }
+  if (isPsychAssessmentExpired(assessment.scheduled_for)) {
+    await supabaseAdmin
+      .from('psych_assessments')
+      .update({ status: 'expired' })
+      .eq('id', assessmentId)
+      .eq('status', 'pending');
+    return NextResponse.json({ error: 'Esta evaluación venció.' }, { status: 410 });
+  }
 
   const instrument = Array.isArray(assessment.psych_instruments)
     ? assessment.psych_instruments[0]
@@ -239,41 +248,6 @@ export async function POST(
     .eq('id', assessmentId)
     .eq('status', 'pending');
   if (completionError) return NextResponse.json({ error: completionError.message }, { status: 500 });
-
-  if (assessment.scheduled_by) {
-    const [{ data: scheduler }, { data: athleteProfile }] = await Promise.all([
-      supabaseAdmin
-        .from('profiles')
-        .select('email, first_name')
-        .eq('id', assessment.scheduled_by)
-        .maybeSingle(),
-      supabaseAdmin
-        .from('profiles')
-        .select('first_name, last_name')
-        .eq('id', assessment.athlete_id)
-        .maybeSingle(),
-    ]);
-    if (scheduler?.email) {
-      const athleteName = athleteProfile
-        ? `${athleteProfile.first_name} ${athleteProfile.last_name}`.trim()
-        : 'El atleta';
-      const assessmentUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.aodeporte.com'}/dashboard/mental-health/assessments/${assessmentId}`;
-      await supabaseAdmin
-        .from('email_jobs')
-        .upsert(
-          {
-            recipient_profile_id: assessment.scheduled_by,
-            recipient_email: scheduler.email,
-            subject: `Evaluación completada: ${athleteName}`,
-            html_body: `<p>Hola ${scheduler.first_name},</p><p><strong>${athleteName}</strong> completó la evaluación <strong>${instrument.name}</strong>.</p><p><a href="${assessmentUrl}">Revisar evaluación</a></p>`,
-            plain_body: `${athleteName} completó la evaluación ${instrument.name}. Revisar: ${assessmentUrl}`,
-            idempotency_key: `psych-assessment:${assessmentId}:completion-email`,
-            scheduled_at: new Date().toISOString(),
-          },
-          { onConflict: 'idempotency_key', ignoreDuplicates: true }
-        );
-    }
-  }
 
   return NextResponse.json({
     ok: true,

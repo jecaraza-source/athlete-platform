@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { requireAuthenticated } from '@/lib/rbac/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PsychQuestionnaire } from '@/components/psych/PsychQuestionnaire';
+import { isPsychAssessmentExpired, PSYCH_ASSESSMENT_WINDOW_MS } from '@/lib/psych/assessment-window';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,13 @@ export default async function AthletePsychDashboardPage() {
   if (!user.profile || !user.roles.some((role) => role.code === 'athlete')) {
     redirect('/dashboard');
   }
+  const expirationCutoff = new Date(Date.now() - PSYCH_ASSESSMENT_WINDOW_MS).toISOString();
+  await supabaseAdmin
+    .from('psych_assessments')
+    .update({ status: 'expired' })
+    .eq('athlete_id', user.profile.id)
+    .eq('status', 'pending')
+    .lt('scheduled_for', expirationCutoff);
 
   const { data: assessmentRaw } = await supabaseAdmin
     .from('psych_assessments')
@@ -51,6 +59,14 @@ export default async function AthletePsychDashboardPage() {
   const instrument = Array.isArray(assessment?.psych_instruments)
     ? assessment?.psych_instruments[0]
     : assessment?.psych_instruments;
+  const assessmentExpired = Boolean(assessment && isPsychAssessmentExpired(assessment.scheduled_for));
+  if (assessmentExpired && assessment) {
+    await supabaseAdmin
+      .from('psych_assessments')
+      .update({ status: 'expired' })
+      .eq('id', assessment.id)
+      .eq('status', 'pending');
+  }
 
   const { data: itemRows } = instrument
     ? await supabaseAdmin
@@ -63,6 +79,7 @@ export default async function AthletePsychDashboardPage() {
   const hasAvailableQuestionnaire = Boolean(
     assessment &&
     instrument &&
+    !assessmentExpired &&
     items.length === instrument.item_count
   );
 
@@ -82,9 +99,9 @@ export default async function AthletePsychDashboardPage() {
           <PsychQuestionnaire assessmentId={assessment.id} instrumentCode={instrument.code} instrumentName={instrument.name} items={items} />
         ) : (
           <div className="rounded-2xl border border-dashed border-red-200 bg-red-50 px-6 py-10 text-center">
-            <p className="text-lg font-bold text-[#2D2D2D]">No hay ningún cuestionario disponible todavía</p>
+            <p className="text-lg font-bold text-[#2D2D2D]">{assessmentExpired ? 'Esta evaluación venció.' : 'No hay ningún cuestionario disponible todavía'}</p>
             <p className="mx-auto mt-2 max-w-xl text-sm text-gray-600">
-              Cuando un instrumento esté autorizado y el equipo programe una evaluación para ti, aparecerá aquí.
+              {assessmentExpired ? 'Comunícate con tu equipo para que programe una nueva evaluación.' : 'Cuando un instrumento esté autorizado y el equipo programe una evaluación para ti, aparecerá aquí.'}
             </p>
           </div>
         )}

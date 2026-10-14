@@ -131,18 +131,25 @@ export default async function MentalHealthDashboardPage() {
       }))} />
       <PsychAlertsManager alerts={alerts} />
       <section className="mt-10">
-        <div className="mb-4">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Administración</p>
-          <h2 className="mt-1 text-2xl font-bold text-[#2D2D2D]">Estado de licenciamiento por instrumento</h2>
-          <p className="mt-1 text-sm text-gray-600">Registra evidencia para cada permiso; el estado global se deriva de las cuatro verificaciones.</p>
-        </div>
-        <LicenseStatusManager instruments={instruments.map((instrument) => ({
-          id: instrument.id,
-          code: instrument.code,
-          name: instrument.name,
-          licenseStatus: instrument.license_status,
-          checks: licenseChecksByInstrument.get(instrument.id) ?? [],
-        }))} />
+        <details className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-4 p-5 [&::-webkit-details-marker]:hidden">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Administración</p>
+              <h2 className="mt-1 text-2xl font-bold text-[#2D2D2D]">Estado de licenciamiento por instrumento</h2>
+              <p className="mt-1 text-sm text-gray-600">Registra evidencia para cada permiso; el estado global se deriva de las cuatro verificaciones.</p>
+            </div>
+            <span className="rounded-lg border border-[#C0172C] px-4 py-2 text-sm font-semibold text-[#C0172C]">Mostrar u ocultar</span>
+          </summary>
+          <div className="border-t border-gray-100 p-5">
+            <LicenseStatusManager instruments={instruments.map((instrument) => ({
+              id: instrument.id,
+              code: instrument.code,
+              name: instrument.name,
+              licenseStatus: instrument.license_status,
+              checks: licenseChecksByInstrument.get(instrument.id) ?? [],
+            }))} />
+          </div>
+        </details>
       </section>
     </main>
   );

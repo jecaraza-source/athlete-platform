@@ -10,12 +10,13 @@
  * 'athlete' role.  All other roles see the existing KPI dashboard.
  */
 
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { AvatarUploader } from '@/components/avatar/avatar-uploader';
 import NewsletterHomeCard from '@/components/newsletter/NewsletterHomeCard';
+import { PSYCH_ASSESSMENT_WINDOW_MS } from '@/lib/psych/assessment-window';
 import {
   SECTION_KEYS,
   SECTION_LABELS,
@@ -93,9 +94,14 @@ const QUICK_CARD_DEFS = [
 type Props = { user: CurrentUser };
 
 export default async function AthleteDashboard({ user }: Props) {
-  const t = await getTranslations('athleteDashboard');
+  const [t, locale] = await Promise.all([
+    getTranslations('athleteDashboard'),
+    getLocale(),
+  ]);
   const profileId = user.profile?.id ?? '';
   const email     = user.profile?.email ?? null;
+  const now = new Date();
+  const expirationCutoff = new Date(now.getTime() - PSYCH_ASSESSMENT_WINDOW_MS).toISOString();
 
   // ── 1. Resolve the athlete record linked to this profile ─────────────────
   // Tries profile_id first (explicit admin link), then falls back to email
@@ -109,23 +115,43 @@ export default async function AthleteDashboard({ user }: Props) {
     .select('id, first_name, last_name, discipline, status')
     .or(orClause)
     .maybeSingle();
+  if (profileId) {
+    await supabaseAdmin
+      .from('psych_assessments')
+      .update({ status: 'expired' })
+      .eq('athlete_id', profileId)
+      .eq('status', 'pending')
+      .lt('scheduled_for', expirationCutoff);
+  }
 
   // ── 2. Load diagnostic data (only if athlete record exists) ──────────────
-  const [{ data: diagRaw }, { data: sectionsRaw }] = athlete
-    ? await Promise.all([
-        supabaseAdmin
-          .from('athlete_initial_diagnostic')
-          .select('overall_status, completion_pct')
-          .eq('athlete_id', athlete.id)
-          .order('version', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        supabaseAdmin
-          .from('athlete_diagnostic_sections')
-          .select('section, status, completion_pct')
-          .eq('athlete_id', athlete.id),
-      ])
-    : [{ data: null }, { data: null }];
+  const [{ data: diagRaw }, { data: sectionsRaw }, { data: psychAssessmentRows }] = await Promise.all([
+    athlete
+      ? supabaseAdmin
+        .from('athlete_initial_diagnostic')
+        .select('overall_status, completion_pct')
+        .eq('athlete_id', athlete.id)
+        .order('version', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      : Promise.resolve({ data: null }),
+    athlete
+      ? supabaseAdmin
+        .from('athlete_diagnostic_sections')
+        .select('section, status, completion_pct')
+        .eq('athlete_id', athlete.id)
+      : Promise.resolve({ data: null }),
+    profileId
+      ? supabaseAdmin
+        .from('psych_assessments')
+        .select('id, scheduled_for, psych_instruments!inner(name, is_test_only)')
+        .eq('athlete_id', profileId)
+        .eq('status', 'pending')
+        .gte('scheduled_for', expirationCutoff)
+        .eq('psych_instruments.is_test_only', false)
+        .order('scheduled_for', { ascending: true })
+      : Promise.resolve({ data: null }),
+  ]);
 
   const diagnostic = diagRaw as {
     overall_status: string;
@@ -138,6 +164,25 @@ export default async function AthleteDashboard({ user }: Props) {
   }[];
 
   const sectionMap = Object.fromEntries(sections.map((s) => [s.section, s]));
+  const dateFormatter = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const pendingPsychAssessments = (psychAssessmentRows ?? []).map((rawAssessment) => {
+    const assessment = rawAssessment as {
+      id: string;
+      scheduled_for: string;
+      psych_instruments: { name: string } | { name: string }[] | null;
+    };
+    const instrument = Array.isArray(assessment.psych_instruments)
+      ? assessment.psych_instruments[0]
+      : assessment.psych_instruments;
+    const scheduledAt = new Date(assessment.scheduled_for);
+
+    return {
+      id: assessment.id,
+      instrumentName: instrument?.name ?? t('psychAssessmentDefaultInstrument'),
+      scheduledAt,
+      expiresAt: new Date(scheduledAt.getTime() + PSYCH_ASSESSMENT_WINDOW_MS),
+    };
+  });
 
   // ── 3. Derived display values ─────────────────────────────────────────────
   const fullName =
@@ -191,6 +236,25 @@ export default async function AthleteDashboard({ user }: Props) {
       <Suspense fallback={null}>
         <NewsletterHomeCard />
       </Suspense>
+      {pendingPsychAssessments.length > 0 && (
+        <section className="mb-8 space-y-3">
+          {pendingPsychAssessments.map((assessment) => (
+            <div key={assessment.id} className="rounded-xl border border-red-300 bg-red-50 p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-700">{t('psychAssessmentAlert')}</p>
+                  <h2 className="mt-1 text-lg font-bold text-red-950">{t('psychAssessmentPending', { instrument: assessment.instrumentName })}</h2>
+                  <p className="mt-2 text-sm text-red-900">{t('psychAssessmentScheduled', { date: dateFormatter.format(assessment.scheduledAt) })}</p>
+                  <p className="mt-1 text-sm font-semibold text-red-900">{t('psychAssessmentExpires', { date: dateFormatter.format(assessment.expiresAt) })}</p>
+                </div>
+                <Link href="/dashboard/psych" className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-800">
+                  {t('psychAssessmentOpen')}
+                </Link>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
 
       {/* ── Mi Diagnóstico Inicial ────────────────────────────────────────── */}
       <section className="mb-8">
