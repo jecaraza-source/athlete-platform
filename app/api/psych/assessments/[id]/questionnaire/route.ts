@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { ATHLETE_ITEM_COLUMNS } from '@/lib/psych/questionnaire';
 
 export const runtime = 'nodejs';
 
@@ -73,7 +74,7 @@ export async function GET(
 
   const { data: items } = await supabaseAdmin
     .from('psych_instrument_items')
-    .select('item_code, item_order, prompt_text, response_options')
+    .select(ATHLETE_ITEM_COLUMNS)
     .eq('instrument_id', instrument.id)
     .order('item_order');
   if (!items || items.length !== instrument.item_count) {

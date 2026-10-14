@@ -7,6 +7,9 @@ Esta guía describe el flujo clínico de evaluaciones psicológicas, los límite
 - En el entorno actual, el acceso clínico está asignado únicamente a `soporte@aodeporte.com` y `psi04@aodeporte.com`.
 - Entrenadores y dirección sólo consumen las vistas autorizadas por sus permisos y RLS; no reciben respuestas crudas.
 - La app móvil del atleta sólo recibe resúmenes clínicos aprobados y publicados.
+- El atleta nunca recibe puntajes, bandas ni la clave de scoring (`subscale_code`, `is_reverse_scored`); los reactivos se entregan sólo por las rutas del servidor y la RLS de `psych_instrument_items` limita la lectura directa a `mental_health_admin`.
+- Entrenadores sólo ven evaluaciones y puntajes de su roster en estado `approved`, tanto en el dashboard como vía RLS.
+- La fecha de programación se captura en hora de Ciudad de México y se guarda en UTC.
 
 ## Estados de una evaluación
 1. `pending`: la evaluación fue programada y sólo puede responderse a partir de `scheduled_for`.

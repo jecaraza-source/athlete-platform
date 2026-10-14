@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { requireAuthenticated } from '@/lib/rbac/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PsychQuestionnaire } from '@/components/psych/PsychQuestionnaire';
+import { ATHLETE_ITEM_COLUMNS, type AthleteQuestionnaireItem } from '@/lib/psych/questionnaire';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,15 +14,6 @@ type Instrument = {
   is_active: boolean;
   is_test_only: boolean;
   license_status: 'pending_review' | 'licensed' | 'not_required' | 'denied';
-};
-
-type InstrumentItem = {
-  item_code: string;
-  item_order: number;
-  prompt_text: string;
-  response_options: unknown;
-  subscale_code: string;
-  is_reverse_scored: boolean;
 };
 
 export default async function AthletePsychDashboardPage() {
@@ -55,11 +47,11 @@ export default async function AthletePsychDashboardPage() {
   const { data: itemRows } = instrument
     ? await supabaseAdmin
       .from('psych_instrument_items')
-      .select('item_code, item_order, prompt_text, response_options, subscale_code, is_reverse_scored')
+      .select(ATHLETE_ITEM_COLUMNS)
       .eq('instrument_id', instrument.id)
       .order('item_order')
-    : { data: [] as InstrumentItem[] };
-  const items = (itemRows ?? []) as InstrumentItem[];
+    : { data: [] as AthleteQuestionnaireItem[] };
+  const items = (itemRows ?? []) as AthleteQuestionnaireItem[];
   const hasAvailableQuestionnaire = Boolean(
     assessment &&
     instrument &&
@@ -79,7 +71,7 @@ export default async function AthletePsychDashboardPage() {
 
       <section className="mb-10">
         {hasAvailableQuestionnaire && assessment && instrument ? (
-          <PsychQuestionnaire assessmentId={assessment.id} instrumentCode={instrument.code} instrumentName={instrument.name} items={items} />
+          <PsychQuestionnaire assessmentId={assessment.id} instrumentName={instrument.name} items={items} />
         ) : (
           <div className="rounded-2xl border border-dashed border-red-200 bg-red-50 px-6 py-10 text-center">
             <p className="text-lg font-bold text-[#2D2D2D]">No hay ningún cuestionario disponible todavía</p>

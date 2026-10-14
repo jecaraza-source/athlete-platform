@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/rbac/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { parseMXLocalDateTime } from '@/lib/timezone';
 
 const LICENSE_CHECK_STATUSES = new Set([
   'pending_review',
@@ -26,8 +27,9 @@ async function requireMentalHealthPermission(permission: string) {
 export async function schedulePsychAssessment(input: { athleteId: string; instrumentId: string; scheduledFor: string }): Promise<{ error?: string }> {
   const { user, error: accessError } = await requireMentalHealthPermission('psych.schedule_assessments');
   if (!user?.profile || accessError) return { error: accessError ?? 'No autorizado.' };
-  const date = new Date(input.scheduledFor);
-  if (!input.athleteId || !input.instrumentId || Number.isNaN(date.getTime())) return { error: 'Selecciona atleta, examen y fecha válidos.' };
+  // datetime-local values carry no offset; staff enter them in Mexico City time.
+  const date = parseMXLocalDateTime(input.scheduledFor ?? '');
+  if (!input.athleteId || !input.instrumentId || !date) return { error: 'Selecciona atleta, examen y fecha válidos.' };
   const [{ data: athlete }, { data: instrument }] = await Promise.all([
     supabaseAdmin.from('profiles').select('id, first_name, email').eq('id', input.athleteId).maybeSingle(),
     supabaseAdmin.from('psych_instruments').select('id, name, item_count').eq('id', input.instrumentId).eq('is_active', true).in('license_status', ['licensed', 'not_required']).maybeSingle(),
