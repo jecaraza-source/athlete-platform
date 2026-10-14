@@ -129,7 +129,13 @@
     "calendarTitle": "Calendario",
     "calendarDesc": "Próximos eventos y competencias",
     "protocolsTitle": "Protocolos",
-    "protocolsDesc": "Guías operativas del equipo"
+    "protocolsDesc": "Guías operativas del equipo",
+    "psychAssessmentAlert": "Alerta",
+    "psychAssessmentPending": "Tienes pendiente la evaluación psicológica: {instrument}",
+    "psychAssessmentScheduled": "Fecha de programación: {date}",
+    "psychAssessmentExpires": "Fecha de vencimiento: {date}",
+    "psychAssessmentOpen": "Ir a la evaluación",
+    "psychAssessmentDefaultInstrument": "Evaluación psicológica"
   },
   "athleteTickets": {
     "title": "Mis Tickets",

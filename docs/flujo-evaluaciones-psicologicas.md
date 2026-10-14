@@ -9,7 +9,7 @@ Esta guía describe el flujo clínico de evaluaciones psicológicas, los límite
 - La app móvil del atleta sólo recibe resúmenes clínicos aprobados y publicados.
 
 ## Estados de una evaluación
-1. `pending`: la evaluación fue programada y sólo puede responderse a partir de `scheduled_for`.
+1. `pending`: la evaluación fue programada, sólo puede responderse a partir de `scheduled_for` y vence 72 horas después.
 2. `under_review`: el atleta terminó de responder; un profesional debe revisar los datos.
 3. `approved`: un profesional guardó el resumen clínico y aprobó explícitamente la evaluación.
 4. `expired`: evaluación cancelada o vencida; no acepta respuestas.
@@ -18,9 +18,9 @@ Una evaluación publicada conserva `status = approved` y registra `published_to_
 
 ## Flujo operativo
 1. Un profesional con `psych.schedule_assessments` programa un instrumento activo, licenciado y con banco de reactivos completo.
-2. El atleta autenticado abre el cuestionario dentro de la ventana habilitada y responde todos los reactivos.
+2. El atleta autenticado recibe una alerta roja debajo de Newsletter en su dashboard con las fechas de programación y vencimiento, y abre el cuestionario dentro de la ventana de 72 horas.
 3. El backend valida códigos, opciones y completitud antes de guardar respuestas.
-4. La evaluación pasa a `under_review`; se notifica al profesional programador.
+4. La evaluación pasa a `under_review` y aparece en **Evaluaciones por calificar** dentro de Gestión clínica para `soporte@aodeporte.com` y `psi04@aodeporte.com`. La bandeja identifica al atleta y al instrumento, sin mostrar respuestas ni puntajes.
 5. El profesional guarda `clinical_summary` y, cuando aplique, interpretaciones por subescala.
 6. El profesional aprueba la evaluación. La aprobación registra `approved_by` y `approved_at`.
 7. Sólo una evaluación aprobada con resumen clínico puede publicarse al atleta.

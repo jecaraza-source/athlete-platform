@@ -1,11 +1,13 @@
 import { redirect } from 'next/navigation';
 import { requireAuthenticated } from '@/lib/rbac/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { LicenseStatusManager } from '@/components/psych/LicenseStatusManager';
 import { PsychAlertsManager } from '@/components/psych/PsychAlertsManager';
 import { PsychInstrumentCatalog } from '@/components/psych/PsychInstrumentCatalog';
 import { PsychAssessmentList } from '@/components/psych/PsychAssessmentList';
 import { SchedulePsychAssessment } from '@/components/psych/SchedulePsychAssessment';
+import { ClinicalDashboardRefresh } from '@/components/psych/ClinicalDashboardRefresh';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +19,7 @@ export default async function MentalHealthDashboardPage() {
   if (!user.profile || !user.roles.some((role) => role.code === 'mental_health_admin')) {
     redirect('/dashboard');
   }
+  const supabase = await createSupabaseServerClient();
 
   const { data: instrumentRows } = await supabaseAdmin
     .from('psych_instruments')
@@ -81,15 +84,16 @@ export default async function MentalHealthDashboardPage() {
       createdAt: alert.created_at,
     };
   });
-  const { data: assessmentRows } = await supabaseAdmin
+  const { data: assessmentRows } = await supabase
     .from('psych_assessments')
-    .select('id, completed_at, published_to_athlete, profiles(first_name, last_name), psych_instruments!inner(name, is_test_only)')
-    .in('status', ['under_review', 'approved'])
+    .select('id, status, completed_at, published_to_athlete, profiles(first_name, last_name), psych_instruments!inner(name, is_test_only)')
+    .in('status', ['completed', 'under_review', 'approved'])
     .eq('psych_instruments.is_test_only', false)
     .order('completed_at', { ascending: false });
   const assessments = (assessmentRows ?? []).map((rawAssessment) => {
     const assessment = rawAssessment as {
       id: string;
+      status: 'completed' | 'under_review' | 'approved';
       completed_at: string | null;
       published_to_athlete: boolean;
       profiles: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null;
@@ -102,12 +106,14 @@ export default async function MentalHealthDashboardPage() {
       athleteName: athlete ? `${athlete.first_name} ${athlete.last_name}`.trim() : 'Atleta',
       instrumentName: instrument?.name ?? 'Instrumento',
       completedAt: assessment.completed_at,
+      status: assessment.status,
       published: assessment.published_to_athlete,
     };
   });
 
   return (
     <main className="max-w-7xl p-8">
+      <ClinicalDashboardRefresh />
       <header className="mb-8 border-l-4 border-[#C0172C] pl-4">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Salud mental</p>
         <h1 className="mt-1 text-3xl font-bold text-[#2D2D2D]">Gestión clínica</h1>
@@ -129,18 +135,25 @@ export default async function MentalHealthDashboardPage() {
       }))} />
       <PsychAlertsManager alerts={alerts} />
       <section className="mt-10">
-        <div className="mb-4">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Administración</p>
-          <h2 className="mt-1 text-2xl font-bold text-[#2D2D2D]">Estado de licenciamiento por instrumento</h2>
-          <p className="mt-1 text-sm text-gray-600">Registra evidencia para cada permiso; el estado global se deriva de las cuatro verificaciones.</p>
-        </div>
-        <LicenseStatusManager instruments={instruments.map((instrument) => ({
-          id: instrument.id,
-          code: instrument.code,
-          name: instrument.name,
-          licenseStatus: instrument.license_status,
-          checks: licenseChecksByInstrument.get(instrument.id) ?? [],
-        }))} />
+        <details className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-4 p-5 [&::-webkit-details-marker]:hidden">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Administración</p>
+              <h2 className="mt-1 text-2xl font-bold text-[#2D2D2D]">Estado de licenciamiento por instrumento</h2>
+              <p className="mt-1 text-sm text-gray-600">Registra evidencia para cada permiso; el estado global se deriva de las cuatro verificaciones.</p>
+            </div>
+            <span className="rounded-lg border border-[#C0172C] px-4 py-2 text-sm font-semibold text-[#C0172C]">Mostrar u ocultar</span>
+          </summary>
+          <div className="border-t border-gray-100 p-5">
+            <LicenseStatusManager instruments={instruments.map((instrument) => ({
+              id: instrument.id,
+              code: instrument.code,
+              name: instrument.name,
+              licenseStatus: instrument.license_status,
+              checks: licenseChecksByInstrument.get(instrument.id) ?? [],
+            }))} />
+          </div>
+        </details>
       </section>
     </main>
   );

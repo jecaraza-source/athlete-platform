@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { isPsychAssessmentExpired } from '@/lib/psych/assessment-window';
 
 export const runtime = 'nodejs';
 
@@ -36,7 +37,7 @@ export async function GET(
   const allowTechnicalFixtures = process.env.PSYCH_ALLOW_TEST_FIXTURES === 'true';
   let assessmentQuery = supabaseAdmin
     .from('psych_assessments')
-    .select('id, psych_instruments!inner(id, name, item_count, is_active, is_test_only, license_status)')
+    .select('id, scheduled_for, psych_instruments!inner(id, name, item_count, is_active, is_test_only, license_status)')
     .eq('id', assessmentId)
     .eq('athlete_id', profile.id)
     .eq('status', 'pending')
@@ -54,6 +55,7 @@ export async function GET(
 
   const assessment = rawAssessment as {
     id: string;
+    scheduled_for: string | null;
     psych_instruments: {
       id: string;
       name: string;
@@ -64,6 +66,14 @@ export async function GET(
       item_count: number;
     }> | null;
   };
+  if (isPsychAssessmentExpired(assessment.scheduled_for)) {
+    await supabaseAdmin
+      .from('psych_assessments')
+      .update({ status: 'expired' })
+      .eq('id', assessmentId)
+      .eq('status', 'pending');
+    return NextResponse.json({ error: 'This assessment has expired.' }, { status: 410 });
+  }
   const instrument = Array.isArray(assessment.psych_instruments)
     ? assessment.psych_instruments[0]
     : assessment.psych_instruments;

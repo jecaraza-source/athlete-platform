@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { schedulePsychAssessment } from '@/app/[locale]/(app)/dashboard/mental-health/actions';
 
 type Option = { id: string; label: string };
@@ -8,7 +8,12 @@ type Option = { id: string; label: string };
 export function SchedulePsychAssessment({ athletes, instruments }: { athletes: Option[]; instruments: Option[] }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [athleteSearch, setAthleteSearch] = useState('');
   const [isPending, startTransition] = useTransition();
+  const filteredAthletes = useMemo(() => {
+    const query = athleteSearch.trim().toLocaleLowerCase('es-MX');
+    return query ? athletes.filter((athlete) => athlete.label.toLocaleLowerCase('es-MX').includes(query)) : athletes;
+  }, [athletes, athleteSearch]);
   function submit(formData: FormData) {
     startTransition(async () => {
       const result = await schedulePsychAssessment({
@@ -24,7 +29,10 @@ export function SchedulePsychAssessment({ athletes, instruments }: { athletes: O
     <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Programar</p>
     <h2 className="mt-1 text-2xl font-bold text-[#2D2D2D]">Nueva evaluación psicológica</h2>
     <form action={submit} className="mt-4 grid gap-3 md:grid-cols-3">
-      <select required name="athleteId" defaultValue="" className="rounded-lg border border-gray-300 px-3 py-2 text-sm"><option value="" disabled>Selecciona atleta</option>{athletes.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
+      <div className="space-y-2">
+        <input value={athleteSearch} onChange={(event) => setAthleteSearch(event.target.value)} placeholder="Buscar atleta por nombre" aria-label="Buscar atleta por nombre" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+        <select required name="athleteId" defaultValue="" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"><option value="" disabled>Selecciona atleta</option>{filteredAthletes.map((athlete) => <option key={athlete.id} value={athlete.id}>{athlete.label}</option>)}</select>
+      </div>
       <select required name="instrumentId" defaultValue="" className="rounded-lg border border-gray-300 px-3 py-2 text-sm"><option value="" disabled>Selecciona examen</option>{instruments.map((i) => <option key={i.id} value={i.id}>{i.label}</option>)}</select>
       <div className="flex gap-2"><input required name="scheduledFor" type="datetime-local" className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" /><button disabled={isPending} className="rounded-lg bg-[#C0172C] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{isPending ? 'Programando…' : 'Programar'}</button></div>
     </form>
