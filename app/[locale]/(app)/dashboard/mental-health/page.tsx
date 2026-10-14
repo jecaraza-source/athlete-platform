@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireAuthenticated } from '@/lib/rbac/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { LicenseStatusManager } from '@/components/psych/LicenseStatusManager';
 import { PsychAlertsManager } from '@/components/psych/PsychAlertsManager';
 import { PsychInstrumentCatalog } from '@/components/psych/PsychInstrumentCatalog';
@@ -18,6 +19,7 @@ export default async function MentalHealthDashboardPage() {
   if (!user.profile || !user.roles.some((role) => role.code === 'mental_health_admin')) {
     redirect('/dashboard');
   }
+  const supabase = await createSupabaseServerClient();
 
   const { data: instrumentRows } = await supabaseAdmin
     .from('psych_instruments')
@@ -82,7 +84,7 @@ export default async function MentalHealthDashboardPage() {
       createdAt: alert.created_at,
     };
   });
-  const { data: assessmentRows } = await supabaseAdmin
+  const { data: assessmentRows } = await supabase
     .from('psych_assessments')
     .select('id, status, completed_at, published_to_athlete, profiles(first_name, last_name), psych_instruments!inner(name, is_test_only)')
     .in('status', ['completed', 'under_review', 'approved'])
