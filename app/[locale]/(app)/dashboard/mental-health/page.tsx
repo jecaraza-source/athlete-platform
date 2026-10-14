@@ -83,13 +83,14 @@ export default async function MentalHealthDashboardPage() {
   });
   const { data: assessmentRows } = await supabaseAdmin
     .from('psych_assessments')
-    .select('id, completed_at, published_to_athlete, profiles(first_name, last_name), psych_instruments!inner(name, is_test_only)')
-    .eq('status', 'completed')
+    .select('id, status, completed_at, published_to_athlete, profiles(first_name, last_name), psych_instruments!inner(name, is_test_only)')
+    .in('status', ['completed', 'under_review', 'approved'])
     .eq('psych_instruments.is_test_only', false)
     .order('completed_at', { ascending: false });
   const assessments = (assessmentRows ?? []).map((rawAssessment) => {
     const assessment = rawAssessment as {
       id: string;
+      status: 'completed' | 'under_review' | 'approved';
       completed_at: string | null;
       published_to_athlete: boolean;
       profiles: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null;
@@ -102,6 +103,7 @@ export default async function MentalHealthDashboardPage() {
       athleteName: athlete ? `${athlete.first_name} ${athlete.last_name}`.trim() : 'Atleta',
       instrumentName: instrument?.name ?? 'Instrumento',
       completedAt: assessment.completed_at,
+      status: assessment.status,
       published: assessment.published_to_athlete,
     };
   });
