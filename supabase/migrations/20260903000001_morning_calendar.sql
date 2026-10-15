@@ -6,7 +6,7 @@
 --
 -- Changes:
 --   1. Add `shift` column to `events` (morning | afternoon).
---   2. Backfill all existing events as 'afternoon'.
+--   2. Existing events default to 'afternoon' through the column default.
 --   3. Create `profile_permissions` table for per-user permission overrides.
 --   4. Seed new permissions: view_morning_calendar, manage_morning_calendar.
 --   5. Grant both to Super Admin and Coordinador roles.
@@ -17,7 +17,9 @@ ALTER TABLE events
   CHECK (shift IN ('morning', 'afternoon'));
 
 -- ── 2. Backfill ──────────────────────────────────────────────────────────────
-UPDATE events SET shift = 'afternoon' WHERE shift IS DISTINCT FROM 'afternoon';
+-- ADD COLUMN ... DEFAULT 'afternoon' already fills existing rows. The original
+-- UPDATE that forced every event to 'afternoon' was removed: re-running it
+-- would wipe the morning shift of real events.
 
 -- ── 3. profile_permissions — individual permission overrides per profile ─────
 CREATE TABLE IF NOT EXISTS profile_permissions (
