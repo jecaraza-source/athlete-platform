@@ -75,7 +75,13 @@ export async function submitPsychResponses(
 export async function listPsychologicalHistory(): Promise<PsychologicalHistoryItem[]> {
   const { data, error } = await supabase.rpc('get_published_psychological_history');
   if (error || !data) throw new Error(error?.message ?? 'No fue posible cargar el histórico.');
-  return data.map((row) => ({
+  const rows = data as Array<{
+    id: string;
+    completed_at: string | null;
+    instrument_name: string | null;
+    clinical_summary: string | null;
+  }>;
+  return rows.map((row) => ({
     id: row.id,
     completedAt: row.completed_at,
     instrumentName: row.instrument_name ?? 'Instrumento',
