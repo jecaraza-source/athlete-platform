@@ -6,6 +6,7 @@ import { PsychQuestionnaire } from '@/components/psych/PsychQuestionnaire';
 import { ATHLETE_ITEM_COLUMNS, type AthleteQuestionnaireItem } from '@/lib/psych/questionnaire';
 import { psychDateLocale, psychLabel } from '@/lib/psych/labels';
 import { getAthletePublishedResults } from '@/lib/psych/athlete-results';
+import { getAthleteAnsweredAssessments } from '@/lib/psych/athlete-overview';
 import { TZ } from '@/lib/timezone';
 
 export const dynamic = 'force-dynamic';
@@ -18,12 +19,6 @@ type Instrument = {
   is_active: boolean;
   is_test_only: boolean;
   license_status: 'pending_review' | 'licensed' | 'not_required' | 'denied';
-};
-
-type AnsweredAssessmentRow = {
-  id: string;
-  completed_at: string | null;
-  psych_instruments: { name: string } | { name: string }[] | null;
 };
 
 export default async function AthletePsychDashboardPage({
@@ -44,17 +39,7 @@ export default async function AthletePsychDashboardPage({
   ]);
   const results = await getAthletePublishedResults(user.profile.id);
   // Only what the athlete needs for their own record: test and date answered.
-  const { data: answeredRows } = await supabaseAdmin
-    .from('psych_assessments')
-    .select('id, completed_at, psych_instruments!inner(name, is_test_only)')
-    .eq('athlete_id', user.profile.id)
-    .in('status', ['completed', 'under_review', 'approved'])
-    .eq('psych_instruments.is_test_only', false)
-    .order('completed_at', { ascending: false });
-  const answered = ((answeredRows ?? []) as AnsweredAssessmentRow[]).map((row) => {
-    const instrument = Array.isArray(row.psych_instruments) ? row.psych_instruments[0] : row.psych_instruments;
-    return { id: row.id, instrumentName: instrument?.name ?? tc('instrumentFallback'), completedAt: row.completed_at };
-  });
+  const answered = await getAthleteAnsweredAssessments(user.profile.id);
   const formatDate = (value: string) => new Date(value).toLocaleDateString(psychDateLocale(locale), {
     timeZone: TZ,
     day: 'numeric',

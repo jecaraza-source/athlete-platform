@@ -16,6 +16,8 @@ import { getDiagnostic, getDiagnosticSections } from '@/services/diagnostic';
 import type { AthleteInitialDiagnostic, AthleteSection } from '@/types';
 import { DIAGNOSTIC_STATUS_LABELS, SECTION_LABELS } from '@/types';
 import NewsletterCard from '@/components/newsletter/NewsletterCard';
+import { PendingTestsCard } from '@/components/psych/PendingTestsCard';
+import { getPsychOverview, type PsychOverview } from '@/services/psych';
 
 export default function DashboardScreen() {
   const scheme = useColorScheme() ?? 'light';
@@ -34,9 +36,15 @@ export default function DashboardScreen() {
   // Athlete stats
   const [diagnostic, setDiagnostic] = useState<AthleteInitialDiagnostic | null>(null);
   const [sections, setSections] = useState<AthleteSection[]>([]);
+  const [psychOverview, setPsychOverview] = useState<PsychOverview | null>(null);
 
   async function loadData() {
     try {
+      // Tests belong to the profile, so load them even without an athlete record.
+      // Optional on the home screen; never block it.
+      if (isAthlete()) {
+        getPsychOverview().then(setPsychOverview).catch((e) => console.warn('[dashboard] psych overview error', e));
+      }
       if (isStaff()) {
         const [counts, tickets] = await Promise.all([
           countAthletes(),
@@ -290,6 +298,34 @@ export default function DashboardScreen() {
         {/* Newsletter card — visible to all roles */}
         <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 8 }]}>Newsletter</Text>
         <NewsletterCard />
+
+        {isAthlete() && psychOverview && (
+          <PendingTestsCard
+            pending={psychOverview.pending}
+            completionWindowDays={psychOverview.completionWindowDays}
+          />
+        )}
+
+        {isAthlete() && (
+          <TouchableOpacity
+            onPress={() => router.push('/app/psych/history' as never)}
+            style={[styles.protocolCard, { backgroundColor: scheme === 'dark' ? '#1e2022' : '#f0fdf4', marginTop: 8 }]}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.protocolIcon, { backgroundColor: '#dcfce7' }]}>
+              <Ionicons name="clipboard-outline" size={20} color="#15803d" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.protocolTitle, { color: colors.text }]}>Mis evaluaciones</Text>
+              <Text style={[styles.protocolSub, { color: colors.icon }]}>
+                {psychOverview?.results.length
+                  ? `${psychOverview.results.length} resultado(s) publicado(s) · exámenes contestados`
+                  : 'Resultados publicados y exámenes contestados'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.icon} />
+          </TouchableOpacity>
+        )}
 
       </ScrollView>
     </View>

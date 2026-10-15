@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Alert, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View,
 } from 'react-native';
-import { Redirect, useLocalSearchParams } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, PRIMARY } from '@/constants/theme';
 import { EmptyView } from '@/components/ui/empty-view';
@@ -39,6 +39,7 @@ export default function PsychQuestionnaireScreen() {
   const { assessmentId: rawAssessmentId } = useLocalSearchParams<{ assessmentId: string }>();
   const assessmentId = Array.isArray(rawAssessmentId) ? rawAssessmentId[0] : rawAssessmentId;
   const isAthlete = useAuthStore((state) => state.isAthlete);
+  const router = useRouter();
   const responses = usePsychQuestionnaireStore((state) => state.responses);
   const begin = usePsychQuestionnaireStore((state) => state.begin);
   const setResponse = usePsychQuestionnaireStore((state) => state.setResponse);
@@ -96,6 +97,8 @@ export default function PsychQuestionnaireScreen() {
       Alert.alert(
         'Evaluación enviada a revisión',
         result.message ?? 'Tus respuestas fueron registradas y serán revisadas por el equipo de salud mental.',
+        // Take the athlete to their record, which now lists this test as answered.
+        [{ text: 'Ver mis evaluaciones', onPress: () => router.replace('/app/psych/history' as never) }],
       );
     } catch (reason) {
       Alert.alert(
