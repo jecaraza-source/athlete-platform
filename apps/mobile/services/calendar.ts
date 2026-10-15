@@ -95,9 +95,44 @@ export async function countEventsInRange(
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch all events in a date range for staff/coaches/admins.
- * Simple query without nested joins for maximum compatibility.
- * Participants are fetched separately after events load.
+ * Given raw event_participants rows, resolves athlete names and groups them
+ * by event_id. Defensive against malformed/mocked responses: any non-array
+ * `athletes` result degrades to no names rather than throwing.
+ */
+async function namesByEventFromParticipants(
+  participants: { event_id: string; participant_id: string }[],
+): Promise<Record<string, EventParticipant[]>> {
+  if (!participants.length) return {};
+
+  const athleteIds = [...new Set(participants.map((p) => p.participant_id))];
+  const { data: athletes, error } = await supabase
+    .from('athletes')
+    .select('id, first_name, last_name')
+    .in('id', athleteIds);
+
+  if (error || !Array.isArray(athletes)) {
+    if (error) console.warn('[calendar] namesByEventFromParticipants error:', error.message);
+    return {};
+  }
+
+  const athleteById = new Map(
+    (athletes as { id: string; first_name: string; last_name: string }[]).map((a) => [
+      a.id,
+      { first_name: a.first_name, last_name: a.last_name },
+    ]),
+  );
+
+  const byEvent: Record<string, EventParticipant[]> = {};
+  for (const p of participants) {
+    const athlete = athleteById.get(p.participant_id);
+    if (athlete) (byEvent[p.event_id] ??= []).push(athlete);
+  }
+  return byEvent;
+}
+
+/**
+ * Fetch all events in a date range for staff/coaches/admins, with
+ * participant names resolved (2 extra queries: event_participants, athletes).
  */
 export async function listEventsInRange(
   startISO: string,
@@ -115,11 +150,21 @@ export async function listEventsInRange(
     return [];
   }
 
-  // Map to CalendarEvent with empty participants array.
-  // Participant names are fetched separately when needed.
-  return (data ?? []).map((ev) => ({
-    ...(ev as Omit<CalendarEvent, 'participants'>),
-    participants: [],
+  const events = (data ?? []) as Omit<CalendarEvent, 'participants'>[];
+  if (events.length === 0) return [];
+
+  const { data: parts } = await supabase
+    .from('event_participants')
+    .select('event_id, participant_id')
+    .in('event_id', events.map((e) => e.id));
+
+  const namesByEvent = await namesByEventFromParticipants(
+    (parts ?? []) as { event_id: string; participant_id: string }[],
+  );
+
+  return events.map((ev) => ({
+    ...ev,
+    participants: namesByEvent[ev.id] ?? [],
   }));
 }
 
@@ -183,8 +228,10 @@ export async function listEventsForAthlete(
       : true;                      // no participants  → global event, always visible
   });
 
+  const namesByEvent = await namesByEventFromParticipants(participants);
+
   return visible.map((ev) => ({
     ...(ev as Omit<CalendarEvent, 'participants'>),
-    participants: [],
+    participants: namesByEvent[(ev as { id: string }).id] ?? [],
   }));
 }

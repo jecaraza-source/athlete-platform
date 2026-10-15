@@ -93,12 +93,12 @@ describe('createCalendarEvent', () => {
 // ===========================================================================
 
 describe('addEventParticipants', () => {
-  it('is a no-op when profileIds is empty', async () => {
+  it('is a no-op when athleteIds is empty', async () => {
     await addEventParticipants('evt-001', []);
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
-  it('inserts one row per profile', async () => {
+  it('inserts one row per athlete', async () => {
     const chain = makeChain({ error: null });
     vi.mocked(supabase.from).mockReturnValue(chain as never);
 
@@ -186,6 +186,34 @@ describe('listEventsInRange', () => {
     expect(chain.gte).toHaveBeenCalledWith('start_at', START);
     expect(chain.lte).toHaveBeenCalledWith('start_at', END);
   });
+
+  it('resolves participant names for events that have assigned athletes', async () => {
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === 'events') {
+        return makeChain({ data: [EVENT_A, EVENT_B], error: null }) as never;
+      }
+      if (table === 'event_participants') {
+        return makeChain({
+          data: [{ event_id: 'evt-001', participant_id: 'athlete-001' }],
+          error: null,
+        }) as never;
+      }
+      if (table === 'athletes') {
+        return makeChain({
+          data: [{ id: 'athlete-001', first_name: 'Ana', last_name: 'Pérez' }],
+          error: null,
+        }) as never;
+      }
+      return makeChain({ data: [], error: null }) as never;
+    });
+
+    const result = await listEventsInRange(START, END);
+
+    expect(result.find((e) => e.id === 'evt-001')?.participants).toEqual([
+      { first_name: 'Ana', last_name: 'Pérez' },
+    ]);
+    expect(result.find((e) => e.id === 'evt-002')?.participants).toEqual([]);
+  });
 });
 
 // ===========================================================================
@@ -212,9 +240,6 @@ describe('listEventsForAthlete', () => {
 
   it('includes global events (events with no participants)', async () => {
     vi.mocked(supabase.from).mockImplementation((table: string) => {
-      if (table === 'athletes') {
-        return makeChain({ data: { id: ATHLETE_ID }, error: null }) as never;
-      }
       if (table === 'events') {
         return makeChain({ data: [EVENT_A], error: null }) as never;
       }
@@ -232,9 +257,15 @@ describe('listEventsForAthlete', () => {
   });
 
   it('includes events where the athlete is an explicit participant', async () => {
+    let athletesCallCount = 0;
     vi.mocked(supabase.from).mockImplementation((table: string) => {
       if (table === 'athletes') {
-        return makeChain({ data: { id: ATHLETE_ID }, error: null }) as never;
+        athletesCallCount += 1;
+        // 1st call: resolve profileId -> athletes.id. 2nd call: name lookup.
+        return (athletesCallCount === 1
+          ? makeChain({ data: { id: ATHLETE_ID }, error: null })
+          : makeChain({ data: [{ id: ATHLETE_ID, first_name: 'Ana', last_name: 'Pérez' }], error: null })
+        ) as never;
       }
       if (table === 'events') {
         return makeChain({ data: [EVENT_A, EVENT_B], error: null }) as never;
@@ -256,6 +287,7 @@ describe('listEventsForAthlete', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('evt-001');
+    expect(result[0].participants).toEqual([{ first_name: 'Ana', last_name: 'Pérez' }]);
   });
 
   it('excludes events that have participants but athlete is not among them', async () => {
@@ -280,9 +312,14 @@ describe('listEventsForAthlete', () => {
   it('mixes global events and athlete-specific events correctly', async () => {
     // EVENT_A: global (no participants)
     // EVENT_B: has participants and athlete is one of them
+    let athletesCallCount = 0;
     vi.mocked(supabase.from).mockImplementation((table: string) => {
       if (table === 'athletes') {
-        return makeChain({ data: { id: ATHLETE_ID }, error: null }) as never;
+        athletesCallCount += 1;
+        return (athletesCallCount === 1
+          ? makeChain({ data: { id: ATHLETE_ID }, error: null })
+          : makeChain({ data: [{ id: ATHLETE_ID, first_name: 'Ana', last_name: 'Pérez' }], error: null })
+        ) as never;
       }
       if (table === 'events') {
         return makeChain({ data: [EVENT_A, EVENT_B], error: null }) as never;
