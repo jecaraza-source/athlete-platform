@@ -140,7 +140,7 @@ describe('athlete published results', () => {
   });
 
   it('feeds the mobile history from the athlete summary, not the confidential note', () => {
-    const sql = readFileSync(path.resolve(__dirname, '../../supabase/migrations/20261015000001_psych_athlete_summary.sql'), 'utf8');
+    const sql = readFileSync(path.resolve(__dirname, '../../supabase/migrations/20261015010102_psych_athlete_summary.sql'), 'utf8');
     const body = sql.slice(sql.indexOf('AS $$'));
     expect(body).toMatch(/assessment\.athlete_summary\n/);
     expect(body).not.toMatch(/assessment\.clinical_summary/);
