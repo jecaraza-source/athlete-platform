@@ -6,7 +6,7 @@ Esta guía describe el flujo clínico de evaluaciones psicológicas, los límite
 - El rol `mental_health_admin` puede programar, leer respuestas, documentar la revisión, aprobar y publicar.
 - En el entorno actual, el acceso clínico está asignado únicamente a `soporte@aodeporte.com` y `psi04@aodeporte.com`.
 - Entrenadores y dirección sólo consumen las vistas autorizadas por sus permisos y RLS; no reciben respuestas crudas.
-- La app móvil del atleta sólo recibe resúmenes clínicos aprobados y publicados.
+- El atleta sólo recibe el **resumen para el atleta** (`athlete_summary`) de evaluaciones aprobadas y publicadas, en la web ("Mi evaluación programada") y en la app móvil. La **nota clínica confidencial** (`clinical_summary`) nunca se le muestra.
 - El atleta nunca recibe puntajes, bandas ni la clave de scoring (`subscale_code`, `is_reverse_scored`); los reactivos se entregan sólo por las rutas del servidor y la RLS de `psych_instrument_items` limita la lectura directa a `mental_health_admin`.
 - Entrenadores sólo ven evaluaciones y puntajes de su roster en estado `approved`, tanto en el dashboard como vía RLS.
 - La fecha de programación se captura en hora de Ciudad de México y se guarda en UTC.
@@ -24,10 +24,10 @@ Una evaluación publicada conserva `status = approved` y registra `published_to_
 2. El atleta autenticado abre el cuestionario dentro de la ventana habilitada y responde todos los reactivos.
 3. El backend valida códigos, opciones y completitud antes de guardar respuestas.
 4. La evaluación pasa a `under_review`; se notifica al profesional programador.
-5. El profesional guarda `clinical_summary` y, cuando aplique, interpretaciones por subescala.
+5. El profesional guarda la nota confidencial (`clinical_summary`), el resumen para el atleta (`athlete_summary`) y, cuando aplique, interpretaciones por subescala.
 6. El profesional aprueba la evaluación. La aprobación registra `approved_by` y `approved_at`.
-7. Sólo una evaluación aprobada con resumen clínico puede publicarse al atleta.
-8. El historial móvil muestra exclusivamente instrumento, fecha y resumen clínico de evaluaciones aprobadas/publicadas.
+7. Sólo una evaluación aprobada con resumen para el atleta puede publicarse.
+8. El atleta ve instrumento, fechas, el resumen para el atleta y las interpretaciones por subescala; nunca respuestas, puntajes ni bandas. La RPC del historial móvil conserva la columna `clinical_summary` por compatibilidad, pero entrega `athlete_summary`.
 
 ## Scoring y alertas
 - SCAT es el único instrumento con scoring automático habilitado actualmente (`scoring_mode = automated`).

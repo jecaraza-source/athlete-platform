@@ -129,7 +129,7 @@ export async function POST(
     return NextResponse.json({ error: 'Assessment not found or no longer available.' }, { status: 404 });
   }
   if (assessment.scheduled_for && new Date(assessment.scheduled_for) > new Date()) {
-    return NextResponse.json({ error: 'Esta evaluación aún no está disponible.' }, { status: 409 });
+    return NextResponse.json({ error: 'Esta evaluación aún no está disponible.', code: 'NOT_YET_AVAILABLE' }, { status: 409 });
   }
 
   const instrument = Array.isArray(assessment.psych_instruments)
@@ -186,7 +186,7 @@ export async function POST(
     const matchesSubmission = existingResponses.length === parsed.responses.length &&
       parsed.responses.every((response) => existingByCode.get(response.item_code) === response.raw_value);
     if (!matchesSubmission) {
-      return NextResponse.json({ error: 'Esta evaluación ya contiene respuestas que no pueden reemplazarse.' }, { status: 409 });
+      return NextResponse.json({ error: 'Esta evaluación ya contiene respuestas que no pueden reemplazarse.', code: 'ALREADY_ANSWERED' }, { status: 409 });
     }
   } else {
     const { error: insertError } = await supabase

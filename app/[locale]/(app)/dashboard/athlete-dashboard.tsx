@@ -16,6 +16,7 @@ import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { AvatarUploader } from '@/components/avatar/avatar-uploader';
 import NewsletterHomeCard from '@/components/newsletter/NewsletterHomeCard';
+import { ScheduledAssessmentAlert } from '@/components/psych/ScheduledAssessmentAlert';
 import {
   SECTION_KEYS,
   SECTION_LABELS,
@@ -190,6 +191,11 @@ export default async function AthleteDashboard({ user }: Props) {
       {/* ── Newsletter ──────────────────────────────────────────────────── */}
       <Suspense fallback={null}>
         <NewsletterHomeCard />
+      </Suspense>
+
+      {/* ── Scheduled psychological tests ──────────────────────────────── */}
+      <Suspense fallback={null}>
+        <ScheduledAssessmentAlert profileId={profileId} />
       </Suspense>
 
       {/* ── Mi Diagnóstico Inicial ────────────────────────────────────────── */}

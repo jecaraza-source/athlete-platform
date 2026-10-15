@@ -1,6 +1,8 @@
 'use client';
 
 import { FormEvent, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
+import { useRouter } from '@/i18n/navigation';
 import type { AthleteQuestionnaireItem } from '@/lib/psych/questionnaire';
 
 type ResponseOption = {
@@ -40,10 +42,21 @@ function normaliseOptions(value: unknown): ResponseOption[] {
 }
 
 export function PsychQuestionnaire({ assessmentId, instrumentName, items }: Props) {
+  const t = useTranslations('psych.athlete');
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  // The API answers in a single language for web and mobile alike, so the
+  // web client maps its outcome to the viewer's locale.
+  function submissionErrorMessage(status: number, code: unknown) {
+    if (status === 409) return code === 'NOT_YET_AVAILABLE' ? t('notAvailableYet') : t('alreadyAnswered');
+    if (status === 404) return t('noLongerAvailable');
+    if (status === 400) return t('invalidAnswers');
+    return t('submitError');
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,7 +67,7 @@ export function PsychQuestionnaire({ assessmentId, instrumentName, items }: Prop
     }));
 
     if (responses.some((response) => !response.raw_value)) {
-      setError('Responde todos los reactivos antes de enviar el cuestionario.');
+      setError(t('answerAll'));
       setMessage(null);
       return;
     }
@@ -68,24 +81,23 @@ export function PsychQuestionnaire({ assessmentId, instrumentName, items }: Prop
         });
         const result = await response.json().catch(() => ({}));
 
-        if (response.status === 501 && result.code === 'PSYCH_SCORING_NOT_IMPLEMENTED') {
-          setMessage('Tus respuestas fueron registradas. La interpretación estará disponible cuando sea revisada por el equipo de salud mental.');
-          setSubmitted(true);
-          setError(null);
-          return;
-        }
         if (!response.ok) {
-          setError(result.error ?? 'No fue posible registrar tus respuestas.');
+          setError(submissionErrorMessage(response.status, result.code));
           setMessage(null);
           return;
         }
 
         // Scores and bands are only released after clinical review, never here.
-        setMessage(result.message ?? 'Tus respuestas fueron registradas.');
-        setSubmitted(true);
         setError(null);
+        if (result.isTestRun) {
+          setMessage(t('testRunSubmitted'));
+          setSubmitted(true);
+          return;
+        }
+        // Reload so the answered-tests record includes this assessment.
+        router.replace('/dashboard/psych?submitted=1');
       } catch {
-        setError('No fue posible conectar con el servidor. Intenta nuevamente.');
+        setError(t('connectionError'));
         setMessage(null);
       }
     });
@@ -94,9 +106,9 @@ export function PsychQuestionnaire({ assessmentId, instrumentName, items }: Prop
   return (
     <form onSubmit={submit} className="rounded-2xl border border-red-100 bg-white shadow-sm">
       <div className="border-b border-red-100 bg-red-50 px-6 py-5">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Cuestionario disponible</p>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">{t('questionnaireEyebrow')}</p>
         <h2 className="mt-1 text-xl font-bold text-[#2D2D2D]">{instrumentName}</h2>
-        <p className="mt-1 text-sm text-gray-600">Tus respuestas son confidenciales y serán revisadas por personal autorizado.</p>
+        <p className="mt-1 text-sm text-gray-600">{t('confidential')}</p>
       </div>
 
       <div className="space-y-6 p-6">
@@ -132,7 +144,7 @@ export function PsychQuestionnaire({ assessmentId, instrumentName, items }: Prop
           disabled={isPending}
           className="rounded-lg bg-[#C0172C] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#C1000E] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPending ? 'Enviando…' : 'Enviar respuestas'}
+          {isPending ? t('submitting') : t('submit')}
         </button>
       </div>}
     </form>
