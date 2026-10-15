@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { psychDateLocale } from '@/lib/psych/labels';
+import { matchesSearch } from '@/lib/psych/athlete-search';
 import { ASSESSMENT_STAGE_ORDER, assessmentStage, type AssessmentStage } from '@/lib/psych/stage';
 
 type Assessment = {
@@ -27,12 +28,15 @@ export function PsychAssessmentList({ assessments }: { assessments: Assessment[]
   const [athleteFilter, setAthleteFilter] = useState('');
   const [instrumentFilter, setInstrumentFilter] = useState('');
   const [stageFilter, setStageFilter] = useState<'all' | AssessmentStage>('all');
+  // Suggestions shown under the filter inputs as the user types.
+  const athleteNames = useMemo(() => [...new Set(assessments.map((assessment) => assessment.athleteName))].sort((a, b) => a.localeCompare(b, locale)), [assessments, locale]);
+  const instrumentNames = useMemo(() => [...new Set(assessments.map((assessment) => assessment.instrumentName))].sort((a, b) => a.localeCompare(b, locale)), [assessments, locale]);
   const pendingCount = assessments.filter((assessment) => assessmentStage(assessment) === 'pending').length;
   // Pending grading first; within a stage keep the newest completion on top.
   const filtered = useMemo(() => assessments
     .filter((assessment) =>
-      assessment.athleteName.toLowerCase().includes(athleteFilter.toLowerCase()) &&
-      assessment.instrumentName.toLowerCase().includes(instrumentFilter.toLowerCase()) &&
+      matchesSearch(assessment.athleteName, athleteFilter) &&
+      matchesSearch(assessment.instrumentName, instrumentFilter) &&
       (stageFilter === 'all' || assessmentStage(assessment) === stageFilter)
     )
     .sort((left, right) =>
@@ -52,8 +56,10 @@ export function PsychAssessmentList({ assessments }: { assessments: Assessment[]
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${pendingCount > 0 ? 'bg-amber-200 text-amber-900' : 'bg-white text-gray-600'}`}>{t('pendingCount', { count: pendingCount })}</span>
       </div>
       <div className="mb-4 grid gap-2 md:grid-cols-3">
-        <input value={athleteFilter} onChange={(event) => setAthleteFilter(event.target.value)} placeholder={t('filterAthlete')} className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm" />
-        <input value={instrumentFilter} onChange={(event) => setInstrumentFilter(event.target.value)} placeholder={t('filterInstrument')} className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm" />
+        <input type="search" list="psych-list-athletes" autoComplete="off" value={athleteFilter} onChange={(event) => setAthleteFilter(event.target.value)} placeholder={t('filterAthlete')} aria-label={t('filterAthlete')} className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm" />
+        <input type="search" list="psych-list-instruments" autoComplete="off" value={instrumentFilter} onChange={(event) => setInstrumentFilter(event.target.value)} placeholder={t('filterInstrument')} aria-label={t('filterInstrument')} className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm" />
+        <datalist id="psych-list-athletes">{athleteNames.map((name) => <option key={name} value={name} />)}</datalist>
+        <datalist id="psych-list-instruments">{instrumentNames.map((name) => <option key={name} value={name} />)}</datalist>
         <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as 'all' | AssessmentStage)} className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"><option value="all">{t('allStatuses')}</option><option value="pending">{t('pendingGrading')}</option><option value="approved">{t('approvedUnpublished')}</option><option value="published">{t('published')}</option></select>
       </div>
       <div className="overflow-hidden rounded-xl border border-amber-200 bg-white">

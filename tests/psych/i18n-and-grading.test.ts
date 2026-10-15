@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { psychDateLocale, psychLabel } from '@/lib/psych/labels';
 import { buildReadableResponses } from '@/lib/psych/responses';
 import { assessmentStage } from '@/lib/psych/stage';
-import { filterAthleteOptions } from '@/lib/psych/athlete-search';
+import { filterAthleteOptions, matchesSearch } from '@/lib/psych/athlete-search';
 import { assessmentDeadline, PSYCH_COMPLETION_WINDOW_DAYS } from '@/lib/psych/deadline';
 
 const ROOT = path.resolve(__dirname, '../..');
@@ -49,6 +49,26 @@ describe('psych translations', () => {
       const source = readFileSync(path.join(ROOT, file), 'utf8');
       expect(source, file).not.toMatch(/[áéíóúñ¿¡]/i);
       expect(source, file).not.toContain("'es-MX'");
+    }
+  });
+});
+
+describe('psych queries', () => {
+  // psych_assessments and psych_alerts reference profiles through several
+  // foreign keys; an unqualified profiles(...) embed fails with PGRST201 and
+  // the screens silently render empty lists.
+  it('always names the foreign key when embedding profiles', () => {
+    const files = [
+      'app/[locale]/(app)/dashboard/mental-health/page.tsx',
+      'app/[locale]/(app)/dashboard/mental-health/assessments/[id]/page.tsx',
+      'app/[locale]/(app)/dashboard/psych/page.tsx',
+      'app/[locale]/(app)/dashboard/coach/psych/page.tsx',
+      'app/[locale]/(app)/dashboard/psych/overview/page.tsx',
+      'components/psych/ScheduledAssessmentAlert.tsx',
+    ];
+    for (const file of files) {
+      const source = readFileSync(path.join(ROOT, file), 'utf8');
+      expect(source, file).not.toMatch(/[\s,(']profiles\(/);
     }
   });
 });
@@ -112,6 +132,13 @@ describe('filterAthleteOptions', () => {
     expect(filterAthleteOptions(athletes, 'jo').map((a) => a.id)).toEqual(['1']);
     expect(filterAthleteOptions(athletes, 'LOPEZ').map((a) => a.id)).toEqual(['1', '2']);
     expect(filterAthleteOptions(athletes, 'mart')).toHaveLength(1);
+  });
+
+  it('matches free-text filters the same way', () => {
+    expect(matchesSearch('Cuestionario de Burnout del Atleta (ABQ)', 'abq')).toBe(true);
+    expect(matchesSearch('José Martínez', 'jose mar')).toBe(true);
+    expect(matchesSearch('José Martínez', 'ana')).toBe(false);
+    expect(matchesSearch('Cualquiera', '')).toBe(true);
   });
 
   it('requires every typed word, in any order, and returns all on an empty search', () => {

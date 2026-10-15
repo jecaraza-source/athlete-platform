@@ -57,11 +57,13 @@ export default async function MentalHealthDashboardPage() {
   }
 
 
-  const { data: alertRows } = await supabaseAdmin
+  const { data: alertRows, error: alertsError } = await supabaseAdmin
     .from('psych_alerts')
-    .select('id, alert_type, severity, status, notes, created_at, profiles(first_name, last_name), psych_assessments!inner(psych_instruments!inner(is_test_only))')
+    .select('id, alert_type, severity, status, notes, created_at, profiles!psych_alerts_athlete_id_fkey(first_name, last_name), psych_assessments!inner(psych_instruments!inner(is_test_only))')
     .eq('psych_assessments.psych_instruments.is_test_only', false)
     .order('created_at', { ascending: false });
+  // Fail loudly: an empty list here would hide assessments awaiting grading.
+  if (alertsError) throw new Error(`psych_alerts query failed: ${alertsError.message}`);
   const alerts = (alertRows ?? []).map((rawAlert) => {
     const alert = rawAlert as {
       id: string;
@@ -83,12 +85,13 @@ export default async function MentalHealthDashboardPage() {
       createdAt: alert.created_at,
     };
   });
-  const { data: assessmentRows } = await supabaseAdmin
+  const { data: assessmentRows, error: assessmentsError } = await supabaseAdmin
     .from('psych_assessments')
-    .select('id, status, completed_at, published_to_athlete, profiles(first_name, last_name), psych_instruments!inner(name, is_test_only)')
+    .select('id, status, completed_at, published_to_athlete, profiles!psych_assessments_athlete_id_fkey(first_name, last_name), psych_instruments!inner(name, is_test_only)')
     .in('status', ['under_review', 'approved'])
     .eq('psych_instruments.is_test_only', false)
     .order('completed_at', { ascending: false });
+  if (assessmentsError) throw new Error(`psych_assessments query failed: ${assessmentsError.message}`);
   const assessments = (assessmentRows ?? []).map((rawAssessment) => {
     const assessment = rawAssessment as {
       id: string;

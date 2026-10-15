@@ -15,12 +15,13 @@ export default async function MentalHealthAssessmentDetailPage({ params }: { par
 
   const [t, tc] = await Promise.all([getTranslations('psych.detail'), getTranslations('psych.common')]);
   const { id } = await params;
-  const { data: assessmentRaw } = await supabaseAdmin
+  const { data: assessmentRaw, error: assessmentError } = await supabaseAdmin
     .from('psych_assessments')
-    .select('id, instrument_id, status, published_to_athlete, clinical_summary, reviewed_at, approved_at, profiles(first_name, last_name), psych_instruments!inner(name, is_test_only)')
+    .select('id, instrument_id, status, published_to_athlete, clinical_summary, reviewed_at, approved_at, profiles!psych_assessments_athlete_id_fkey(first_name, last_name), psych_instruments!inner(name, is_test_only)')
     .eq('id', id)
     .eq('psych_instruments.is_test_only', false)
     .maybeSingle();
+  if (assessmentError) throw new Error(`psych_assessments query failed: ${assessmentError.message}`);
   if (!assessmentRaw) notFound();
 
   const assessment = assessmentRaw as {
