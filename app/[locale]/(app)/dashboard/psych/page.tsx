@@ -4,7 +4,8 @@ import { requireAuthenticated } from '@/lib/rbac/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PsychQuestionnaire } from '@/components/psych/PsychQuestionnaire';
 import { ATHLETE_ITEM_COLUMNS, type AthleteQuestionnaireItem } from '@/lib/psych/questionnaire';
-import { psychDateLocale } from '@/lib/psych/labels';
+import { psychDateLocale, psychLabel } from '@/lib/psych/labels';
+import { getAthletePublishedResults } from '@/lib/psych/athlete-results';
 import { TZ } from '@/lib/timezone';
 
 export const dynamic = 'force-dynamic';
@@ -41,6 +42,7 @@ export default async function AthletePsychDashboardPage({
     getLocale(),
     searchParams,
   ]);
+  const results = await getAthletePublishedResults(user.profile.id);
   // Only what the athlete needs for their own record: test and date answered.
   const { data: answeredRows } = await supabaseAdmin
     .from('psych_assessments')
@@ -119,6 +121,52 @@ export default async function AthletePsychDashboardPage({
             <p className="mx-auto mt-2 max-w-xl text-sm text-gray-600">
               {t('emptyDescription')}
             </p>
+          </div>
+        )}
+      </section>
+
+      <section className="mb-10 rounded-2xl border border-green-200 bg-green-50 p-5">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-green-800">{t('resultsEyebrow')}</p>
+        <h2 className="mt-1 text-xl font-bold text-[#2D2D2D]">{t('resultsTitle')}</h2>
+        <p className="mt-1 text-sm text-gray-700">{t('resultsDescription')}</p>
+        {results.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-dashed border-green-200 bg-white px-4 py-6 text-center text-sm text-gray-500">{t('resultsEmpty')}</p>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {results.map((result) => {
+              const aboutKey = `instrumentAbout.${result.instrumentCode}`;
+              return (
+                <article key={result.id} className="rounded-xl border border-green-200 bg-white p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <h3 className="text-lg font-bold text-[#2D2D2D]">{result.instrumentName}</h3>
+                    <div className="text-right text-xs text-gray-500">
+                      {result.completedAt && <p>{t('answeredShort', { date: formatDate(result.completedAt) })}</p>}
+                      {result.publishedAt && <p>{t('publishedShort', { date: formatDate(result.publishedAt) })}</p>}
+                    </div>
+                  </div>
+                  {tc.has(aboutKey) && (
+                    <p className="mt-2 text-sm text-gray-600"><span className="font-semibold text-gray-700">{t('aboutTest')}: </span>{tc(aboutKey)}</p>
+                  )}
+                  <div className="mt-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-green-800">{t('resultSummary')}</p>
+                    <p className="mt-1 whitespace-pre-line text-sm leading-6 text-[#2D2D2D]">{result.summary}</p>
+                  </div>
+                  {result.interpretations.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs font-bold uppercase tracking-wide text-green-800">{t('bySubscale')}</p>
+                      <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {result.interpretations.map((interpretation) => (
+                          <div key={interpretation.subscaleCode} className="rounded-lg bg-gray-50 px-3 py-2">
+                            <dt className="text-xs font-semibold text-gray-700">{psychLabel(tc, 'subscale', interpretation.subscaleCode)}</dt>
+                            <dd className="mt-0.5 whitespace-pre-line text-sm text-gray-700">{interpretation.text}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
           </div>
         )}
       </section>

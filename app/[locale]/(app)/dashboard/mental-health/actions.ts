@@ -54,20 +54,27 @@ export async function schedulePsychAssessment(input: { athleteId: string; instru
   return {};
 }
 
+/**
+ * Saves both review texts. clinical_summary is the confidential note for the
+ * clinical team; athlete_summary is the only text the athlete ever sees.
+ */
 export async function savePsychClinicalReview(input: {
   assessmentId: string;
   clinicalSummary: string;
+  athleteSummary: string;
 }): Promise<{ error?: string }> {
   const t = await errorMessages();
   const { user, error: accessError } = await requireMentalHealthPermission('psych.write_interpretation');
   if (!user?.profile || accessError) return { error: accessError ?? t('unauthorized') };
-  const summary = input.clinicalSummary.trim();
-  if (!summary) return { error: t('summaryRequired') };
+  const clinicalSummary = input.clinicalSummary.trim();
+  const athleteSummary = input.athleteSummary.trim();
+  if (!clinicalSummary && !athleteSummary) return { error: t('summaryRequired') };
 
   const { error } = await supabaseAdmin
     .from('psych_assessments')
     .update({
-      clinical_summary: summary,
+      clinical_summary: clinicalSummary || null,
+      athlete_summary: athleteSummary || null,
       reviewed_by: user.profile.id,
       reviewed_at: new Date().toISOString(),
     })
@@ -90,13 +97,13 @@ export async function approvePsychAssessment(input: {
 
   const { data: assessment } = await supabaseAdmin
     .from('psych_assessments')
-    .select('id, clinical_summary, psych_instruments!inner(is_test_only, scoring_mode)')
+    .select('id, athlete_summary, psych_instruments!inner(is_test_only, scoring_mode)')
     .eq('id', input.assessmentId)
     .eq('status', 'under_review')
     .eq('published_to_athlete', false)
     .eq('psych_instruments.is_test_only', false)
     .maybeSingle();
-  if (!assessment || !assessment.clinical_summary?.trim()) {
+  if (!assessment || !assessment.athlete_summary?.trim()) {
     return { error: t('summaryBeforeApprove') };
   }
   const instrument = Array.isArray(assessment.psych_instruments) ? assessment.psych_instruments[0] : assessment.psych_instruments;

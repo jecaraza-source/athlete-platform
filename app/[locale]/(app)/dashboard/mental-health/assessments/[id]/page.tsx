@@ -17,7 +17,7 @@ export default async function MentalHealthAssessmentDetailPage({ params }: { par
   const { id } = await params;
   const { data: assessmentRaw, error: assessmentError } = await supabaseAdmin
     .from('psych_assessments')
-    .select('id, instrument_id, status, published_to_athlete, clinical_summary, reviewed_at, approved_at, profiles!psych_assessments_athlete_id_fkey(first_name, last_name), psych_instruments!inner(name, is_test_only)')
+    .select('id, instrument_id, status, published_to_athlete, clinical_summary, athlete_summary, reviewed_at, approved_at, profiles!psych_assessments_athlete_id_fkey(first_name, last_name), psych_instruments!inner(name, is_test_only)')
     .eq('id', id)
     .eq('psych_instruments.is_test_only', false)
     .maybeSingle();
@@ -30,6 +30,7 @@ export default async function MentalHealthAssessmentDetailPage({ params }: { par
     status: string;
     published_to_athlete: boolean;
     clinical_summary: string | null;
+    athlete_summary: string | null;
     reviewed_at: string | null;
     approved_at: string | null;
     profiles: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null;
@@ -57,6 +58,7 @@ export default async function MentalHealthAssessmentDetailPage({ params }: { par
         assessmentStatus={assessment.status}
         published={assessment.published_to_athlete}
         clinicalSummary={assessment.clinical_summary ?? ''}
+        athleteSummary={assessment.athlete_summary ?? ''}
         reviewedAt={assessment.reviewed_at}
         approvedAt={assessment.approved_at}
         canEdit={user.permissions.has('psych.write_interpretation') && assessment.status === 'under_review' && !assessment.published_to_athlete}

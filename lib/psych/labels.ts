@@ -9,7 +9,7 @@ type CommonTranslator = {
   has(key: string): boolean;
 };
 
-export type PsychLabelGroup = 'subscale' | 'band' | 'alertType';
+export type PsychLabelGroup = 'subscale' | 'band' | 'alertType' | 'instrumentAbout';
 
 export function psychLabel(t: CommonTranslator, group: PsychLabelGroup, value: string): string {
   const key = `${group}.${value.trim().replaceAll(' ', '_')}`;

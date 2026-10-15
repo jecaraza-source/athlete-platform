@@ -22,7 +22,7 @@ export async function PATCH(
   const { id: assessmentId } = await params;
   const { data: assessment, error: readError } = await supabaseAdmin
     .from('psych_assessments')
-    .select('id, status, approved_by, approved_at, clinical_summary, psych_instruments!inner(is_test_only)')
+    .select('id, status, approved_by, approved_at, athlete_summary, psych_instruments!inner(is_test_only)')
     .eq('id', assessmentId)
     .eq('psych_instruments.is_test_only', false)
     .maybeSingle();
@@ -34,10 +34,10 @@ export async function PATCH(
     assessment.status !== 'approved' ||
     !assessment.approved_by ||
     !assessment.approved_at ||
-    !assessment.clinical_summary?.trim()
+    !assessment.athlete_summary?.trim()
   ) {
     return NextResponse.json(
-      { error: 'Only clinically approved assessments with a summary can be published.' },
+      { error: 'Only clinically approved assessments with an athlete summary can be published.' },
       { status: 409 }
     );
   }

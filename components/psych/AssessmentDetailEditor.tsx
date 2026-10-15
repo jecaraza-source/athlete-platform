@@ -20,6 +20,7 @@ type Props = {
   assessmentStatus: string;
   published: boolean;
   clinicalSummary: string;
+  athleteSummary: string;
   reviewedAt: string | null;
   approvedAt: string | null;
   canEdit: boolean;
@@ -33,6 +34,7 @@ export function AssessmentDetailEditor({
   assessmentStatus,
   published,
   clinicalSummary,
+  athleteSummary,
   reviewedAt,
   approvedAt,
   canEdit,
@@ -52,7 +54,7 @@ export function AssessmentDetailEditor({
 
   const steps = [
     { key: 'review', done: responses.length > 0 },
-    { key: 'summary', done: Boolean(clinicalSummary.trim()) },
+    { key: 'summary', done: Boolean(athleteSummary.trim()) },
     { key: 'approve', done: assessmentStatus === 'approved' },
     { key: 'publish', done: published },
   ] as const;
@@ -79,9 +81,13 @@ export function AssessmentDetailEditor({
   }
 
   function saveClinicalReview(form: HTMLFormElement) {
-    const summary = String(new FormData(form).get('clinical_summary') ?? '');
+    const data = new FormData(form);
     startSaving(async () => {
-      finish(await savePsychClinicalReview({ assessmentId, clinicalSummary: summary }), t('summarySaved'));
+      finish(await savePsychClinicalReview({
+        assessmentId,
+        clinicalSummary: String(data.get('clinical_summary') ?? ''),
+        athleteSummary: String(data.get('athlete_summary') ?? ''),
+      }), t('summarySaved'));
     });
   }
 
@@ -165,10 +171,24 @@ export function AssessmentDetailEditor({
           <div className="space-y-4 p-6">
             {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
             {message && <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">{message}</p>}
-            <form onSubmit={(event) => { event.preventDefault(); saveClinicalReview(event.currentTarget); }} className="rounded-xl border border-gray-200 p-4">
-              <p className="font-semibold text-[#2D2D2D]">{t('summaryTitle')}</p>
-              <textarea name="clinical_summary" defaultValue={clinicalSummary} disabled={!canEdit} rows={6} placeholder={t('summaryPlaceholder')} className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-[#C0172C] focus:outline-none focus:ring-2 focus:ring-red-100 disabled:bg-gray-50" />
-              {canEdit && <div className="mt-3 flex justify-end"><button type="submit" disabled={isSaving} className="rounded-lg border border-[#C0172C] px-3 py-2 text-sm font-semibold text-[#C0172C] hover:bg-red-50 disabled:opacity-60">{isSaving ? tc('saving') : t('saveSummary')}</button></div>}
+            <form onSubmit={(event) => { event.preventDefault(); saveClinicalReview(event.currentTarget); }} className="space-y-4">
+              <div className="rounded-xl border border-gray-300 bg-gray-50 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label htmlFor="psych-clinical-summary" className="font-semibold text-[#2D2D2D]">{t('confidentialTitle')}</label>
+                  <span className="rounded-full bg-gray-800 px-2.5 py-0.5 text-xs font-semibold text-white">{t('confidentialBadge')}</span>
+                </div>
+                <p className="mt-1 text-xs text-gray-600">{t('confidentialHint')}</p>
+                <textarea id="psych-clinical-summary" name="clinical_summary" defaultValue={clinicalSummary} disabled={!canEdit} rows={6} placeholder={t('confidentialPlaceholder')} className="mt-3 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#C0172C] focus:outline-none focus:ring-2 focus:ring-red-100 disabled:bg-gray-100" />
+              </div>
+              <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label htmlFor="psych-athlete-summary" className="font-semibold text-[#2D2D2D]">{t('athleteSummaryTitle')}</label>
+                  <span className="rounded-full bg-green-700 px-2.5 py-0.5 text-xs font-semibold text-white">{t('athleteSummaryBadge')}</span>
+                </div>
+                <p className="mt-1 text-xs text-green-900">{t('athleteSummaryHint')}</p>
+                <textarea id="psych-athlete-summary" name="athlete_summary" defaultValue={athleteSummary} disabled={!canEdit} rows={6} placeholder={t('athleteSummaryPlaceholder')} className="mt-3 w-full rounded-lg border border-green-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-100 disabled:bg-gray-100" />
+              </div>
+              {canEdit && <div className="flex justify-end"><button type="submit" disabled={isSaving} className="rounded-lg border border-[#C0172C] px-3 py-2 text-sm font-semibold text-[#C0172C] hover:bg-red-50 disabled:opacity-60">{isSaving ? tc('saving') : t('saveSummary')}</button></div>}
             </form>
             {scores.length === 0 ? <p className="text-sm text-gray-500">{t('noAutomatedScoring')}</p> : scores.map((score) => (
               <form key={score.id} onSubmit={(event) => { event.preventDefault(); saveInterpretation(score.id, event.currentTarget); }} className="rounded-xl border border-gray-200 p-4">
@@ -186,7 +206,7 @@ export function AssessmentDetailEditor({
             {assessmentStatus === 'under_review' && canEdit && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <p className="text-sm text-amber-900">{t('approveHint')}</p>
-                <button type="button" onClick={approve} disabled={isApproving || !clinicalSummary.trim()} className="rounded-lg bg-[#C0172C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#C1000E] disabled:opacity-60">{isApproving ? t('approving') : t('approve')}</button>
+                <button type="button" onClick={approve} disabled={isApproving || !athleteSummary.trim()} className="rounded-lg bg-[#C0172C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#C1000E] disabled:opacity-60">{isApproving ? t('approving') : t('approve')}</button>
               </div>
             )}
             {(reviewedAt || approvedAt) && <p className="text-xs text-gray-500">{t('timeline', {

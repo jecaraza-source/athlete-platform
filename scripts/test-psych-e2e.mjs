@@ -171,7 +171,8 @@ try {
     .from('psych_assessments')
     .update({
       status: 'approved',
-      clinical_summary: 'Resumen clínico E2E de prueba.',
+      clinical_summary: 'Nota clínica confidencial E2E de prueba.',
+      athlete_summary: 'Resumen para el atleta E2E de prueba.',
       reviewed_by: athleteProfile.id,
       reviewed_at: reviewTimestamp,
       approved_by: athleteProfile.id,
@@ -187,6 +188,9 @@ try {
   if (historyError || !history?.some((entry) => entry.id === assessmentId && entry.instrument_name)) {
     throw new Error(`Published history did not include the E2E assessment: ${historyError?.message ?? 'missing entry'}.`);
   }
+  const publishedEntry = history.find((entry) => entry.id === assessmentId);
+  assert(publishedEntry.clinical_summary === 'Resumen para el atleta E2E de prueba.', 'Athlete history must carry the athlete summary.');
+  assert(!JSON.stringify(history).includes('Nota clínica confidencial'), 'Athlete history exposed the confidential clinical note.');
 
   console.log(`Psychological E2E test passed (${marker}).`);
 } finally {
