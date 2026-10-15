@@ -11,8 +11,9 @@ export default function ExportAthletesButton({
   discipline: string;
 }) {
   function downloadCSV() {
-    const headers = ['Nombre', 'Apellido', 'Email', 'Teléfono', 'Disciplina', 'Estado', 'Rol'];
+    const headers = ['Folio', 'Nombre', 'Apellido', 'Email', 'Teléfono', 'Disciplina', 'Estado', 'Rol'];
     const rows = athletes.map((a) => [
+      a.athlete_code ?? '',
       a.first_name,
       a.last_name,
       a.email ?? '',

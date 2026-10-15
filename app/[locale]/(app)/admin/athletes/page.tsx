@@ -9,8 +9,11 @@ import AthletesConfigFilter from './athletes-config-filter';
 import ExportAthletesButton from './export-athletes-button';
 import { getAthleteStatusLabel } from '@/lib/types/athlete';
 
-// Extended type that includes the athlete's active/inactive status
-export type AthleteProfile = Profile & { athlete_status?: string | null };
+// Extended type that includes the athlete's active/inactive status and folio
+export type AthleteProfile = Profile & {
+  athlete_status?: string | null;
+  athlete_code?: string | null;
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -51,21 +54,25 @@ export default async function AdminAthletesPage({
 
   // Fetch athlete status (active/inactive) from the athletes table
   // and merge into profiles by profile_id
-  let statusMap: Record<string, string> = {};
+  let athleteDetailsMap: Record<string, { status: string; athlete_code: string | null }> = {};
   if (athletes.length > 0) {
     const profileIds = athletes.map((a) => a.id);
     const { data: athleteRows } = await supabaseAdmin
       .from('athletes')
-      .select('profile_id, status')
+      .select('profile_id, status, athlete_code')
       .in('profile_id', profileIds);
-    statusMap = Object.fromEntries(
-      (athleteRows ?? []).map((r: { profile_id: string; status: string }) => [r.profile_id, r.status])
+    athleteDetailsMap = Object.fromEntries(
+      (athleteRows ?? []).map((r: { profile_id: string; status: string; athlete_code: string | null }) => [
+        r.profile_id,
+        { status: r.status, athlete_code: r.athlete_code },
+      ])
     );
   }
 
   const athletesWithStatus: AthleteProfile[] = athletes.map((a) => ({
     ...a,
-    athlete_status: statusMap[a.id] ?? null,
+    athlete_status: athleteDetailsMap[a.id]?.status ?? null,
+    athlete_code: athleteDetailsMap[a.id]?.athlete_code ?? null,
   }));
 
   // Apply filters in memory
@@ -141,6 +148,7 @@ export default async function AdminAthletesPage({
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b-2 border-gray-800 text-left">
+                  <th className="pb-2 pr-4">Folio</th>
                   <th className="pb-2 pr-4">Nombre</th>
                   <th className="pb-2 pr-4">Email</th>
                   <th className="pb-2 pr-4">Teléfono</th>
@@ -151,6 +159,7 @@ export default async function AdminAthletesPage({
               <tbody>
                 {(filtered as AthleteProfile[]).map((p) => (
                   <tr key={p.id} className="border-b border-gray-200">
+                    <td className="py-1.5 pr-4 text-gray-600">{p.athlete_code ?? '—'}</td>
                     <td className="py-1.5 pr-4 font-medium">{p.first_name} {p.last_name}</td>
                     <td className="py-1.5 pr-4 text-gray-600">{p.email ?? '—'}</td>
                     <td className="py-1.5 pr-4 text-gray-600">{p.phone ?? '—'}</td>
