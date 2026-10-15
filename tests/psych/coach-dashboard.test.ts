@@ -13,6 +13,8 @@ const { state } = vi.hoisted(() => ({
   state: { admin: null as ReturnType<typeof import('./supabase-chain').createSupabaseChain> | null },
 }));
 
+vi.mock('next-intl/server', async () => (await import('./next-intl-mock')).nextIntlServerMock);
+
 vi.mock('@/lib/supabase-admin', () => ({
   supabaseAdmin: { from: (table: string) => state.admin!.from(table) },
 }));

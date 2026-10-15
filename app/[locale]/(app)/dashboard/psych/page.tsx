@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { requireAuthenticated } from '@/lib/rbac/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PsychQuestionnaire } from '@/components/psych/PsychQuestionnaire';
@@ -22,6 +23,7 @@ export default async function AthletePsychDashboardPage() {
     redirect('/dashboard');
   }
 
+  const t = await getTranslations('psych.athlete');
   const { data: assessmentRaw } = await supabaseAdmin
     .from('psych_assessments')
     .select('id, scheduled_for, psych_instruments!inner(id, code, name, item_count, is_active, is_test_only, license_status)')
@@ -62,10 +64,10 @@ export default async function AthletePsychDashboardPage() {
   return (
     <main className="max-w-6xl p-8">
       <header className="mb-8 border-l-4 border-[#C0172C] pl-4">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">Exámenes</p>
-        <h1 className="mt-1 text-3xl font-bold text-[#2D2D2D]">Mi evaluación programada</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">{t('eyebrow')}</p>
+        <h1 className="mt-1 text-3xl font-bold text-[#2D2D2D]">{t('title')}</h1>
         <p className="mt-2 max-w-2xl text-sm text-gray-600">
-          Aquí podrás responder la evaluación psicológica que el equipo te haya programado.
+          {t('description')}
         </p>
       </header>
 
@@ -74,9 +76,9 @@ export default async function AthletePsychDashboardPage() {
           <PsychQuestionnaire assessmentId={assessment.id} instrumentName={instrument.name} items={items} />
         ) : (
           <div className="rounded-2xl border border-dashed border-red-200 bg-red-50 px-6 py-10 text-center">
-            <p className="text-lg font-bold text-[#2D2D2D]">No hay ningún cuestionario disponible todavía</p>
+            <p className="text-lg font-bold text-[#2D2D2D]">{t('emptyTitle')}</p>
             <p className="mx-auto mt-2 max-w-xl text-sm text-gray-600">
-              Cuando un instrumento esté autorizado y el equipo programe una evaluación para ti, aparecerá aquí.
+              {t('emptyDescription')}
             </p>
           </div>
         )}

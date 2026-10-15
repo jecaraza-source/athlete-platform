@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { getTranslations } from 'next-intl/server';
 import { getCurrentUser } from '@/lib/rbac/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { parseMXLocalDateTime } from '@/lib/timezone';
@@ -12,33 +13,39 @@ const LICENSE_CHECK_STATUSES = new Set([
   'denied',
 ]);
 
+function errorMessages() {
+  return getTranslations('psych.errors');
+}
+
 async function requireMentalHealthPermission(permission: string) {
+  const t = await errorMessages();
   const user = await getCurrentUser();
-  if (!user?.profile) return { user: null, error: 'No autenticado.' };
+  if (!user?.profile) return { user: null, error: t('unauthenticated') };
   if (
     !user.roles.some((role) => role.code === 'mental_health_admin') ||
     !user.permissions.has(permission)
   ) {
-    return { user: null, error: 'No tienes acceso para realizar esta operación.' };
+    return { user: null, error: t('forbidden') };
   }
   return { user, error: null };
 }
 
 export async function schedulePsychAssessment(input: { athleteId: string; instrumentId: string; scheduledFor: string }): Promise<{ error?: string }> {
+  const t = await errorMessages();
   const { user, error: accessError } = await requireMentalHealthPermission('psych.schedule_assessments');
-  if (!user?.profile || accessError) return { error: accessError ?? 'No autorizado.' };
+  if (!user?.profile || accessError) return { error: accessError ?? t('unauthorized') };
   // datetime-local values carry no offset; staff enter them in Mexico City time.
   const date = parseMXLocalDateTime(input.scheduledFor ?? '');
-  if (!input.athleteId || !input.instrumentId || !date) return { error: 'Selecciona atleta, examen y fecha válidos.' };
+  if (!input.athleteId || !input.instrumentId || !date) return { error: t('invalidSchedule') };
   const [{ data: athlete }, { data: instrument }] = await Promise.all([
     supabaseAdmin.from('profiles').select('id, first_name, email').eq('id', input.athleteId).maybeSingle(),
     supabaseAdmin.from('psych_instruments').select('id, name, item_count').eq('id', input.instrumentId).eq('is_active', true).in('license_status', ['licensed', 'not_required']).maybeSingle(),
   ]);
-  if (!athlete || !instrument) return { error: 'Atleta o instrumento no disponible.' };
+  if (!athlete || !instrument) return { error: t('unavailableAthleteOrInstrument') };
   const { count } = await supabaseAdmin.from('psych_instrument_items').select('id', { count: 'exact', head: true }).eq('instrument_id', instrument.id);
-  if (count !== instrument.item_count) return { error: 'El instrumento no tiene todos sus reactivos cargados.' };
+  if (count !== instrument.item_count) return { error: t('incompleteItems') };
   const { data: assessment, error } = await supabaseAdmin.from('psych_assessments').insert({ athlete_id: athlete.id, instrument_id: instrument.id, scheduled_by: user.profile.id, scheduled_for: date.toISOString(), context: 'scheduled' }).select('id').single();
-  if (error || !assessment) return { error: error?.message ?? 'No fue posible programar la evaluación.' };
+  if (error || !assessment) return { error: t('scheduleFailed') };
   const key = `psych-assessment:${assessment.id}`;
   await supabaseAdmin.from('email_jobs').insert({ recipient_profile_id: athlete.id, recipient_email: athlete.email, subject: 'Tienes una evaluación psicológica pendiente', html_body: `<p>Hola ${athlete.first_name},</p><p>Tienes pendiente la evaluación <strong>${instrument.name}</strong>.</p>`, plain_body: `Tienes pendiente la evaluación ${instrument.name}.`, idempotency_key: `${key}:email`, scheduled_at: new Date().toISOString() });
   const { data: tokens } = await supabaseAdmin.from('push_device_tokens').select('id, onesignal_player_id, device_token').eq('profile_id', athlete.id).eq('is_active', true);
@@ -51,10 +58,11 @@ export async function savePsychClinicalReview(input: {
   assessmentId: string;
   clinicalSummary: string;
 }): Promise<{ error?: string }> {
+  const t = await errorMessages();
   const { user, error: accessError } = await requireMentalHealthPermission('psych.write_interpretation');
-  if (!user?.profile || accessError) return { error: accessError ?? 'No autorizado.' };
+  if (!user?.profile || accessError) return { error: accessError ?? t('unauthorized') };
   const summary = input.clinicalSummary.trim();
-  if (!summary) return { error: 'El resumen clínico es obligatorio.' };
+  if (!summary) return { error: t('summaryRequired') };
 
   const { error } = await supabaseAdmin
     .from('psych_assessments')
@@ -66,7 +74,7 @@ export async function savePsychClinicalReview(input: {
     .eq('id', input.assessmentId)
     .eq('status', 'under_review')
     .eq('published_to_athlete', false);
-  if (error) return { error: error.message };
+  if (error) return { error: t('saveFailed') };
 
   revalidatePath('/dashboard/mental-health');
   revalidatePath(`/dashboard/mental-health/assessments/${input.assessmentId}`);
@@ -76,8 +84,9 @@ export async function savePsychClinicalReview(input: {
 export async function approvePsychAssessment(input: {
   assessmentId: string;
 }): Promise<{ error?: string }> {
+  const t = await errorMessages();
   const { user, error: accessError } = await requireMentalHealthPermission('psych.write_interpretation');
-  if (!user?.profile || accessError) return { error: accessError ?? 'No autorizado.' };
+  if (!user?.profile || accessError) return { error: accessError ?? t('unauthorized') };
 
   const { data: assessment } = await supabaseAdmin
     .from('psych_assessments')
@@ -88,10 +97,10 @@ export async function approvePsychAssessment(input: {
     .eq('psych_instruments.is_test_only', false)
     .maybeSingle();
   if (!assessment || !assessment.clinical_summary?.trim()) {
-    return { error: 'Guarda un resumen clínico antes de aprobar la evaluación.' };
+    return { error: t('summaryBeforeApprove') };
   }
   const instrument = Array.isArray(assessment.psych_instruments) ? assessment.psych_instruments[0] : assessment.psych_instruments;
-  if (!instrument) return { error: 'Instrumento no encontrado.' };
+  if (!instrument) return { error: t('instrumentNotFound') };
 
   if (instrument.scoring_mode === 'automated') {
     const { data: scores } = await supabaseAdmin
@@ -99,7 +108,7 @@ export async function approvePsychAssessment(input: {
       .select('id, interpretation_text')
       .eq('assessment_id', input.assessmentId);
     if (!scores?.length || scores.some((score) => !score.interpretation_text?.trim())) {
-      return { error: 'Completa la interpretación clínica de todos los puntajes antes de aprobar.' };
+      return { error: t('interpretationsRequired') };
     }
   }
 
@@ -112,7 +121,7 @@ export async function approvePsychAssessment(input: {
     })
     .eq('id', input.assessmentId)
     .eq('status', 'under_review');
-  if (error) return { error: error.message };
+  if (error) return { error: t('saveFailed') };
 
   revalidatePath('/dashboard/mental-health');
   revalidatePath(`/dashboard/mental-health/assessments/${input.assessmentId}`);
@@ -125,13 +134,14 @@ export async function savePsychInstrumentLicenseCheck(input: {
   status: string;
   notes: string;
 }): Promise<{ error?: string }> {
+  const t = await errorMessages();
   const { user, error: accessError } = await requireMentalHealthPermission('psych.manage_instruments');
-  if (!user?.profile || accessError) return { error: accessError ?? 'No autorizado.' };
+  if (!user?.profile || accessError) return { error: accessError ?? t('unauthorized') };
   if (!LICENSE_CHECK_STATUSES.has(input.status)) {
-    return { error: 'Estado de licenciamiento inválido.' };
+    return { error: t('invalidLicenseStatus') };
   }
   if (!['instrument_use', 'digital_reproduction', 'official_scoring', 'spanish_translation'].includes(input.permissionType)) {
-    return { error: 'Tipo de permiso inválido.' };
+    return { error: t('invalidPermissionType') };
   }
   const { data: instrument } = await supabaseAdmin
     .from('psych_instruments')
@@ -139,7 +149,7 @@ export async function savePsychInstrumentLicenseCheck(input: {
     .eq('id', input.instrumentId)
     .eq('is_test_only', false)
     .maybeSingle();
-  if (!instrument) return { error: 'Instrumento no encontrado.' };
+  if (!instrument) return { error: t('instrumentNotFound') };
 
   const { error } = await supabaseAdmin
     .from('psych_instrument_license_checks')
@@ -152,7 +162,7 @@ export async function savePsychInstrumentLicenseCheck(input: {
       verified_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'instrument_id,permission_type' });
-  if (error) return { error: error.message };
+  if (error) return { error: t('saveFailed') };
   revalidatePath('/dashboard/mental-health');
   return {};
 }
@@ -162,13 +172,14 @@ export async function updatePsychAlert(input: {
   status: 'acknowledged' | 'resolved';
   notes: string;
 }): Promise<{ error?: string }> {
+  const t = await errorMessages();
   const user = await getCurrentUser();
-  if (!user?.profile) return { error: 'No autenticado.' };
+  if (!user?.profile) return { error: t('unauthenticated') };
   if (
     !user.roles.some((role) => ['mental_health_admin', 'program_director'].includes(role.code)) ||
     !user.permissions.has('psych.manage_alerts')
   ) {
-    return { error: 'No tienes acceso para actualizar alertas.' };
+    return { error: t('alertsForbidden') };
   }
 
   const { data: alert } = await supabaseAdmin
@@ -177,7 +188,7 @@ export async function updatePsychAlert(input: {
     .eq('id', input.alertId)
     .eq('psych_assessments.psych_instruments.is_test_only', false)
     .maybeSingle();
-  if (!alert) return { error: 'Alerta no encontrada.' };
+  if (!alert) return { error: t('alertNotFound') };
 
   const now = new Date().toISOString();
   const { error } = await supabaseAdmin
@@ -189,7 +200,7 @@ export async function updatePsychAlert(input: {
       resolved_at: input.status === 'resolved' ? now : null,
     })
     .eq('id', input.alertId);
-  if (error) return { error: error.message };
+  if (error) return { error: t('saveFailed') };
 
   revalidatePath('/dashboard/mental-health');
   return {};
@@ -199,8 +210,9 @@ export async function setPsychInstrumentActive(input: {
   instrumentId: string;
   isActive: boolean;
 }): Promise<{ error?: string }> {
+  const t = await errorMessages();
   const { user, error: accessError } = await requireMentalHealthPermission('psych.manage_instruments');
-  if (!user?.profile || accessError) return { error: accessError ?? 'No autorizado.' };
+  if (!user?.profile || accessError) return { error: accessError ?? t('unauthorized') };
 
   const { data: instrument } = await supabaseAdmin
     .from('psych_instruments')
@@ -208,13 +220,13 @@ export async function setPsychInstrumentActive(input: {
     .eq('id', input.instrumentId)
     .eq('is_test_only', false)
     .maybeSingle();
-  if (!instrument) return { error: 'Instrumento no encontrado.' };
+  if (!instrument) return { error: t('instrumentNotFound') };
 
   const { error } = await supabaseAdmin
     .from('psych_instruments')
     .update({ is_active: input.isActive })
     .eq('id', input.instrumentId);
-  if (error) return { error: error.message };
+  if (error) return { error: t('saveFailed') };
 
   revalidatePath('/dashboard/mental-health');
   return {};
@@ -224,8 +236,9 @@ export async function savePsychScoreInterpretation(input: {
   scoreId: string;
   interpretationText: string;
 }): Promise<{ error?: string }> {
+  const t = await errorMessages();
   const { user, error: accessError } = await requireMentalHealthPermission('psych.write_interpretation');
-  if (!user?.profile || accessError) return { error: accessError ?? 'No autorizado.' };
+  if (!user?.profile || accessError) return { error: accessError ?? t('unauthorized') };
 
   const { data: score } = await supabaseAdmin
     .from('psych_scores')
@@ -233,17 +246,17 @@ export async function savePsychScoreInterpretation(input: {
     .eq('id', input.scoreId)
     .eq('psych_assessments.psych_instruments.is_test_only', false)
     .maybeSingle();
-  if (!score) return { error: 'Puntaje no encontrado.' };
+  if (!score) return { error: t('scoreNotFound') };
   const assessment = Array.isArray(score.psych_assessments) ? score.psych_assessments[0] : score.psych_assessments;
   if (!assessment || assessment.status !== 'under_review' || assessment.published_to_athlete) {
-    return { error: 'La interpretación sólo puede editarse durante la revisión clínica.' };
+    return { error: t('interpretationLocked') };
   }
 
   const { error } = await supabaseAdmin
     .from('psych_scores')
     .update({ interpretation_text: input.interpretationText.trim() || null })
     .eq('id', input.scoreId);
-  if (error) return { error: error.message };
+  if (error) return { error: t('saveFailed') };
 
   revalidatePath('/dashboard/mental-health');
   return {};

@@ -53,7 +53,7 @@
     "preferences": "Preferences",
     "admin": "Admin",
     "appointments": "My Appointments",
-    "psychologicalTests": "Psychological tests",
+    "psychologicalTests": "Test",
     "psychAthlete": "My sport wellbeing",
     "psychCoach": "Team psychology",
     "psychClinical": "Clinical management",
@@ -1396,5 +1396,244 @@
     "acceptButton": "Accept and continue",
     "accepting": "Recording acceptance…",
     "footer": "You must accept to access the platform. This notice complies with applicable privacy law."
+  },
+  "psych": {
+    "common": {
+      "athleteFallback": "Athlete",
+      "instrumentFallback": "Instrument",
+      "noDate": "No date",
+      "save": "Save",
+      "saving": "Saving…",
+      "severity": {
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      },
+      "assessmentStatus": {
+        "pending": "Pending",
+        "completed": "Completed (legacy)",
+        "under_review": "Under clinical review",
+        "approved": "Approved",
+        "expired": "Expired"
+      },
+      "licenseStatus": {
+        "pending_review": "Pending review",
+        "licensed": "Licensed",
+        "not_required": "Not required",
+        "denied": "Denied"
+      },
+      "licensePermission": {
+        "instrument_use": "Instrument use",
+        "digital_reproduction": "Digital reproduction",
+        "official_scoring": "Official scoring",
+        "spanish_translation": "Spanish translation"
+      },
+      "alertType": {
+        "elevated_competitive_anxiety": "Elevated competitive anxiety"
+      },
+      "subscale": {
+        "cognitive_anxiety": "Cognitive anxiety",
+        "somatic_anxiety": "Somatic anxiety",
+        "self_confidence": "Self-confidence",
+        "trait_competitive_anxiety": "Competitive anxiety",
+        "physical_emotional_exhaustion": "Physical/emotional exhaustion",
+        "reduced_sense_of_accomplishment": "Reduced sense of accomplishment",
+        "sport_devaluation": "Sport devaluation",
+        "confidence": "Confidence",
+        "constancy": "Constancy",
+        "control": "Control"
+      },
+      "band": {
+        "ansiedad_competitiva_baja": "Low competitive anxiety",
+        "ansiedad_competitiva_promedio": "Average competitive anxiety",
+        "ansiedad_competitiva_alta": "High competitive anxiety"
+      }
+    },
+    "athlete": {
+      "eyebrow": "Test",
+      "title": "My scheduled assessment",
+      "description": "Here you can answer the psychological assessment your team has scheduled for you.",
+      "emptyTitle": "No questionnaire is available yet",
+      "emptyDescription": "When an instrument is authorized and the team schedules an assessment for you, it will appear here.",
+      "questionnaireEyebrow": "Questionnaire available",
+      "confidential": "Your answers are confidential and will be reviewed by authorized staff.",
+      "answerAll": "Answer every item before submitting the questionnaire.",
+      "submitted": "Your answers were recorded and the assessment is now under professional review.",
+      "testRunSubmitted": "Test run completed. Answers and results were not saved.",
+      "notAvailableYet": "This assessment is not available yet.",
+      "noLongerAvailable": "This assessment is no longer available.",
+      "alreadyAnswered": "This assessment already has answers that cannot be replaced.",
+      "invalidAnswers": "Some answers are not valid. Review the questionnaire and try again.",
+      "submitError": "Your answers could not be recorded.",
+      "connectionError": "Could not reach the server. Please try again.",
+      "submit": "Submit answers",
+      "submitting": "Submitting…"
+    },
+    "overview": {
+      "eyebrow": "Technical direction",
+      "title": "Psychological alert overview",
+      "description": "Aggregate indicators of open alerts. This view does not expose answers, scores, interpretations or individual clinical identities.",
+      "openAlerts": "open alerts",
+      "byDiscipline": "Open alerts by discipline",
+      "noOpenAlerts": "There are no open alerts.",
+      "noDiscipline": "No discipline"
+    },
+    "clinical": {
+      "eyebrow": "Mental health",
+      "title": "Clinical management",
+      "description": "Schedule assessments, review results and manage instrument availability.",
+      "schedule": {
+        "eyebrow": "Schedule",
+        "title": "New psychological assessment",
+        "selectAthlete": "Select athlete",
+        "selectInstrument": "Select test",
+        "submit": "Schedule",
+        "submitting": "Scheduling…",
+        "success": "Assessment scheduled and notification queued.",
+        "searchAthlete": "Search athlete…",
+        "athleteMatches": "{count, plural, =0 {No matches} one {# match} other {# matches}}"
+      },
+      "list": {
+        "eyebrow": "Assessments",
+        "title": "Completed assessments",
+        "pendingCount": "{count, plural, =0 {Nothing pending grading} one {# pending grading} other {# pending grading}}",
+        "filterAthlete": "Filter by athlete",
+        "filterInstrument": "Filter by instrument",
+        "allStatuses": "All statuses",
+        "pendingGrading": "Pending grading",
+        "approvedUnpublished": "Approved, not published",
+        "published": "Published",
+        "empty": "No assessments match the selected filters.",
+        "pendingBadge": "Pending grading",
+        "approvedBadge": "Approved · not published",
+        "publishedBadge": "Published",
+        "completedOn": "Completed: {date}",
+        "grade": "Grade",
+        "view": "View"
+      },
+      "catalog": {
+        "eyebrow": "Catalog",
+        "title": "Instrument availability",
+        "description": "Active controls operational visibility; licensing controls whether assessments can be created.",
+        "license": "License: {status}",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "alerts": {
+        "eyebrow": "Follow-up",
+        "title": "Psychological alerts",
+        "allStatuses": "All statuses",
+        "open": "Open",
+        "acknowledged": "Acknowledged",
+        "resolved": "Resolved",
+        "allSeverities": "All severities",
+        "empty": "No alerts match the selected filters.",
+        "acknowledge": "Acknowledge",
+        "resolve": "Resolve",
+        "notesPlaceholder": "Follow-up notes…"
+      },
+      "license": {
+        "eyebrow": "Administration",
+        "title": "Licensing status by instrument",
+        "description": "Record evidence for each permission; the overall status is derived from the four checks.",
+        "derivedNote": "The overall status is calculated automatically once all four checks are complete.",
+        "notesPlaceholder": "Evidence, license link or scope of the authorization…",
+        "show": "Show licensing",
+        "hide": "Hide licensing"
+      }
+    },
+    "detail": {
+      "eyebrow": "Clinical assessment",
+      "statusLine": "{instrument} · Status: {status}",
+      "interpretationEyebrow": "Clinical interpretation",
+      "interpretationTitle": "Review and scores",
+      "published": "Published",
+      "publish": "Publish to athlete",
+      "publishing": "Publishing…",
+      "publishHint": "Available after clinical approval.",
+      "publishSuccess": "Assessment published to the athlete.",
+      "publishError": "The assessment could not be published.",
+      "summaryTitle": "Clinical summary",
+      "summaryPlaceholder": "Clinical summary and recommendations for the athlete…",
+      "saveSummary": "Save summary",
+      "summarySaved": "Clinical summary saved.",
+      "noAutomatedScoring": "This instrument has no validated automated scoring; it requires manual clinical review.",
+      "score": "Score: {score}",
+      "noBand": "No band",
+      "interpretationPlaceholder": "Clinical interpretation for this subscale…",
+      "saveInterpretation": "Save interpretation",
+      "interpretationSaved": "Interpretation saved.",
+      "approveHint": "Save the clinical summary and the required interpretations before approving.",
+      "approve": "Approve assessment",
+      "approving": "Approving…",
+      "approved": "Assessment approved for publication.",
+      "timeline": "Review: {reviewed} · Approval: {approved}",
+      "pending": "pending",
+      "rawEyebrow": "Clinical data",
+      "rawTitle": "Athlete answers",
+      "noResponses": "No responses recorded.",
+      "stepsTitle": "Grading process",
+      "steps": {
+        "review": "Review answers",
+        "summary": "Write clinical summary",
+        "approve": "Approve assessment",
+        "publish": "Publish to athlete"
+      },
+      "rawHint": "Read each item with the chosen option. Reverse-scored items are flagged to help with manual grading.",
+      "reverseScored": "reverse",
+      "answeredAt": "Answered: {date}",
+      "responseCount": "{count, plural, one {# answer} other {# answers}}"
+    },
+    "coach": {
+      "eyebrow": "Coaching staff",
+      "title": "Team psychological profile",
+      "description": "View only interpretations and open alerts for the athletes assigned to your roster.",
+      "assignedAthletes": "Assigned athletes",
+      "noAssignedAthletes": "There are no athletes assigned to your psychological roster.",
+      "lastAssessment": "Latest assessment: {date}",
+      "noDate": "no date",
+      "noBand": "No band defined",
+      "noInterpretation": "No interpretation available yet.",
+      "noAssessment": "No interpreted psychological assessment yet.",
+      "openAlerts": "Open alerts",
+      "assignedAthleteFallback": "Assigned athlete",
+      "noOpenAlerts": "There are no open alerts for your team."
+    },
+    "trend": {
+      "emptyTitle": "No published results yet",
+      "emptyDescription": "When the team publishes an interpretation, your trend by subscale will appear here.",
+      "score": "Score"
+    },
+    "errors": {
+      "unauthenticated": "Not signed in.",
+      "forbidden": "You do not have access to perform this operation.",
+      "unauthorized": "Not authorized.",
+      "invalidSchedule": "Select a valid athlete, test and date.",
+      "unavailableAthleteOrInstrument": "Athlete or instrument not available.",
+      "incompleteItems": "The instrument does not have all of its items loaded.",
+      "scheduleFailed": "The assessment could not be scheduled.",
+      "summaryRequired": "The clinical summary is required.",
+      "summaryBeforeApprove": "Save a clinical summary before approving the assessment.",
+      "instrumentNotFound": "Instrument not found.",
+      "interpretationsRequired": "Complete the clinical interpretation of every score before approving.",
+      "invalidLicenseStatus": "Invalid licensing status.",
+      "invalidPermissionType": "Invalid permission type.",
+      "alertsForbidden": "You do not have access to update alerts.",
+      "alertNotFound": "Alert not found.",
+      "scoreNotFound": "Score not found.",
+      "interpretationLocked": "The interpretation can only be edited during clinical review.",
+      "saveFailed": "The changes could not be saved."
+    },
+    "dashboardAlert": {
+      "eyebrow": "Scheduled test",
+      "title": "{count, plural, one {You have a pending test} other {You have # pending tests}}",
+      "generatedOn": "Generated on {date}",
+      "dueBy": "Complete it by {date}",
+      "daysLeft": "{count, plural, =0 {Due today} one {# day left} other {# days left}}",
+      "overdue": "The {days}-day window ended on {date}. Please complete it as soon as possible.",
+      "availableFrom": "Available from {date}",
+      "start": "Answer now",
+      "window": "You have {days} days to complete it."
+    }
   }
 }

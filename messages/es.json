@@ -1396,5 +1396,244 @@
     "acceptButton": "Acepto y continuar",
     "accepting": "Registrando aceptación…",
     "footer": "Debes aceptar para acceder a la plataforma. Este aviso cumple con la LFPDPPP."
+  },
+  "psych": {
+    "common": {
+      "athleteFallback": "Atleta",
+      "instrumentFallback": "Instrumento",
+      "noDate": "Sin fecha",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "severity": {
+        "high": "Alta",
+        "medium": "Media",
+        "low": "Baja"
+      },
+      "assessmentStatus": {
+        "pending": "Pendiente",
+        "completed": "Completado (legado)",
+        "under_review": "En revisión clínica",
+        "approved": "Aprobado",
+        "expired": "Vencido"
+      },
+      "licenseStatus": {
+        "pending_review": "Pendiente de revisión",
+        "licensed": "Licenciado",
+        "not_required": "No requerido",
+        "denied": "Denegado"
+      },
+      "licensePermission": {
+        "instrument_use": "Uso del instrumento",
+        "digital_reproduction": "Reproducción digital",
+        "official_scoring": "Scoring oficial",
+        "spanish_translation": "Traducción al español"
+      },
+      "alertType": {
+        "elevated_competitive_anxiety": "Ansiedad competitiva elevada"
+      },
+      "subscale": {
+        "cognitive_anxiety": "Ansiedad cognitiva",
+        "somatic_anxiety": "Ansiedad somática",
+        "self_confidence": "Autoconfianza",
+        "trait_competitive_anxiety": "Ansiedad competitiva",
+        "physical_emotional_exhaustion": "Agotamiento físico/emocional",
+        "reduced_sense_of_accomplishment": "Reducción del sentido de logro",
+        "sport_devaluation": "Devaluación del deporte",
+        "confidence": "Confianza",
+        "constancy": "Constancia",
+        "control": "Control"
+      },
+      "band": {
+        "ansiedad_competitiva_baja": "Ansiedad competitiva baja",
+        "ansiedad_competitiva_promedio": "Ansiedad competitiva promedio",
+        "ansiedad_competitiva_alta": "Ansiedad competitiva alta"
+      }
+    },
+    "athlete": {
+      "eyebrow": "Exámenes",
+      "title": "Mi evaluación programada",
+      "description": "Aquí podrás responder la evaluación psicológica que el equipo te haya programado.",
+      "emptyTitle": "No hay ningún cuestionario disponible todavía",
+      "emptyDescription": "Cuando un instrumento esté autorizado y el equipo programe una evaluación para ti, aparecerá aquí.",
+      "questionnaireEyebrow": "Cuestionario disponible",
+      "confidential": "Tus respuestas son confidenciales y serán revisadas por personal autorizado.",
+      "answerAll": "Responde todos los reactivos antes de enviar el cuestionario.",
+      "submitted": "Tus respuestas fueron registradas y la evaluación quedó en revisión profesional.",
+      "testRunSubmitted": "Prueba completada. Las respuestas y resultados no fueron guardados.",
+      "notAvailableYet": "Esta evaluación aún no está disponible.",
+      "noLongerAvailable": "Esta evaluación ya no está disponible.",
+      "alreadyAnswered": "Esta evaluación ya contiene respuestas que no pueden reemplazarse.",
+      "invalidAnswers": "Algunas respuestas no son válidas. Revisa el cuestionario e intenta de nuevo.",
+      "submitError": "No fue posible registrar tus respuestas.",
+      "connectionError": "No fue posible conectar con el servidor. Intenta nuevamente.",
+      "submit": "Enviar respuestas",
+      "submitting": "Enviando…"
+    },
+    "overview": {
+      "eyebrow": "Dirección técnica",
+      "title": "Panorama de alertas psicológicas",
+      "description": "Indicadores agregados de alertas abiertas. Esta vista no expone respuestas, scores, interpretaciones ni identidades clínicas individuales.",
+      "openAlerts": "alertas abiertas",
+      "byDiscipline": "Alertas abiertas por disciplina",
+      "noOpenAlerts": "No hay alertas abiertas.",
+      "noDiscipline": "Sin disciplina"
+    },
+    "clinical": {
+      "eyebrow": "Salud mental",
+      "title": "Gestión clínica",
+      "description": "Programa evaluaciones, revisa resultados y administra la disponibilidad de los instrumentos.",
+      "schedule": {
+        "eyebrow": "Programar",
+        "title": "Nueva evaluación psicológica",
+        "selectAthlete": "Selecciona atleta",
+        "selectInstrument": "Selecciona examen",
+        "submit": "Programar",
+        "submitting": "Programando…",
+        "success": "Evaluación programada y notificación encolada.",
+        "searchAthlete": "Buscar atleta…",
+        "athleteMatches": "{count, plural, =0 {Sin coincidencias} one {# coincidencia} other {# coincidencias}}"
+      },
+      "list": {
+        "eyebrow": "Evaluaciones",
+        "title": "Evaluaciones completadas",
+        "pendingCount": "{count, plural, =0 {Sin pendientes de calificar} one {# pendiente de calificar} other {# pendientes de calificar}}",
+        "filterAthlete": "Filtrar atleta",
+        "filterInstrument": "Filtrar instrumento",
+        "allStatuses": "Todos los estados",
+        "pendingGrading": "Pendientes de calificar",
+        "approvedUnpublished": "Aprobadas sin publicar",
+        "published": "Publicadas",
+        "empty": "No hay evaluaciones para los filtros seleccionados.",
+        "pendingBadge": "Pendiente de calificar",
+        "approvedBadge": "Aprobada · sin publicar",
+        "publishedBadge": "Publicada",
+        "completedOn": "Completada: {date}",
+        "grade": "Calificar",
+        "view": "Ver"
+      },
+      "catalog": {
+        "eyebrow": "Catálogo",
+        "title": "Disponibilidad de instrumentos",
+        "description": "Activo controla la visibilidad operativa; el licenciamiento controla si se pueden crear assessments.",
+        "license": "Licencia: {status}",
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "alerts": {
+        "eyebrow": "Seguimiento",
+        "title": "Alertas psicológicas",
+        "allStatuses": "Todos los estados",
+        "open": "Abiertas",
+        "acknowledged": "Reconocidas",
+        "resolved": "Resueltas",
+        "allSeverities": "Todas las severidades",
+        "empty": "No hay alertas para los filtros seleccionados.",
+        "acknowledge": "Reconocer",
+        "resolve": "Resolver",
+        "notesPlaceholder": "Notas de seguimiento…"
+      },
+      "license": {
+        "eyebrow": "Administración",
+        "title": "Estado de licenciamiento por instrumento",
+        "description": "Registra evidencia para cada permiso; el estado global se deriva de las cuatro verificaciones.",
+        "derivedNote": "El estado global se calcula automáticamente cuando las cuatro verificaciones están completas.",
+        "notesPlaceholder": "Evidencia, enlace a licencia o alcance de la autorización…",
+        "show": "Mostrar licenciamiento",
+        "hide": "Ocultar licenciamiento"
+      }
+    },
+    "detail": {
+      "eyebrow": "Assessment clínico",
+      "statusLine": "{instrument} · Estado: {status}",
+      "interpretationEyebrow": "Interpretación clínica",
+      "interpretationTitle": "Revisión y puntajes",
+      "published": "Publicado",
+      "publish": "Publicar al atleta",
+      "publishing": "Publicando…",
+      "publishHint": "Disponible después de la aprobación clínica.",
+      "publishSuccess": "Assessment publicado para el atleta.",
+      "publishError": "No fue posible publicar el assessment.",
+      "summaryTitle": "Resumen clínico",
+      "summaryPlaceholder": "Resumen clínico y recomendaciones para el atleta…",
+      "saveSummary": "Guardar resumen",
+      "summarySaved": "Resumen clínico guardado.",
+      "noAutomatedScoring": "Este instrumento no tiene scoring automático validado; requiere revisión clínica manual.",
+      "score": "Puntaje: {score}",
+      "noBand": "Sin banda",
+      "interpretationPlaceholder": "Interpretación clínica para esta subescala…",
+      "saveInterpretation": "Guardar interpretación",
+      "interpretationSaved": "Interpretación guardada.",
+      "approveHint": "Guarda el resumen clínico y las interpretaciones requeridas antes de aprobar.",
+      "approve": "Aprobar evaluación",
+      "approving": "Aprobando…",
+      "approved": "Evaluación aprobada para publicación.",
+      "timeline": "Revisión: {reviewed} · Aprobación: {approved}",
+      "pending": "pendiente",
+      "rawEyebrow": "Datos clínicos",
+      "rawTitle": "Respuestas del atleta",
+      "noResponses": "No hay respuestas registradas.",
+      "stepsTitle": "Proceso de calificación",
+      "steps": {
+        "review": "Revisar respuestas",
+        "summary": "Escribir resumen clínico",
+        "approve": "Aprobar evaluación",
+        "publish": "Publicar al atleta"
+      },
+      "rawHint": "Lee cada reactivo con la opción elegida. Los reactivos inversos están marcados para facilitar la calificación manual.",
+      "reverseScored": "inverso",
+      "answeredAt": "Respondido: {date}",
+      "responseCount": "{count, plural, one {# respuesta} other {# respuestas}}"
+    },
+    "coach": {
+      "eyebrow": "Cuerpo técnico",
+      "title": "Perfil psicológico del equipo",
+      "description": "Consulta únicamente interpretaciones y alertas abiertas de los atletas asignados a tu roster.",
+      "assignedAthletes": "Atletas asignados",
+      "noAssignedAthletes": "No hay atletas asignados a tu roster psicológico.",
+      "lastAssessment": "Última evaluación: {date}",
+      "noDate": "sin fecha",
+      "noBand": "Sin banda definida",
+      "noInterpretation": "Aún no hay interpretación disponible.",
+      "noAssessment": "Aún no hay una evaluación psicológica interpretada.",
+      "openAlerts": "Alertas abiertas",
+      "assignedAthleteFallback": "Atleta asignado",
+      "noOpenAlerts": "No hay alertas abiertas para tu equipo."
+    },
+    "trend": {
+      "emptyTitle": "Aún no hay resultados publicados",
+      "emptyDescription": "Cuando el equipo publique una interpretación, aparecerá aquí tu tendencia por subescala.",
+      "score": "Puntaje"
+    },
+    "errors": {
+      "unauthenticated": "No autenticado.",
+      "forbidden": "No tienes acceso para realizar esta operación.",
+      "unauthorized": "No autorizado.",
+      "invalidSchedule": "Selecciona atleta, examen y fecha válidos.",
+      "unavailableAthleteOrInstrument": "Atleta o instrumento no disponible.",
+      "incompleteItems": "El instrumento no tiene todos sus reactivos cargados.",
+      "scheduleFailed": "No fue posible programar la evaluación.",
+      "summaryRequired": "El resumen clínico es obligatorio.",
+      "summaryBeforeApprove": "Guarda un resumen clínico antes de aprobar la evaluación.",
+      "instrumentNotFound": "Instrumento no encontrado.",
+      "interpretationsRequired": "Completa la interpretación clínica de todos los puntajes antes de aprobar.",
+      "invalidLicenseStatus": "Estado de licenciamiento inválido.",
+      "invalidPermissionType": "Tipo de permiso inválido.",
+      "alertsForbidden": "No tienes acceso para actualizar alertas.",
+      "alertNotFound": "Alerta no encontrada.",
+      "scoreNotFound": "Puntaje no encontrado.",
+      "interpretationLocked": "La interpretación sólo puede editarse durante la revisión clínica.",
+      "saveFailed": "No fue posible guardar los cambios."
+    },
+    "dashboardAlert": {
+      "eyebrow": "Examen programado",
+      "title": "{count, plural, one {Tienes un examen pendiente} other {Tienes # exámenes pendientes}}",
+      "generatedOn": "Generado el {date}",
+      "dueBy": "Tienes hasta el {date} para completarlo",
+      "daysLeft": "{count, plural, =0 {Vence hoy} one {Queda # día} other {Quedan # días}}",
+      "overdue": "El plazo de {days} días venció el {date}. Complétalo lo antes posible.",
+      "availableFrom": "Disponible a partir del {date}",
+      "start": "Responder ahora",
+      "window": "Tienes {days} días para completarlo."
+    }
   }
 }
