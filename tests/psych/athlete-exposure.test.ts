@@ -155,9 +155,9 @@ describe('athlete-facing psych data', () => {
   });
 
   it('lists answered tests for the athlete without scores, bands or summaries', () => {
-    const source = readFileSync(path.resolve(__dirname, '../../app/[locale]/(app)/dashboard/psych/page.tsx'), 'utf8');
+    const source = readFileSync(path.resolve(__dirname, '../../lib/psych/athlete-overview.ts'), 'utf8');
     expect(source).toContain("select('id, completed_at, psych_instruments!inner(name, is_test_only)')");
-    expect(source).not.toMatch(/psych_scores|clinical_summary|raw_score|band/);
+    expect(source).not.toMatch(/psych_scores|clinical_summary|raw_score|raw_value|band/);
   });
 
   it('keeps the web questionnaire free of client-side scoring', () => {

@@ -49,6 +49,58 @@ export async function getPsychQuestionnaire(assessmentId: string): Promise<Mobil
   return result as MobileQuestionnaire;
 }
 
+export type PsychPendingAssessment = {
+  id: string;
+  instrumentName: string;
+  createdAt: string;
+  opensAt: string;
+  dueAt: string;
+  isOpen: boolean;
+  daysLeft: number;
+  isOverdue: boolean;
+};
+
+export type PsychAnsweredAssessment = {
+  id: string;
+  instrumentName: string;
+  completedAt: string | null;
+};
+
+export type PsychPublishedResult = {
+  id: string;
+  instrumentCode: string;
+  instrumentName: string;
+  completedAt: string | null;
+  publishedAt: string | null;
+  summary: string;
+  interpretations: { subscaleCode: string; text: string }[];
+};
+
+export type PsychOverview = {
+  completionWindowDays: number;
+  pending: PsychPendingAssessment[];
+  answered: PsychAnsweredAssessment[];
+  results: PsychPublishedResult[];
+};
+
+/**
+ * The athlete's own tests: pending (with the completion window), answered
+ * and published results. Served by the web API so mobile and web agree.
+ */
+export async function getPsychOverview(): Promise<PsychOverview> {
+  const response = await authorizedRequest('/api/psych/me');
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error ?? 'No fue posible cargar tus evaluaciones.');
+  }
+  return {
+    completionWindowDays: Number(result.completionWindowDays ?? 5),
+    pending: Array.isArray(result.pending) ? result.pending : [],
+    answered: Array.isArray(result.answered) ? result.answered : [],
+    results: Array.isArray(result.results) ? result.results : [],
+  };
+}
+
 export type PsychologicalHistoryItem = {
   id: string;
   completedAt: string | null;
@@ -58,7 +110,7 @@ export type PsychologicalHistoryItem = {
 
 export async function submitPsychResponses(
   assessmentId: string,
-  responses: Array<{ item_code: string; raw_value: string }>,
+  responses: { item_code: string; raw_value: string }[],
 ): Promise<SubmissionResult> {
   const response = await authorizedRequest(`/api/psych/assessments/${assessmentId}/responses`, {
     method: 'POST',
@@ -75,12 +127,12 @@ export async function submitPsychResponses(
 export async function listPsychologicalHistory(): Promise<PsychologicalHistoryItem[]> {
   const { data, error } = await supabase.rpc('get_published_psychological_history');
   if (error || !data) throw new Error(error?.message ?? 'No fue posible cargar el histórico.');
-  const rows = data as Array<{
+  const rows = data as {
     id: string;
     completed_at: string | null;
     instrument_name: string | null;
     clinical_summary: string | null;
-  }>;
+  }[];
   return rows.map((row) => ({
     id: row.id,
     completedAt: row.completed_at,

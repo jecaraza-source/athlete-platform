@@ -2,7 +2,7 @@
   "expo": {
     "name": "AO Deportes",
     "slug": "ao-deportes",
-    "version": "1.2.3",
+    "version": "2.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "aodeporte",
@@ -23,7 +23,8 @@
           "remote-notification",
           "fetch"
         ]
-      }
+      },
+      "version": "2.0.0"
     },
     "android": {
       "adaptiveIcon": {
@@ -43,7 +44,8 @@
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
-      ]
+      ],
+      "version": "2.2.0"
     },
     "web": {
       "output": "static",

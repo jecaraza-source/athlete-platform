@@ -68,7 +68,7 @@ export default function AppLayout() {
       />
       <Stack.Screen
         name="psych/history"
-        options={{ title: 'Historial psicológico', headerBackTitle: 'Inicio' }}
+        options={{ title: 'Mis evaluaciones', headerBackTitle: 'Inicio' }}
       />
     </Stack>
   );
