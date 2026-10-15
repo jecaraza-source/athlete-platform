@@ -2,6 +2,7 @@
 
 import { FormEvent, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from '@/i18n/navigation';
 import type { AthleteQuestionnaireItem } from '@/lib/psych/questionnaire';
 
 type ResponseOption = {
@@ -42,6 +43,7 @@ function normaliseOptions(value: unknown): ResponseOption[] {
 
 export function PsychQuestionnaire({ assessmentId, instrumentName, items }: Props) {
   const t = useTranslations('psych.athlete');
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -86,9 +88,14 @@ export function PsychQuestionnaire({ assessmentId, instrumentName, items }: Prop
         }
 
         // Scores and bands are only released after clinical review, never here.
-        setMessage(result.isTestRun ? t('testRunSubmitted') : t('submitted'));
-        setSubmitted(true);
         setError(null);
+        if (result.isTestRun) {
+          setMessage(t('testRunSubmitted'));
+          setSubmitted(true);
+          return;
+        }
+        // Reload so the answered-tests record includes this assessment.
+        router.replace('/dashboard/psych?submitted=1');
       } catch {
         setError(t('connectionError'));
         setMessage(null);

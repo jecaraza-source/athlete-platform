@@ -46,17 +46,17 @@ export function PsychAssessmentList({ assessments }: { assessments: Assessment[]
   };
 
   return (
-    <section className="mt-10">
+    <section className="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-5">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">{t('eyebrow')}</p><h2 className="mt-1 text-2xl font-bold text-[#2D2D2D]">{t('title')}</h2></div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${pendingCount > 0 ? 'bg-amber-50 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>{t('pendingCount', { count: pendingCount })}</span>
+        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-800">{t('eyebrow')}</p><h2 className="mt-1 text-2xl font-bold text-[#2D2D2D]">{t('title')}</h2></div>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${pendingCount > 0 ? 'bg-amber-200 text-amber-900' : 'bg-white text-gray-600'}`}>{t('pendingCount', { count: pendingCount })}</span>
       </div>
       <div className="mb-4 grid gap-2 md:grid-cols-3">
-        <input value={athleteFilter} onChange={(event) => setAthleteFilter(event.target.value)} placeholder={t('filterAthlete')} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-        <input value={instrumentFilter} onChange={(event) => setInstrumentFilter(event.target.value)} placeholder={t('filterInstrument')} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-        <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as 'all' | AssessmentStage)} className="rounded-lg border border-gray-300 px-3 py-2 text-sm"><option value="all">{t('allStatuses')}</option><option value="pending">{t('pendingGrading')}</option><option value="approved">{t('approvedUnpublished')}</option><option value="published">{t('published')}</option></select>
+        <input value={athleteFilter} onChange={(event) => setAthleteFilter(event.target.value)} placeholder={t('filterAthlete')} className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm" />
+        <input value={instrumentFilter} onChange={(event) => setInstrumentFilter(event.target.value)} placeholder={t('filterInstrument')} className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm" />
+        <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as 'all' | AssessmentStage)} className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"><option value="all">{t('allStatuses')}</option><option value="pending">{t('pendingGrading')}</option><option value="approved">{t('approvedUnpublished')}</option><option value="published">{t('published')}</option></select>
       </div>
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-amber-200 bg-white">
         {filtered.length === 0 ? <p className="px-6 py-8 text-sm text-gray-500">{t('empty')}</p> : filtered.map((assessment) => {
           const stage = assessmentStage(assessment);
           return (

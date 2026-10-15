@@ -1,9 +1,11 @@
 import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { requireAuthenticated } from '@/lib/rbac/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { PsychQuestionnaire } from '@/components/psych/PsychQuestionnaire';
 import { ATHLETE_ITEM_COLUMNS, type AthleteQuestionnaireItem } from '@/lib/psych/questionnaire';
+import { psychDateLocale } from '@/lib/psych/labels';
+import { TZ } from '@/lib/timezone';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,13 +19,46 @@ type Instrument = {
   license_status: 'pending_review' | 'licensed' | 'not_required' | 'denied';
 };
 
-export default async function AthletePsychDashboardPage() {
+type AnsweredAssessmentRow = {
+  id: string;
+  completed_at: string | null;
+  psych_instruments: { name: string } | { name: string }[] | null;
+};
+
+export default async function AthletePsychDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ submitted?: string }>;
+}) {
   const user = await requireAuthenticated();
   if (!user.profile || !user.roles.some((role) => role.code === 'athlete')) {
     redirect('/dashboard');
   }
 
-  const t = await getTranslations('psych.athlete');
+  const [t, tc, locale, { submitted }] = await Promise.all([
+    getTranslations('psych.athlete'),
+    getTranslations('psych.common'),
+    getLocale(),
+    searchParams,
+  ]);
+  // Only what the athlete needs for their own record: test and date answered.
+  const { data: answeredRows } = await supabaseAdmin
+    .from('psych_assessments')
+    .select('id, completed_at, psych_instruments!inner(name, is_test_only)')
+    .eq('athlete_id', user.profile.id)
+    .in('status', ['completed', 'under_review', 'approved'])
+    .eq('psych_instruments.is_test_only', false)
+    .order('completed_at', { ascending: false });
+  const answered = ((answeredRows ?? []) as AnsweredAssessmentRow[]).map((row) => {
+    const instrument = Array.isArray(row.psych_instruments) ? row.psych_instruments[0] : row.psych_instruments;
+    return { id: row.id, instrumentName: instrument?.name ?? tc('instrumentFallback'), completedAt: row.completed_at };
+  });
+  const formatDate = (value: string) => new Date(value).toLocaleDateString(psychDateLocale(locale), {
+    timeZone: TZ,
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
   const { data: assessmentRaw } = await supabaseAdmin
     .from('psych_assessments')
     .select('id, scheduled_for, psych_instruments!inner(id, code, name, item_count, is_active, is_test_only, license_status)')
@@ -71,6 +106,10 @@ export default async function AthletePsychDashboardPage() {
         </p>
       </header>
 
+      {submitted === '1' && (
+        <p className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800" role="status">{t('submitted')}</p>
+      )}
+
       <section className="mb-10">
         {hasAvailableQuestionnaire && assessment && instrument ? (
           <PsychQuestionnaire assessmentId={assessment.id} instrumentName={instrument.name} items={items} />
@@ -84,6 +123,25 @@ export default async function AthletePsychDashboardPage() {
         )}
       </section>
 
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C0172C]">{t('historyEyebrow')}</p>
+        <h2 className="mt-1 text-xl font-bold text-[#2D2D2D]">{t('historyTitle')}</h2>
+        <p className="mt-1 text-sm text-gray-600">{t('historyDescription')}</p>
+        {answered.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-500">{t('historyEmpty')}</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-gray-100 rounded-xl border border-gray-200">
+            {answered.map((assessment) => (
+              <li key={assessment.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                <p className="font-semibold text-[#2D2D2D]">{assessment.instrumentName}</p>
+                <p className="text-sm text-gray-600">
+                  {assessment.completedAt ? t('answeredOn', { date: formatDate(assessment.completedAt) }) : tc('noDate')}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }

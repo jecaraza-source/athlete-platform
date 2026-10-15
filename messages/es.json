@@ -1467,7 +1467,12 @@
       "submitError": "No fue posible registrar tus respuestas.",
       "connectionError": "No fue posible conectar con el servidor. Intenta nuevamente.",
       "submit": "Enviar respuestas",
-      "submitting": "Enviando…"
+      "submitting": "Enviando…",
+      "historyEyebrow": "Mi registro",
+      "historyTitle": "Exámenes contestados",
+      "historyDescription": "Lleva el control de los exámenes que ya respondiste. Los resultados los comparte el equipo de salud mental una vez revisados.",
+      "historyEmpty": "Aún no has contestado ningún examen.",
+      "answeredOn": "Contestado el {date}"
     },
     "overview": {
       "eyebrow": "Dirección técnica",

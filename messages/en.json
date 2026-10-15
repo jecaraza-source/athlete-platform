@@ -1467,7 +1467,12 @@
       "submitError": "Your answers could not be recorded.",
       "connectionError": "Could not reach the server. Please try again.",
       "submit": "Submit answers",
-      "submitting": "Submitting…"
+      "submitting": "Submitting…",
+      "historyEyebrow": "My record",
+      "historyTitle": "Answered tests",
+      "historyDescription": "Keep track of the tests you have already answered. The mental health team shares results once they are reviewed.",
+      "historyEmpty": "You have not answered any test yet.",
+      "answeredOn": "Answered on {date}"
     },
     "overview": {
       "eyebrow": "Technical direction",
