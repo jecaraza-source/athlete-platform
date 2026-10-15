@@ -163,7 +163,6 @@ export async function POST(
       assessmentId,
       complete: true,
       isTestRun: true,
-      scores,
       message: 'Prueba completada. Las respuestas y resultados no fueron guardados.',
     });
   }

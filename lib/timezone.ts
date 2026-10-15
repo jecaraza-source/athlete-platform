@@ -124,3 +124,59 @@ export function scheduledForMX(hour: number, minute = 0): string {
   const offsetMs = getMXOffsetMs(mxNaive);
   return new Date(mxNaive.getTime() + offsetMs).toISOString();
 }
+
+// ---------------------------------------------------------------------------
+// Parsing helper (for <input type="datetime-local"> values entered in MX time)
+// ---------------------------------------------------------------------------
+
+const MX_PARTS_FORMAT = new Intl.DateTimeFormat('en-US', {
+  timeZone: TZ,
+  hourCycle: 'h23',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
+
+/** Milliseconds Mexico City wall-clock is ahead of UTC at `instant` (negative for UTC-6). */
+function mxWallOffsetMs(instant: number): number {
+  const parts = Object.fromEntries(
+    MX_PARTS_FORMAT.formatToParts(new Date(instant)).map((part) => [part.type, part.value]),
+  );
+  const wallAsUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+  );
+  return wallAsUtc - Math.floor(instant / 1000) * 1000;
+}
+
+/**
+ * Interprets a naive "YYYY-MM-DDTHH:mm[:ss]" value (as sent by a
+ * datetime-local input) as Mexico City wall-clock time and returns the
+ * matching instant. Returns null for malformed or non-existent values.
+ * Independent of the process timezone, unlike `new Date(value)`.
+ *
+ * @example
+ *   parseMXLocalDateTime('2026-10-15T09:00') // → 2026-10-15T15:00:00.000Z
+ */
+export function parseMXLocalDateTime(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value.trim());
+  if (!match) return null;
+  const [year, month, day, hour, minute, second = '0'] = match.slice(1);
+  const wallAsUtc = Date.UTC(+year, +month - 1, +day, +hour, +minute, +second);
+  const wall = new Date(wallAsUtc);
+  // Date.UTC silently rolls over impossible values such as Feb 30 or 25:00.
+  if (wall.getUTCMonth() !== +month - 1 || wall.getUTCDate() !== +day || wall.getUTCHours() !== +hour || wall.getUTCMinutes() !== +minute) return null;
+  // Two passes settle the offset around historical DST transitions.
+  let instant = wallAsUtc - mxWallOffsetMs(wallAsUtc);
+  instant = wallAsUtc - mxWallOffsetMs(instant);
+  const roundTrip = new Date(instant + mxWallOffsetMs(instant));
+  if (roundTrip.getTime() !== wallAsUtc) return null;
+  return new Date(instant);
+}

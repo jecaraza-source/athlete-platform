@@ -1,27 +1,17 @@
 'use client';
 
 import { FormEvent, useState, useTransition } from 'react';
-import { calculatePsychScores, type CalculatedScore } from '@/lib/psych/scoring';
+import type { AthleteQuestionnaireItem } from '@/lib/psych/questionnaire';
 
 type ResponseOption = {
   value: string;
   label: string;
 };
 
-type InstrumentItem = {
-  item_code: string;
-  item_order: number;
-  prompt_text: string;
-  response_options: unknown;
-  subscale_code: string;
-  is_reverse_scored: boolean;
-};
-
 type Props = {
   assessmentId: string;
-  instrumentCode: string;
   instrumentName: string;
-  items: InstrumentItem[];
+  items: AthleteQuestionnaireItem[];
 };
 
 function normaliseOptions(value: unknown): ResponseOption[] {
@@ -49,39 +39,10 @@ function normaliseOptions(value: unknown): ResponseOption[] {
   });
 }
 
-const SCORE_LABELS: Record<string, string> = {
-  cognitive_anxiety: 'Ansiedad cognitiva',
-  somatic_anxiety: 'Ansiedad somática',
-  self_confidence: 'Autoconfianza',
-  trait_competitive_anxiety: 'Ansiedad competitiva',
-  physical_emotional_exhaustion: 'Agotamiento físico/emocional',
-  reduced_sense_of_accomplishment: 'Reducción del sentido de logro',
-  sport_devaluation: 'Devaluación del deporte',
-  confidence: 'Confianza',
-  constancy: 'Constancia',
-  control: 'Control',
-  practice_goal_setting: 'Práctica: establecimiento de metas',
-  practice_self_talk: 'Práctica: autodiálogo',
-  practice_imagery: 'Práctica: visualización',
-  practice_attentional_control: 'Práctica: control atencional',
-  practice_relaxation: 'Práctica: relajación',
-  practice_automaticity: 'Práctica: automaticidad',
-  practice_activation: 'Práctica: activación',
-  practice_emotional_control: 'Práctica: control emocional',
-  competition_goal_setting: 'Competencia: establecimiento de metas',
-  competition_self_talk: 'Competencia: autodiálogo',
-  competition_imagery: 'Competencia: visualización',
-  competition_negative_thinking: 'Competencia: pensamiento negativo',
-  competition_relaxation: 'Competencia: relajación',
-  competition_automaticity: 'Competencia: automaticidad',
-  competition_activation: 'Competencia: activación',
-  competition_emotional_control: 'Competencia: control emocional',
-};
-
-export function PsychQuestionnaire({ assessmentId, instrumentCode, instrumentName, items }: Props) {
+export function PsychQuestionnaire({ assessmentId, instrumentName, items }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [scores, setScores] = useState<CalculatedScore[] | null>(null);
+  const [submitted, setSubmitted] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -95,7 +56,6 @@ export function PsychQuestionnaire({ assessmentId, instrumentCode, instrumentNam
     if (responses.some((response) => !response.raw_value)) {
       setError('Responde todos los reactivos antes de enviar el cuestionario.');
       setMessage(null);
-      setScores(null);
       return;
     }
 
@@ -110,23 +70,23 @@ export function PsychQuestionnaire({ assessmentId, instrumentCode, instrumentNam
 
         if (response.status === 501 && result.code === 'PSYCH_SCORING_NOT_IMPLEMENTED') {
           setMessage('Tus respuestas fueron registradas. La interpretación estará disponible cuando sea revisada por el equipo de salud mental.');
+          setSubmitted(true);
           setError(null);
           return;
         }
         if (!response.ok) {
           setError(result.error ?? 'No fue posible registrar tus respuestas.');
           setMessage(null);
-          setScores(null);
           return;
         }
 
+        // Scores and bands are only released after clinical review, never here.
         setMessage(result.message ?? 'Tus respuestas fueron registradas.');
-        setScores(calculatePsychScores(instrumentCode, items, responses));
+        setSubmitted(true);
         setError(null);
       } catch {
         setError('No fue posible conectar con el servidor. Intenta nuevamente.');
         setMessage(null);
-        setScores(null);
       }
     });
   }
@@ -142,25 +102,7 @@ export function PsychQuestionnaire({ assessmentId, instrumentCode, instrumentNam
       <div className="space-y-6 p-6">
         {error && <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
         {message && <p className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{message}</p>}
-        {scores && scores.length > 0 && (
-          <section className="rounded-xl border border-green-200 bg-green-50 p-4" aria-live="polite">
-            <h3 className="text-sm font-bold text-green-900">Puntuaciones registradas</h3>
-            <p className="mt-1 text-xs text-green-800">Son resultados de seguimiento; la interpretación corresponde al equipo de salud mental.</p>
-            <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-              {scores.map((score) => (
-                <div key={score.subscaleCode} className="rounded-lg bg-white px-3 py-2">
-                  <dt className="text-xs font-medium text-gray-600">{SCORE_LABELS[score.subscaleCode] ?? score.subscaleCode}</dt>
-                  <dd className="mt-0.5 text-lg font-bold text-[#2D2D2D]">
-                    {Number.isInteger(score.rawScore) ? score.rawScore : score.rawScore.toFixed(2)}
-                    {score.band && <span className="ml-2 text-xs font-semibold text-[#C0172C]">{score.band}</span>}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        )}
-
-        {items.map((item) => {
+        {!submitted && items.map((item) => {
           const options = normaliseOptions(item.response_options);
           return (
             <fieldset key={item.item_code} className="border-b border-gray-100 pb-5 last:border-0 last:pb-0">
@@ -184,7 +126,7 @@ export function PsychQuestionnaire({ assessmentId, instrumentCode, instrumentNam
         })}
       </div>
 
-      <div className="flex justify-end border-t border-gray-100 px-6 py-4">
+      {!submitted && <div className="flex justify-end border-t border-gray-100 px-6 py-4">
         <button
           type="submit"
           disabled={isPending}
@@ -192,7 +134,7 @@ export function PsychQuestionnaire({ assessmentId, instrumentCode, instrumentNam
         >
           {isPending ? 'Enviando…' : 'Enviar respuestas'}
         </button>
-      </div>
+      </div>}
     </form>
   );
 }

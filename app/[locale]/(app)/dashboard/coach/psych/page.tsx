@@ -40,7 +40,8 @@ export default async function CoachPsychDashboardPage() {
           .from('psych_assessments')
           .select('id, athlete_id, completed_at, psych_instruments!inner(name, is_test_only)')
           .in('athlete_id', athleteProfileIds)
-          .eq('status', 'completed')
+          // Coaches only see results after clinical approval; 'completed' is a legacy state.
+          .eq('status', 'approved')
           .eq('psych_instruments.is_test_only', false)
           .order('completed_at', { ascending: false }),
       ])
