@@ -192,7 +192,7 @@ async function runViaPg(sql, label) {
       `-- ============================================================\n-- ${file}\n-- ============================================================\n${sql}\n`
     ).join('\n');
 
-    const outPath = resolve(__dirname, 'supabase/migrations/FINANCE_COMBINED.sql');
+    const outPath = resolve(__dirname, 'supabase/scripts/FINANCE_COMBINED.sql');
     const { writeFileSync } = await import('fs');
     writeFileSync(outPath, combined, 'utf8');
 
@@ -200,7 +200,7 @@ async function runViaPg(sql, label) {
 ╔══════════════════════════════════════════════════════════════╗
 ║  Aplica manualmente en Supabase:                             ║
 ║    app.supabase.com → tu proyecto → SQL Editor               ║
-║    → abre: supabase/migrations/FINANCE_COMBINED.sql          ║
+║    → abre: supabase/scripts/FINANCE_COMBINED.sql             ║
 ║    → clic en "Run"                                           ║
 ║                                                              ║
 ║  O agrega DATABASE_URL en .env.local y vuelve a ejecutar:   ║
