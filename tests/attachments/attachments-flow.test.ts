@@ -154,6 +154,10 @@ function makeTableProxy(table: string) {
 
 function makeStorageMock() {
   return {
+    getBucket: vi.fn().mockResolvedValue({
+      data: { id: 'athlete-files', name: 'athlete-files' },
+      error: null,
+    }),
     createBucket: vi.fn().mockResolvedValue({ error: null }),
     from: vi.fn().mockImplementation((_bucket: string) => ({
       upload: vi.fn().mockImplementation((path: string, buffer: Buffer, opts: { contentType: string }) => {

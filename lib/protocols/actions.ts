@@ -3,6 +3,7 @@
 import { randomUUID }      from 'crypto';
 import { revalidatePath }  from 'next/cache';
 import { supabaseAdmin }   from '@/lib/supabase-admin';
+import { ensureStorageBucket } from '@/lib/supabase-storage';
 import { assertAdminAccess, getCurrentUser } from '@/lib/rbac/server';
 
 // =============================================================================
@@ -28,17 +29,14 @@ const BUCKET   = 'protocols';
 const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
 
 /**
- * Creates the 'protocols' bucket if it doesn't already exist.
- * Safe to call multiple times — Supabase returns an error for duplicate bucket
- * names which we intentionally ignore.
+ * Creates the 'protocols' bucket only when it does not already exist.
  */
 async function ensureBucket(): Promise<void> {
-  await supabaseAdmin.storage.createBucket(BUCKET, {
+  await ensureStorageBucket(BUCKET, {
     public:        false,
     fileSizeLimit: MAX_SIZE,
     allowedMimeTypes: ['application/pdf'],
   });
-  // Ignore the error — it just means the bucket already exists.
 }
 
 // =============================================================================

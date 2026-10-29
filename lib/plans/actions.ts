@@ -3,6 +3,7 @@
 import { randomUUID }    from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin }  from '@/lib/supabase-admin';
+import { ensureStorageBucket } from '@/lib/supabase-storage';
 import { assertAdminAccess, assertPermission, getCurrentUser } from '@/lib/rbac/server';
 import { sendEmailDirect } from '@/lib/notifications/email-service';
 
@@ -57,12 +58,11 @@ const BUCKET   = 'plans';
 const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
 
 async function ensureBucket(): Promise<void> {
-  await supabaseAdmin.storage.createBucket(BUCKET, {
+  await ensureStorageBucket(BUCKET, {
     public:           false,
     fileSizeLimit:    MAX_SIZE,
     allowedMimeTypes: ['application/pdf'],
   });
-  // Ignore the error — it means the bucket already exists.
 }
 
 // =============================================================================
