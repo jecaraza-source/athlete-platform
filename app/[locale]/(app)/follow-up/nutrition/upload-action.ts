@@ -2,13 +2,13 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { ensureStorageBucket } from '@/lib/supabase-storage';
 import { assertPermission } from '@/lib/rbac/server';
 
 const BUCKET = 'nutrition-plans';
 
 async function ensureBucket() {
-  await supabaseAdmin.storage.createBucket(BUCKET, { public: false });
-  // Ignore error — bucket likely already exists
+  await ensureStorageBucket(BUCKET, { public: false });
 }
 
 export async function uploadNutritionFile(planId: string, formData: FormData) {

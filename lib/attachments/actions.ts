@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { ensureStorageBucket } from '@/lib/supabase-storage';
 import { assertPermission, getCurrentUser } from '@/lib/rbac/server';
 import {
   ALLOWED_MIME_TYPES,
@@ -19,9 +20,9 @@ import {
 
 const BUCKET = 'athlete-files';
 
-/** Crea el bucket si no existe. Los errores se ignoran (ya existe). */
+/** Crea el bucket únicamente si aún no existe. */
 async function ensureBucket() {
-  await supabaseAdmin.storage.createBucket(BUCKET, {
+  await ensureStorageBucket(BUCKET, {
     public: false,
     fileSizeLimit: MAX_FILE_SIZE_BYTES,
   });
