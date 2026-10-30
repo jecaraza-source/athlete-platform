@@ -35,6 +35,7 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 // Mock de RBAC con control por test (se sobreescribe en tests de permisos)
 vi.mock('@/lib/rbac/server', () => ({
   assertPermission: vi.fn().mockResolvedValue(null),       // null = autorizado
+  hasPermission:    vi.fn().mockResolvedValue(true),
   getCurrentUser:   vi.fn().mockResolvedValue({
     authUserId: 'auth-coach-001',
     profile: { id: 'profile-coach-001', first_name: 'Ana', last_name: 'Torres' },
@@ -182,10 +183,11 @@ function makeStorageMock() {
 // ─── Import de modules bajo test ──────────────────────────────────────────────
 
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { assertPermission, getCurrentUser } from '@/lib/rbac/server';
+import { assertPermission, getCurrentUser, hasPermission } from '@/lib/rbac/server';
 
 import {
   uploadAttachments,
+  loadAttachmentPanel,
   listAttachments,
   getAttachmentSignedUrl,
   updateAttachmentDescription,
@@ -229,6 +231,7 @@ beforeEach(() => {
 
   // Reset RBAC mocks to autorizado por defecto
   vi.mocked(assertPermission).mockResolvedValue(null);
+  vi.mocked(hasPermission).mockResolvedValue(true);
   vi.mocked(getCurrentUser).mockResolvedValue({
     authUserId: 'auth-coach-001',
     profile: { id: PROFILE_ID, first_name: 'Ana', last_name: 'Torres', email: 'ana@test.com', role: 'coach' },
@@ -509,6 +512,33 @@ describe('6. Listar adjuntos de un atleta', () => {
   it('debe retornar arreglo vacío para un atleta sin adjuntos', async () => {
     const attachments = await listAttachments({ athleteId: 'otro-atleta-000' });
     expect(attachments).toHaveLength(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6b. CARGA DIFERIDA DEL PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('6b. Carga diferida del panel de adjuntos', () => {
+  it('debe devolver adjuntos del alcance solicitado, URLs firmadas y permisos', async () => {
+    const filePath = `${ATHLETE_ID}/medical/lab.pdf`;
+    db.athlete_attachments = [{
+      id: ATTACHMENT_ID_1,
+      athlete_id: ATHLETE_ID,
+      module_name: 'medical',
+      is_active: true,
+      file_path: filePath,
+      uploaded_at: '2025-03-01T10:00:00Z',
+    }];
+    storageBucket[filePath] = { content: Buffer.from('pdf'), contentType: 'application/pdf' };
+    vi.mocked(hasPermission).mockImplementation(async (permission) => permission === 'edit_athletes');
+
+    const result = await loadAttachmentPanel({ athleteId: ATHLETE_ID, module: 'medical' });
+
+    expect(result.attachments).toHaveLength(1);
+    expect(result.signedUrls[ATTACHMENT_ID_1]).toContain(filePath);
+    expect(result.canEdit).toBe(true);
+    expect(result.canDelete).toBe(false);
   });
 });
 

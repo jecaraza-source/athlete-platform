@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { ensureStorageBucket } from '@/lib/supabase-storage';
-import { assertPermission, getCurrentUser } from '@/lib/rbac/server';
+import { assertPermission, getCurrentUser, hasPermission } from '@/lib/rbac/server';
 import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE_BYTES,
@@ -19,6 +19,13 @@ import {
 // ---------------------------------------------------------------------------
 
 const BUCKET = 'athlete-files';
+
+export type AttachmentPanelData = {
+  attachments: AthleteAttachment[];
+  signedUrls: Record<string, string>;
+  canEdit: boolean;
+  canDelete: boolean;
+};
 
 /** Crea el bucket únicamente si aún no existe. */
 async function ensureBucket() {
@@ -219,6 +226,27 @@ export async function getAttachmentSignedUrls(
   return map;
 }
 
+/**
+ * Carga el contenido completo de un panel de adjuntos bajo demanda.
+ * Centraliza permisos y URLs firmadas para evitar trabajo en paneles cerrados.
+ */
+export async function loadAttachmentPanel(
+  params: ListAttachmentsParams
+): Promise<AttachmentPanelData> {
+  const [attachments, canEdit, canDelete] = await Promise.all([
+    listAttachments(params),
+    hasPermission('edit_athletes'),
+    hasPermission('delete_athletes'),
+  ]);
+  const signedUrlMap = await getAttachmentSignedUrls(attachments);
+
+  return {
+    attachments,
+    signedUrls: Object.fromEntries(signedUrlMap.entries()),
+    canEdit,
+    canDelete,
+  };
+}
 // ---------------------------------------------------------------------------
 // Editar descripción
 // ---------------------------------------------------------------------------

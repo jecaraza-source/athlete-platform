@@ -6,6 +6,7 @@ import type { RealtimeAlert } from '@/lib/types/admin';
 
 export function useRealtimeAlerts() {
   const [alerts, setAlerts] = useState<RealtimeAlert[]>([]);
+  const [isPageVisible, setIsPageVisible] = useState(false);
 
   const addAlert = useCallback((alert: RealtimeAlert) => {
     setAlerts(prev => [alert, ...prev].slice(0, 20));
@@ -16,51 +17,69 @@ export function useRealtimeAlerts() {
   }, []);
 
   useEffect(() => {
+    const updateVisibility = () => {
+      setIsPageVisible(document.visibilityState === 'visible');
+    };
+
+    updateVisibility();
+    document.addEventListener('visibilitychange', updateVisibility);
+
+    return () => document.removeEventListener('visibilitychange', updateVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (!isPageVisible) return;
     const supabase = createSupabaseBrowserClient();
 
     const channel = supabase
       .channel('admin-console-alerts')
-      // Listen to changes in events (appointments in the platform)
+      // Each listener only receives events that can produce its alert.
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'events' },
+        { event: 'INSERT', schema: 'public', table: 'events', filter: 'status=eq.scheduled' },
         (payload) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const ev = payload.new as any;
-
-          if (payload.eventType === 'INSERT') {
-            // New event scheduled within the next 24 hours
-            const evDateTime = ev.start_at ? new Date(ev.start_at) : null;
-            if (ev.status === 'scheduled' && evDateTime && isBefore(evDateTime, addHours(new Date(), 24))) {
-              addAlert({
-                id: `unconfirmed-${ev.id}-${Date.now()}`,
-                type: 'unconfirmed',
-                message: 'Nueva cita programada en menos de 24h',
-                appointmentId: ev.id,
-                createdAt: new Date().toISOString(),
-              });
-            }
-          }
-
-          if (payload.eventType === 'UPDATE' && ev.status === 'no_show') {
+          const evDateTime = ev.start_at ? new Date(ev.start_at) : null;
+          if (evDateTime && isBefore(evDateTime, addHours(new Date(), 24))) {
             addAlert({
-              id: `noshow-${ev.id}-${Date.now()}`,
-              type: 'consecutive_noshow',
-              message: 'No Show registrado — revisar historial del atleta',
+              id: `unconfirmed-${ev.id}-${Date.now()}`,
+              type: 'unconfirmed',
+              message: 'Nueva cita programada en menos de 24h',
               appointmentId: ev.id,
               createdAt: new Date().toISOString(),
             });
           }
-
-          if (payload.eventType === 'UPDATE' && ev.status === 'rescheduled') {
-            addAlert({
-              id: `reschedule-${ev.id}-${Date.now()}`,
-              type: 'pending_reschedule',
-              message: 'Cita reagendada — pendiente de notificar al atleta',
-              appointmentId: ev.id,
-              createdAt: new Date().toISOString(),
-            });
-          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'events', filter: 'status=eq.no_show' },
+        (payload) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const ev = payload.new as any;
+          addAlert({
+            id: `noshow-${ev.id}-${Date.now()}`,
+            type: 'consecutive_noshow',
+            message: 'No Show registrado — revisar historial del atleta',
+            appointmentId: ev.id,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'events', filter: 'status=eq.rescheduled' },
+        (payload) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const ev = payload.new as any;
+          addAlert({
+            id: `reschedule-${ev.id}-${Date.now()}`,
+            type: 'pending_reschedule',
+            message: 'Cita reagendada — pendiente de notificar al atleta',
+            appointmentId: ev.id,
+            createdAt: new Date().toISOString(),
+          });
         }
       )
       // Listen to new athlete registrations
@@ -82,7 +101,7 @@ export function useRealtimeAlerts() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [addAlert]);
+  }, [addAlert, isPageVisible]);
 
   return { alerts, dismissAlert };
 }

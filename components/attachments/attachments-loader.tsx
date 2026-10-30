@@ -1,9 +1,8 @@
 /**
- * AttachmentsLoader — Server Component
+ * AttachmentsLoader — Client Component
  *
- * Carga los adjuntos del atleta para un módulo/sección/registro concreto,
- * genera las URLs firmadas y resuelve los permisos del usuario actual;
- * luego renderiza el AttachmentsPanel (Client Component).
+ * Renderiza un panel que solicita adjuntos, permisos y URLs firmadas solo
+ * cuando el usuario lo expande.
  *
  * Uso:
  *   <AttachmentsLoader
@@ -12,16 +11,9 @@
  *     relatedRecordId={medicalCase.id}
  *   />
  */
+'use client';
 
-import { hasPermission } from '@/lib/rbac/server';
-import {
-  listAttachments,
-  getAttachmentSignedUrls,
-} from '@/lib/attachments/actions';
-import type {
-  AttachmentModule,
-  ListAttachmentsParams,
-} from '@/lib/types/attachments';
+import type { AttachmentModule } from '@/lib/types/attachments';
 import AttachmentsPanel from './attachments-panel';
 
 type Props = {
@@ -33,7 +25,7 @@ type Props = {
   defaultCollapsed?: boolean;
 };
 
-export default async function AttachmentsLoader({
+export default function AttachmentsLoader({
   athleteId,
   module,
   sectionName,
@@ -41,21 +33,6 @@ export default async function AttachmentsLoader({
   title,
   defaultCollapsed = false,
 }: Props) {
-  const listParams: ListAttachmentsParams = {
-    athleteId,
-    module,
-    sectionName,
-    relatedRecordId,
-  };
-
-  const [attachments, canEdit, canDelete] = await Promise.all([
-    listAttachments(listParams),
-    hasPermission('edit_athletes'),
-    hasPermission('delete_athletes'),
-  ]);
-
-  const signedUrlMap = await getAttachmentSignedUrls(attachments);
-  const signedUrls = Object.fromEntries(signedUrlMap.entries());
 
   return (
     <AttachmentsPanel
@@ -63,10 +40,6 @@ export default async function AttachmentsLoader({
       module={module}
       sectionName={sectionName}
       relatedRecordId={relatedRecordId}
-      initialAttachments={attachments}
-      signedUrls={signedUrls}
-      canEdit={canEdit}
-      canDelete={canDelete}
       title={title}
       defaultCollapsed={defaultCollapsed}
     />
