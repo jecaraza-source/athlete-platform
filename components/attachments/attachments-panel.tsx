@@ -9,22 +9,19 @@ import {
   MAX_FILE_SIZE_BYTES,
   MAX_FILES_PER_UPLOAD,
   formatFileSize,
-  type AthleteAttachment,
   type AttachmentModule,
 } from '@/lib/types/attachments';
-import { uploadAttachments } from '@/lib/attachments/actions';
+import {
+  loadAttachmentPanel,
+  uploadAttachments,
+  type AttachmentPanelData,
+} from '@/lib/attachments/actions';
 
 type Props = {
   athleteId: string;
   module: AttachmentModule;
   sectionName?: string;
   relatedRecordId?: string;
-  /** Lista de adjuntos pre-cargada por el Server Component padre */
-  initialAttachments: AthleteAttachment[];
-  /** Mapa id → signedUrl generado en el servidor */
-  signedUrls: Record<string, string>;
-  canEdit: boolean;
-  canDelete: boolean;
   /** Título de la sección (default: "Documentos anexos") */
   title?: string;
   /** Si se colapsa por defecto */
@@ -36,10 +33,6 @@ export default function AttachmentsPanel({
   module,
   sectionName,
   relatedRecordId,
-  initialAttachments,
-  signedUrls,
-  canEdit,
-  canDelete,
   title = 'Documentos anexos',
   defaultCollapsed = false,
 }: Props) {
@@ -57,6 +50,34 @@ export default function AttachmentsPanel({
   // UI state
   const [dragging, setDragging]   = useState(false);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [panelData, setPanelData] = useState<AttachmentPanelData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(!defaultCollapsed);
+
+  const attachments = panelData?.attachments ?? [];
+  const signedUrls = panelData?.signedUrls ?? {};
+  const canEdit = panelData?.canEdit ?? false;
+  const canDelete = panelData?.canDelete ?? false;
+
+  async function loadPanel(force = false) {
+    if (panelData && !force) return;
+
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      setPanelData(await loadAttachmentPanel({ athleteId, module, sectionName, relatedRecordId }));
+    } catch {
+      setLoadError('No se pudieron cargar los documentos. Inténtalo de nuevo.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!collapsed) void loadPanel();
+  // Loading is intentionally tied to first expansion; panelData caches it.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collapsed]);
 
   // Stage files — validate immediately, show inline errors
   function stageFiles(files: FileList | null) {
@@ -153,6 +174,7 @@ export default function AttachmentsPanel({
             ? '1 archivo adjuntado correctamente.'
             : `${result.uploaded} archivos adjuntados correctamente.`
         );
+        await loadPanel(true);
         setTimeout(() => setSuccessMsg(null), 5000);
       }
     });
@@ -178,9 +200,9 @@ export default function AttachmentsPanel({
         <div className="flex items-center gap-2">
           <PaperclipIcon />
           <span className="font-semibold text-sm text-gray-800">{title}</span>
-          {initialAttachments.length > 0 && (
+          {panelData && attachments.length > 0 && (
             <span className="text-xs bg-emerald-100 text-emerald-700 font-medium rounded-full px-2 py-0.5">
-              {initialAttachments.length}
+              {attachments.length}
             </span>
           )}
         </div>
@@ -189,9 +211,25 @@ export default function AttachmentsPanel({
 
       {!collapsed && (
         <div className="divide-y divide-gray-100">
+          {isLoading && (
+            <div className="p-6 text-center text-sm text-gray-500">Cargando documentos…</div>
+          )}
+
+          {loadError && (
+            <div className="p-4">
+              <p className="text-sm text-red-600">{loadError}</p>
+              <button
+                type="button"
+                onClick={() => void loadPanel()}
+                className="mt-2 text-sm font-medium text-emerald-700 hover:underline"
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
 
           {/* ── Upload zone (edit only) ───────────────────────────── */}
-          {canEdit && (
+          {panelData && canEdit && (
             <div className="p-4 space-y-3">
 
               {/* Drag & drop drop-zone */}
@@ -337,8 +375,9 @@ export default function AttachmentsPanel({
           )}
 
           {/* ── Attachments list ─────────────────────────────────── */}
-          <div className="p-4">
-            {initialAttachments.length === 0 ? (
+          {panelData && (
+            <div className="p-4">
+            {attachments.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-8 text-center">
                 <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
                   <EmptyBoxIcon />
@@ -350,7 +389,7 @@ export default function AttachmentsPanel({
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {initialAttachments.map((a) => (
+                {attachments.map((a) => (
                   <AttachmentCard
                     key={a.id}
                     attachment={a}
@@ -362,6 +401,7 @@ export default function AttachmentsPanel({
               </div>
             )}
           </div>
+          )}
 
         </div>
       )}
